@@ -72,6 +72,35 @@ extension ServerLab {
         }
     }
 
+    /// The tag the recipe's seeded image has today, without building it. Nil when the base image
+    /// is not on the host yet (then no seeded image for it can be current either).
+    public func currentImageTag(for recipe: Recipe) async throws -> String? {
+        let engine = try engine(for: recipe.engine)
+        let password = try LabPassword.resolve()
+        let spec = try engine.containerSpec(for: recipe, password: password)
+        guard try await imageExists(spec.image) else { return nil }
+        let baseImageID = try await docker.run(["image", "inspect", "--format", "{{.Id}}", spec.image])
+        let versions = Dictionary(recipe.packs.compactMap { use in engine.pack(named: use.pack).map { ($0.name, $0.version) } },
+                                  uniquingKeysWith: max)
+        let fingerprint = try RecipeFingerprint.compute(recipe: recipe, packVersions: versions, baseImageID: baseImageID, password: password)
+        return RecipeFingerprint.imageTag(recipe: recipe.name, fingerprint: fingerprint)
+    }
+
+    /// Removes seeded images that no shipped recipe would use any more (an older fingerprint, or a
+    /// recipe that no longer exists). Returns the removed tags.
+    @discardableResult
+    public func pruneOutdatedImages() async throws -> [String] {
+        var current: Set<String> = []
+        for recipe in recipes.recipes {
+            if let tag = try await currentImageTag(for: recipe) { current.insert(tag) }
+        }
+        let outdated = try await seededImages().map(\.tag).filter { !current.contains($0) }
+        for tag in outdated {
+            _ = try await docker.runAllowingFailure(["image", "rm", tag])
+        }
+        return outdated
+    }
+
     /// The local image ID of `reference`, pulled first when the host does not have it.
     func baseImageID(_ reference: String, log: LabLog) async throws -> String {
         if try await !imageExists(reference) {

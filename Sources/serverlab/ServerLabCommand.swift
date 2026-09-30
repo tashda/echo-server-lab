@@ -9,7 +9,7 @@ struct ServerLabCommand: AsyncParsableCommand {
         commandName: "serverlab",
         abstract: "Start disposable database servers from recipes.",
         discussion: "The host is testlab unless SERVERLAB_HOST=local.",
-        subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, Images.self, Reap.self]
+        subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, Images.self, Prune.self, Reap.self]
     )
 }
 
@@ -106,5 +106,15 @@ struct Images: AsyncParsableCommand {
         for image in try await ServerLab.standard().seededImages().sorted(by: { $0.recipe < $1.recipe }) {
             print("\(image.recipe.padding(toLength: 34, withPad: " ", startingAt: 0)) \(image.size.padding(toLength: 9, withPad: " ", startingAt: 0)) \(image.created)")
         }
+    }
+}
+
+struct Prune: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "Remove seeded images no shipped recipe uses any more.")
+
+    func run() async throws {
+        let removed = try await ServerLab.standard().pruneOutdatedImages()
+        for tag in removed { print("removed \(tag)") }
+        print("\(removed.count) outdated images removed")
     }
 }
