@@ -1,0 +1,14 @@
+{
+  "name": "pg-18-security",
+  "summary": "PostgreSQL 18: roles with every attribute, nested membership, privileges down to columns, row-level security in labdata.",
+  "engine": "postgresql",
+  "version": "18",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "security"
+    }
+  ]
+}

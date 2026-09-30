@@ -33,6 +33,11 @@ Fixed in sqlserver-nio `dev`:
 
 | `e8d0893` + `bbc8a37` | **Bug:** `addForeignKey`/`addCheckConstraint` put `WITH NOCHECK` after the constraint (a syntax error); `ForeignKeyOptions.isNotTrusted` emitted `NOT FOR REPLICATION`. Now `WITH NOCHECK` precedes `ADD`, `isNotTrusted` creates the key untrusted, and `notForReplication` is its own option. |
 
+| `d25c627` | `security.createMasterKey`, `createCertificate`, `dropCertificate` (certificate logins had no way to get a certificate). |
+| `7744c74` | **Bug:** `addMask` with `.partial` or `.datetime` sent `FUNCTION = 'partial(2, 'XXX', 1)'` (broken quoting); Echo's New Mask sheet hit this. |
+
+Fixed in postgres-wire `dev` (`0718e6b`): grants and policies take `schema:`, column-level grants (`columns:`); **bug:** `grantRole` ignored `inherit:`/`set:`; **bug:** `PUBLIC`/`CURRENT_USER` grantees were quoted as role names.
+
 Fixed in postgres-wire `dev` (`5e30efe`): `createIndex`/`createAdvancedIndex` and primary/foreign/unique/check constraints take `schema:`; `PostgresIndexColumn(expression:)`, `operatorClass`, `include:` (covering indexes) and `PostgresIndexType.spgist`.
 
 Fixed in postgres-wire `dev` (`d631da1`):
