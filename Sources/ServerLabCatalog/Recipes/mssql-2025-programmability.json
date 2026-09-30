@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2025-programmability",
+  "summary": "SQL Server 2025 with LabData: sales schema, views, procedures, functions, triggers, sequences, synonyms, types.",
+  "engine": "sqlserver",
+  "version": "2025",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "programmability"
+    }
+  ]
+}

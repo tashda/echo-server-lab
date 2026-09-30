@@ -29,13 +29,24 @@ Fixed in sqlserver-nio `dev`:
 | `0b55ec6` | **GS-01 partly done.** `SQLDataType` gains `rowversion`, `hierarchyid`, `geometry`, `geography`, `json`, `vector(dimensions:)`. **GS-02 partly done.** `SQLServerLiteralValue` gains `.variant(_:)` (a multi-row INSERT converted a `sql_variant` column's values to one type), `.geometry(wellKnownText:srid:)`, `.geography(wellKnownText:srid:)`, `.hierarchyID(_:)`. Still open: typed `xml` (schema collections) and typed time/datetimeoffset values. |
 | `4b6707f` | **Bug:** `listColumns` dropped `hierarchyid`, `geometry` and `geography` columns (inner join on system type 240, which has no row of its own in `sys.types`). Echo's Explorer did not show these columns. |
 | `12e317c` | **Bug:** `tableProperties.rowCount` counted each row once per allocation unit, up to 3× for tables with LOB columns. |
+| `fa2228d` | **GS-09, GS-10, GS-11 done**, plus inline TVFs: `admin.createSequence`/`dropSequence`, `admin.createSynonym`/`dropSynonym` (`SQLServerObjectName`), `types.createAliasType`, `routines.createInlineTableValuedFunction`. |
 
-Open, found while building:
+Fixed in postgres-wire `dev` (`d631da1`):
 
-- **postgres-wire:** `PostgresConnection.insert` / `bulk.insert` return the number of *result rows*; a plain INSERT has none, so they always return 0.
-- **postgres-wire:** no typed row count for a table (the lab's PostgreSQL checks can only count columns).
+- **GP-01 mostly done:** `createTable`, `createView`, `createMaterializedView`, `createFunction`, `createTrigger` (table), `createSequence`, `createEnum` and `bulk.insert` take `schema:`. Still without: `createIndex`, `createAdvancedIndex`, `createTableAs`, grants, `addForeignKey`, `createPolicy`, update/delete.
+- `routines.createProcedure` / `dropProcedure` (Echo's PostgreSQL Procedures folder had no source).
+- `metadata.exactRowCount(schema:table:)`, `types.typeExists(name:schema:)`.
+- **Bug:** `insert` returned the number of result rows (always 0 for a plain INSERT); it returns the inserted count.
+- **Bug:** `createEnum(ifNotExists:)` emitted `CREATE TYPE IF NOT EXISTS` (not valid PostgreSQL).
+- **Bug:** `PostgresFunctionLanguage.plpython` was `PLPYTHONU` (Python 2); now `PLPYTHON3U`.
+
+Still open, found while building:
+
 - **postgres-wire:** `WireClient` starts `PostgresClient.run()` in a detached task and leases at once, so PostgresNIO logs "run() hasn't been called yet" on the first query. Harmless, but noisy.
 - **postgres-wire:** `admin.createDatabase(ifNotExists: true)` emits `CREATE DATABASE IF NOT EXISTS`, which PostgreSQL does not support.
+- **postgres-wire:** `routines.createFunction` defaults to `SECURITY DEFINER`; the safe default is `INVOKER`. Changing it could affect callers, so it is left for a decision.
+- **sqlserver-nio:** `SQLServerAgentJobBuilder.commit()` is not atomic when Agent refuses a later step; its rollback (`deleteJob`) is refused too, leaving a half-created job. Seen on SQL Server 2017 while Agent starts.
+- **sqlserver-nio:** `metadata.fetchAgentStatus()` reports Agent as running on SQL Server 2017 before it accepts job changes.
 
 ## Ranking across drivers
 

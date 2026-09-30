@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2022-programmability",
+  "summary": "SQL Server 2022 with LabData: sales schema, views, procedures, functions, triggers, sequences, synonyms, types.",
+  "engine": "sqlserver",
+  "version": "2022",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "programmability"
+    }
+  ]
+}

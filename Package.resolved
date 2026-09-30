@@ -16,7 +16,7 @@
       "location" : "https://github.com/tashda/postgres-wire",
       "state" : {
         "branch" : "dev",
-        "revision" : "62b899c7fe7d237f8a772c8996db7869e01eabe2"
+        "revision" : "d631da127c8583ea5be59bddfd4646eeea611487"
       }
     },
     {
@@ -25,7 +25,7 @@
       "location" : "https://github.com/tashda/sqlserver-nio",
       "state" : {
         "branch" : "dev",
-        "revision" : "12e317c831122d95e2170d860aea1b1687a95fd3"
+        "revision" : "fa2228d414a1f7e7104ca524abc120ae46bce8bf"
       }
     },
     {

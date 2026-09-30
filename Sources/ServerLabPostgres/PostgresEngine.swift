@@ -10,6 +10,7 @@ public struct PostgresEngine: LabEngine {
     public let packs: [any ContentPack] = [
         PostgresDatabasePack(),
         PostgresColumnTypesPack(),
+        PostgresProgrammabilityPack(),
     ]
 
     public init() {}

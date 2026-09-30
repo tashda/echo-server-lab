@@ -60,3 +60,38 @@ struct PostgresColumnTypesServerTests {
         #expect(types.contains("json"))
     }
 }
+
+@Suite(.enabled(if: integrationEnabled), .server("mssql-2022-programmability"))
+struct SQLServerProgrammabilityServerTests {
+    @Test func serverHoldsEveryProgrammableObject() async throws {
+        let server = try #require(LabServer.current)
+        let client = try await SQLServerClient.connect(
+            hostname: server.host, port: server.port, database: "LabData",
+            authentication: .sqlPassword(username: server.username, password: server.password),
+            tlsEnabled: true, trustServerCertificate: true
+        )
+        let synonyms = try await client.metadata.listSynonyms(database: "LabData")
+        let sequences = try await client.metadata.listSequences(database: "LabData")
+        let procedures = try await client.metadata.listProcedures(database: "LabData", schema: "sales")
+        try await client.shutdownGracefully()
+        #expect(synonyms.count == 1)
+        #expect(sequences.count == 2)
+        #expect(procedures.count == 2)
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("pg-17-programmability"))
+struct PostgresProgrammabilityServerTests {
+    @Test func auditTriggerRecordedEveryOrder() async throws {
+        let server = try #require(LabServer.current)
+        let client = try await PostgresClient.connect(configuration: PostgresConfiguration(
+            host: server.host, port: server.port, database: "labdata",
+            username: server.username, password: server.password, sslMode: .disable
+        ))
+        defer { client.close() }
+        let orders = try await client.metadata.exactRowCount(schema: "sales", table: "orders")
+        let audit = try await client.metadata.exactRowCount(schema: "sales", table: "order_audit")
+        #expect(orders == 150)
+        #expect(audit == orders)
+    }
+}

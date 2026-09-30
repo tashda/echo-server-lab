@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2019-programmability",
+  "summary": "SQL Server 2019 with LabData: sales schema, views, procedures, functions, triggers, sequences, synonyms, types.",
+  "engine": "sqlserver",
+  "version": "2019",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "programmability"
+    }
+  ]
+}

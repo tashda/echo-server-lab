@@ -1,0 +1,14 @@
+{
+  "name": "pg-15-programmability",
+  "summary": "PostgreSQL 15 with labdata: sales schema, views, functions, trigger, procedure, sequence, enum, domain, composite type.",
+  "engine": "postgresql",
+  "version": "15",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "programmability"
+    }
+  ]
+}

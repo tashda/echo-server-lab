@@ -83,5 +83,6 @@ instead of `testlab`. The integration tests run with `SERVERLAB_INTEGRATION=1`.
 ## Status
 
 Engines: SQL Server 2017–2025, PostgreSQL 13–18. Packs: `database`,
-`column-types` (both engines), `agent-jobs` (SQL Server). The next packs and the
+`column-types` and `programmability` (both engines), `agent-jobs` (SQL Server).
+Built and checked on SQL Server 2017, 2022, 2025 and PostgreSQL 13, 17, 18. The next packs and the
 driver work they need are listed in `catalog/packs.md` and `catalog/driver-gaps.md`.

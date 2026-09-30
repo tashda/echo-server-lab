@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2017-programmability",
+  "summary": "SQL Server 2017 with LabData: sales schema, views, procedures, functions, triggers, sequences, synonyms, types.",
+  "engine": "sqlserver",
+  "version": "2017",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "programmability"
+    }
+  ]
+}

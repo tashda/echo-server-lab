@@ -19,8 +19,11 @@ struct SQLServerAgentJobsPack: ContentPack {
         let jobCount = try parameters.int("jobCount", default: 20)
         try await SQLServerSession.with(server) { client in
             try await Self.waitForAgent(client)
+            try await Self.waitUntilAgentAcceptsJobs(client)
             try await client.agent.createOperator(name: Self.operatorName, emailAddress: "lab-operator@echodb.dev")
             let existing = Set(try await client.agent.listJobs().map(\.name))
+            // Agent accepts jobs now, so they are created without retries (a retried job would
+            // already half exist).
             for index in 1...max(jobCount, 1) where !existing.contains(Self.jobName(index)) {
                 _ = try await Self.builder(index: index, agent: client.agent).commit()
             }
@@ -54,6 +57,35 @@ struct SQLServerAgentJobsPack: ContentPack {
         try await retryUntilReady("SQL Server Agent", timeout: .seconds(120)) {
             guard try await client.metadata.fetchAgentStatus().isSqlAgentRunning else {
                 throw ServerLabError.packRequirement(pack: "agent-jobs", reason: "Agent not running yet")
+            }
+        }
+    }
+
+    /// SQL Server 2017 reports Agent as running while it still refuses job changes with
+    /// "Cannot perform this operation while SQLServerAgent is starting". A throwaway job proves it
+    /// accepts them.
+    static func waitUntilAgentAcceptsJobs(_ client: SQLServerClient) async throws {
+        let probe = "Lab Agent Probe"
+        try await whileAgentStarts {
+            if try await client.agent.listJobs().contains(where: { $0.name == probe }) {
+                try await client.agent.deleteJob(named: probe)
+            }
+            try await client.agent.createJob(named: probe)
+            try await client.agent.addJobServer(jobName: probe)
+            try await client.agent.deleteJob(named: probe)
+        }
+    }
+
+    /// Retries `body` while Agent is still starting, for up to two minutes.
+    static func whileAgentStarts(_ body: () async throws -> Void) async throws {
+        let clock = ContinuousClock()
+        let deadline = clock.now.advanced(by: .seconds(120))
+        while true {
+            do {
+                try await body()
+                return
+            } catch where String(describing: error).contains("SQLServerAgent is starting") && clock.now < deadline {
+                try await Task.sleep(for: .seconds(2))
             }
         }
     }

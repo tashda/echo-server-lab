@@ -1,0 +1,14 @@
+{
+  "name": "pg-14-programmability",
+  "summary": "PostgreSQL 14 with labdata: sales schema, views, functions, trigger, procedure, sequence, enum, domain, composite type.",
+  "engine": "postgresql",
+  "version": "14",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "programmability"
+    }
+  ]
+}

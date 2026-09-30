@@ -8,7 +8,7 @@ import ServerLabKit
 /// Parameters: `database` (default `labdata`), `rows` (default 200), `largeValueKB` (default 1024).
 struct PostgresColumnTypesPack: ContentPack {
     let name = "column-types"
-    let version = 1
+    let version = 2
     let summary = "Every built-in type (json, jsonb, arrays, ranges, network, geometric, text search) with edge values."
 
     func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
@@ -61,11 +61,17 @@ struct PostgresColumnTypesPack: ContentPack {
     func verify(on server: ServerEndpoint, recipe: Recipe, parameters: PackParameters) async throws {
         let database = try parameters.string("database", default: PostgresDatabasePack.defaultName)
         let expected = PostgresTypeSamples.samples(forVersion: Int(recipe.version) ?? 0).count + 1
-        let (typeColumns, documentColumns) = try await PostgresSession.with(server, database: database) { client in
+        let generatedRows = try parameters.int("rows", default: 200)
+        let (typeColumns, documentColumns, typeRows, documentRows) = try await PostgresSession.with(server, database: database) { client in
             (
                 try await client.metadata.listColumns(schema: "public", table: Self.typesTable).count,
-                try await client.metadata.listColumns(schema: "public", table: Self.documentsTable).count
+                try await client.metadata.listColumns(schema: "public", table: Self.documentsTable).count,
+                try await client.metadata.exactRowCount(table: Self.typesTable),
+                try await client.metadata.exactRowCount(table: Self.documentsTable)
             )
+        }
+        guard typeRows == Int64(generatedRows + 3), documentRows == 4 else {
+            throw ServerLabError.packCheckFailed(pack: name, reason: "\(typeRows) type rows and \(documentRows) documents")
         }
         guard typeColumns == expected else {
             throw ServerLabError.packCheckFailed(pack: name, reason: "\(Self.typesTable) has \(typeColumns) columns, expected \(expected)")

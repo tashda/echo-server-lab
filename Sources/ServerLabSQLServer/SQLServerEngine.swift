@@ -11,6 +11,7 @@ public struct SQLServerEngine: LabEngine {
         SQLServerDatabasePack(),
         SQLServerColumnTypesPack(),
         SQLServerAgentJobsPack(),
+        SQLServerProgrammabilityPack(),
     ]
 
     public init() {}
