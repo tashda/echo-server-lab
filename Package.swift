@@ -8,6 +8,8 @@ let package = Package(
         .library(name: "ServerLabKit", targets: ["ServerLabKit"]),
         .library(name: "ServerLabCatalog", targets: ["ServerLabCatalog"]),
         .library(name: "ServerLabTesting", targets: ["ServerLabTesting"]),
+        // For test targets that must not link the lab or its drivers (Echo): talks to the serverlab tool.
+        .library(name: "ServerLabClient", targets: ["ServerLabClient"]),
         .executable(name: "serverlab", targets: ["serverlab"]),
     ],
     dependencies: [
@@ -43,6 +45,7 @@ let package = Package(
             name: "ServerLabTesting",
             dependencies: ["ServerLabCatalog"]
         ),
+        .target(name: "ServerLabClient"),
         .executableTarget(
             name: "serverlab",
             dependencies: ["ServerLabCatalog", .product(name: "ArgumentParser", package: "swift-argument-parser")]

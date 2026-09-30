@@ -43,11 +43,12 @@ struct Up: AsyncParsableCommand {
     @Option(help: "Minutes before the server is removed automatically.") var lease = 120
     @Flag(help: "Print SERVERLAB_* variables for `eval`.") var env = false
     @Flag(help: "Print JSON.") var json = false
+    @Option(help: "Who asked for the server (shown in `serverlab ps`).") var owner = "cli"
 
     func run() async throws {
         let lab = try ServerLab.standard()
         let log: LabLog = { line in FileHandle.standardError.write(Data((line + "\n").utf8)) }
-        let server = try await lab.start(recipeNamed: recipe, owner: "cli", lease: .seconds(lease * 60), log: log)
+        let server = try await lab.start(recipeNamed: recipe, owner: owner, lease: .seconds(lease * 60), log: log)
         if env {
             for (key, value) in server.environment.sorted(by: { $0.key < $1.key }) { print("export \(key)='\(value)'") }
         } else if json {
