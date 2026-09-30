@@ -29,6 +29,35 @@ public struct DockerCommand: Sendable {
         return result.standardOutput.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 
+    /// Runs `docker <arguments>` and returns standard output as raw bytes (for binary files).
+    public func runData(_ arguments: [String]) async throws -> Data {
+        let process = Process()
+        process.executableURL = executable
+        process.arguments = (host.dockerHost.map { ["--host", $0] } ?? []) + arguments
+        let output = Pipe(), errors = Pipe()
+        process.standardOutput = output
+        process.standardError = errors
+        process.standardInput = FileHandle.nullDevice
+        let status = AsyncStream<Int32> { continuation in
+            process.terminationHandler = { continuation.yield($0.terminationStatus); continuation.finish() }
+        }
+        try process.run()
+        async let data = Self.readData(output.fileHandleForReading)
+        async let errorText = Self.collect(errors.fileHandleForReading)
+        var exitStatus: Int32 = -1
+        for await value in status { exitStatus = value }
+        let (bytes, message) = (try await data, try await errorText)
+        guard exitStatus == 0 else {
+            throw ServerLabError.dockerFailed(command: arguments.prefix(2).joined(separator: " "), status: exitStatus, output: message)
+        }
+        return bytes
+    }
+
+    @concurrent
+    private static func readData(_ handle: FileHandle) async throws -> Data {
+        try handle.readToEnd() ?? Data()
+    }
+
     public struct Result: Sendable {
         public var status: Int32
         public var standardOutput: String

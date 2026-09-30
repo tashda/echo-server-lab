@@ -44,6 +44,7 @@ extension ServerLab {
     }
 
     public func stop(_ server: LabServer) async throws {
+        try await stopCapture(of: server)
         try await remove(containerID: server.containerID)
     }
 
@@ -80,6 +81,7 @@ extension ServerLab {
         }
         if host.isDedicated {
             _ = try await docker.runAllowingFailure(["volume", "prune", "--force"])
+            try? await pruneCaptures()
         }
         return expired.count
     }

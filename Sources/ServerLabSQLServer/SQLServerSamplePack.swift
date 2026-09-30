@@ -80,7 +80,7 @@ struct SQLServerSamplePack: ContentPack {
         case .scriptCreatingItsDatabase:
             let script = try await context.sampleText(sample.file)
             try await SQLServerSession.with(server) { client in
-                try await client.scripts.run(script)
+                _ = try await client.scripts.run(script)
             }
         }
         context.log("  \(sample.database) from \(sample.file)")

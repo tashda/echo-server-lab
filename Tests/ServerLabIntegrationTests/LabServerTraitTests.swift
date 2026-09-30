@@ -126,3 +126,24 @@ struct PagilaServerTests {
         #expect(try await client.metadata.exactRowCount(schema: "public", table: "rental") > 16_000)
     }
 }
+
+@Suite(.enabled(if: integrationEnabled), .server("pg-17-empty", capture: true))
+struct PostgresWireCaptureTests {
+    @Test func oneQueryIsOneRoundTripAndThePasswordNeverCrossesInClear() async throws {
+        let server = try #require(LabServer.current)
+        let wire = try #require(LabWire.current)
+        let client = try await PostgresClient.connect(configuration: PostgresConfiguration(
+            host: server.host, port: server.port, database: "postgres",
+            username: server.username, password: server.password, sslMode: .disable
+        ))
+        let rows = try await client.simpleQuery("SELECT 42 AS lab_capture_marker")
+        for try await _ in rows {}
+        client.close()
+
+        let messages = try await wire.messages()
+        #expect(messages.contains { $0.kind == "Startup message" || $0.kind.contains("Startup") })
+        #expect(messages.roundTrips(containing: "lab_capture_marker") == 1)
+        // SCRAM sends a proof, never the password itself.
+        #expect(try await wire.containsPlaintext(server.password) == false)
+    }
+}

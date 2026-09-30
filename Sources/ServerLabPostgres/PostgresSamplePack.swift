@@ -48,10 +48,10 @@ struct PostgresSamplePack: ContentPack {
             let lines = script.components(separatedBy: "\n")
             let switchLine = lines.firstIndex { $0.trimmingCharacters(in: .whitespaces).hasPrefix("\\c ") } ?? 0
             try await PostgresSession.with(server) { client in
-                try await client.scripts.run(lines[..<switchLine].joined(separator: "\n"))
+                _ = try await client.scripts.run(lines[..<switchLine].joined(separator: "\n"))
             }
             try await PostgresSession.with(server, database: sample.database) { client in
-                try await client.scripts.run(lines[(switchLine + 1)...].joined(separator: "\n"))
+                _ = try await client.scripts.run(lines[(switchLine + 1)...].joined(separator: "\n"))
             }
         } else {
             try await PostgresSession.with(server) { client in
