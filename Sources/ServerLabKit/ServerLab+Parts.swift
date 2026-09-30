@@ -33,9 +33,9 @@ extension ServerLab {
 
     /// A running lab server by its main container's name, for tools that did not start it (CLI, Echo Labs).
     public func server(named name: String) async throws -> LabServer {
-        let format = "{{.Id}}|{{index .Config.Labels \"\(LabLabels.recipe)\"}}|{{index .Config.Labels \"\(LabLabels.engine)\"}}|{{index .Config.Labels \"\(LabLabels.version)\"}}|{{index .Config.Labels \"\(LabLabels.expires)\"}}|{{index .Config.Labels \"\(LabLabels.tls)\"}}"
+        let format = "{{.Id}}|{{index .Config.Labels \"\(LabLabels.recipe)\"}}|{{index .Config.Labels \"\(LabLabels.engine)\"}}|{{index .Config.Labels \"\(LabLabels.version)\"}}|{{index .Config.Labels \"\(LabLabels.expires)\"}}|{{index .Config.Labels \"\(LabLabels.tls)\"}}|{{index .Config.Labels \"\(LabLabels.kerberos)\"}}"
         let fields = try await docker.run(["inspect", "--format", format, name]).split(separator: "|", omittingEmptySubsequences: false).map(String.init)
-        guard fields.count == 6, let engine = EngineKind(rawValue: fields[2]) else {
+        guard fields.count == 7, let engine = EngineKind(rawValue: fields[2]) else {
             throw ServerLabError.invalidParameter("server \(name)", expected: "a running lab server")
         }
         let parts = try await parts(ofServerNamed: name, internalPort: engine.internalPort)
@@ -46,7 +46,14 @@ extension ServerLab {
                          containerID: fields[0], containerName: name,
                          expires: Date(timeIntervalSince1970: TimeInterval(fields[4]) ?? 0),
                          parts: main.map { [$0] + parts.filter { $0.containerName != name } } ?? [],
-                         tls: try tls(fromLabel: fields[5], server: name))
+                         tls: try tls(fromLabel: fields[5], server: name),
+                         kerberos: kerberos(serviceHost: fields[6], parts: parts, server: name))
+    }
+
+    /// The Kerberos details of a server started by someone else, from its `host|account` label.
+    func kerberos(serviceHost label: String, parts: [LabServerPart], server name: String) -> LabKerberosInfo? {
+        guard let host = label.split(separator: "|").first, !host.isEmpty else { return nil }
+        return kerberosInfo(serviceHost: String(host))
     }
 
     /// The TLS a server was started with, from its label; the files are where `start` put them.

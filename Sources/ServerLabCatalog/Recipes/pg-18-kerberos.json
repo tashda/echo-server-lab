@@ -1,0 +1,14 @@
+{
+  "name": "pg-18-kerberos",
+  "summary": "PostgreSQL 18 with GSSAPI logins for labuser@LAB.TEST (shared Samba DC) at pg-<id>.lab.test; password logins for everyone else.",
+  "engine": "postgresql",
+  "version": "18",
+  "settings": {
+    "kerberos": true
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

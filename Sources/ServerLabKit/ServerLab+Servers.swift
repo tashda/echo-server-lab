@@ -15,16 +15,42 @@ extension ServerLab {
         let spec = try engine.containerSpec(for: recipe, password: password)
         let name = "serverlab-\(recipe.name)-\(UUID().uuidString.prefix(8).lowercased())"
         let tls = try issueTLS(for: recipe, serverName: name, adminUsername: engine.adminUsername)
-        // Before the seeded image, so a setting the engine cannot do fails without a build.
-        let topology = try engine.topology(for: recipe, password: password, tls: tls?.0)
+        // Before anything starts, so a setting the engine cannot do fails without a build.
+        var setup = ServerSetup(password: password, tls: tls?.0)
+        var topology = try engine.topology(for: recipe, setup: setup)
+        let kerberos = recipe.settings.kerberos == true
+        if kerberos, !topology.parts.isEmpty { throw ServerLabError.unsupported("Kerberos on a server with several parts") }
+        let mainPort = Int.random(in: Self.hostPorts)
+        let serverID = String(name.suffix(8))
+        if kerberos { _ = try engine.kerberosService(for: recipe, serverID: serverID, hostPort: mainPort) }
         let image = try await seededImage(for: recipe, log: log)
         for part in topology.parts { _ = try await baseImageID(part.container.image, log: log) }
         try await waitForBudget(neededMB: spec.memoryMB + topology.parts.map { $0.container.memoryMB }.reduce(0, +), log: log)
 
-        let network = topology.parts.isEmpty ? nil : try await createNetwork(forServer: name)
+        // Kerberos servers join the lab domain's network; servers with several parts get their own.
+        let network = kerberos ? Self.domainNetwork : topology.parts.isEmpty ? nil : try await createNetwork(forServer: name)
         let tlsLabel = tls.map { ["--label", "\(LabLabels.tls)=\($0.1.mode.rawValue)/\($0.1.certificate.rawValue)"] } ?? []
+        var domainArguments: [String] = []
         func networkArguments(_ role: String) -> [String] {
-            tlsLabel + (network.map { ["--network", $0, "--network-alias", role] } ?? [])
+            tlsLabel + (role == topology.mainRole ? domainArguments : []) + (network.map { ["--network", $0, "--network-alias", role] } ?? [])
+        }
+
+        // Kerberos: the service's account, SPNs and keytab exist in the domain before it starts.
+        var kerberosInfo: LabKerberosInfo?
+        if kerberos {
+            let controller = try await ensureDomainController(password: password, log: log)
+            let service = try engine.kerberosService(for: recipe, serverID: serverID, hostPort: mainPort)
+            let keytab = try await prepareDomain(service: service, password: password)
+            setup.kerberos = ServerKerberos(service: service, keytab: keytab, controllerAddress: controller)
+            topology = try engine.topology(for: recipe, setup: setup)
+            domainArguments = ["--dns", controller, "--dns-search", LabDomain.dnsName,
+                               "--add-host", "\(LabDomain.controller):\(controller)",
+                               "--add-host", "\(LabDomain.dnsName):\(controller)",
+                               // SQL Server resolves the NetBIOS domain name to find the DC for LDAP.
+                               "--add-host", "\(LabDomain.netbiosName.lowercased()):\(controller)",
+                               "--hostname", service.hostName,
+                               "--label", "\(LabLabels.kerberos)=\(service.hostName)|\(service.account)"]
+            kerberosInfo = self.kerberosInfo(serviceHost: service.hostName)
         }
 
         // The seeded image already carries the environment and command it was built with.
@@ -36,7 +62,8 @@ extension ServerLab {
                 image: image, spec: mainSpec, role: .server, recipe: recipe, owner: owner, lease: lease,
                 fingerprint: nil, environment: [:],
                 command: topology.mainArguments.isEmpty ? [] : spec.command + topology.mainArguments,
-                name: name, server: name, part: topology.mainRole, extraArguments: networkArguments(topology.mainRole)
+                name: name, server: name, part: topology.mainRole, port: kerberos ? mainPort : nil,
+                extraArguments: networkArguments(topology.mainRole)
             )
         } catch {
             try? await remove(serverNamed: name)
@@ -49,7 +76,8 @@ extension ServerLab {
             containerID: main.id, containerName: main.name,
             expires: Date().addingTimeInterval(TimeInterval(lease.components.seconds)),
             parts: [LabServerPart(role: topology.mainRole, containerID: main.id, containerName: main.name, port: main.port)],
-            tls: tls?.1
+            tls: tls?.1,
+            kerberos: kerberosInfo
         )
         var current = main.id
         do {
@@ -72,9 +100,14 @@ extension ServerLab {
                 log("Waiting for \(server.parts.map { $0.role }.joined(separator: ", ")) to work together")
                 try await engine.waitUntilTopologyReady(server)
             }
+            try await engine.configure(server)
         } catch {
             log("Start failed; last lines of the log:\n\(await tailLog(current))")
-            try? await stop(server)
+            if ProcessInfo.processInfo.environment["SERVERLAB_KEEP_FAILED"] == "1" {
+                log("Kept \(server.containerName) for debugging (SERVERLAB_KEEP_FAILED=1); remove it with serverlab down")
+            } else {
+                try? await stop(server)
+            }
             throw error
         }
         return server
@@ -99,6 +132,9 @@ extension ServerLab {
         if name.hasPrefix("serverlab-"), !name.hasPrefix("serverlab-capture-") {
             _ = try await docker.runAllowingFailure(["rm", "--force", "serverlab-capture-\(name.dropFirst("serverlab-".count))"])
         }
+        let domainLabel = try await docker.runAllowingFailure(["inspect", "--format", "{{index .Config.Labels \"\(LabLabels.kerberos)\"}}", name])
+        let account = domainLabel.status == 0 ? domainLabel.standardOutput.trimmingCharacters(in: .whitespacesAndNewlines)
+            .split(separator: "|").dropFirst().first.map(String.init) : nil
         let parts = try await docker.run(["ps", "--all", "--format", "{{.Names}}", "--filter", "label=\(LabLabels.server)=\(name)"])
             .split(separator: "\n").map(String.init)
         try await docker.run(["rm", "--force", "--volumes"] + Set(parts + [name]).sorted())
@@ -106,6 +142,7 @@ extension ServerLab {
             .split(separator: "\n").map(String.init)
         if !networks.isEmpty { _ = try await docker.runAllowingFailure(["network", "rm"] + networks) }
         try? FileManager.default.removeItem(at: Self.localFilesDirectory(forServer: name))
+        if account != nil { try await releaseDomain(account: account) }
     }
 
     /// Lab containers (servers and builders) on this host.
@@ -135,6 +172,10 @@ extension ServerLab {
         let expired = try await running().filter { $0.role != LabLabels.Role.seeded.rawValue && $0.expires < now }
         for server in expired {
             _ = try await docker.runAllowingFailure(["rm", "--force", "--volumes", server.id])
+        }
+        // The domain goes once no Kerberos server is left.
+        if try await docker.runAllowingFailure(["inspect", Self.domainContainer]).status == 0 {
+            try? await releaseDomain(account: nil)
         }
         // Only lab networks, and only those no container uses any more.
         _ = try await docker.runAllowingFailure(["network", "prune", "--force", "--filter", "label=\(LabLabels.managed)=true"])
@@ -205,6 +246,7 @@ extension ServerLab {
         name: String? = nil,
         server: String? = nil,
         part: String? = nil,
+        port fixedPort: Int? = nil,
         extraArguments: [String] = []
     ) async throws -> StartedContainer {
         let name = name ?? "serverlab-\(recipe.name)-\(UUID().uuidString.prefix(8).lowercased())"
@@ -230,8 +272,8 @@ extension ServerLab {
 
         // A fixed host port (not an ephemeral one), so the address survives stopping and starting
         // the container. The range is below Linux's and Docker's ephemeral ports; a taken port is retried.
-        for _ in 1...10 {
-            let port = Int.random(in: Self.hostPorts)
+        for _ in 1...(fixedPort == nil ? 10 : 1) {
+            let port = fixedPort ?? Int.random(in: Self.hostPorts)
             let extraPorts = Dictionary(uniqueKeysWithValues: spec.extraPorts.map { ($0, Int.random(in: Self.hostPorts)) })
             let id = try await docker.run(
                 ["create", "--name", name, "--env-file", envFile.path,

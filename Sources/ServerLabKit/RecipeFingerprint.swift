@@ -26,6 +26,11 @@ public enum RecipeFingerprint {
         return hash.finalize().map { String(format: "%02x", $0) }.joined()
     }
 
+    /// SHA-256 of a text, in hex.
+    static func digest(_ text: String) -> String {
+        SHA256.hash(data: Data(text.utf8)).map { String(format: "%02x", $0) }.joined()
+    }
+
     /// `serverlab/<recipe>:<first 12 characters>`.
     public static func imageTag(recipe: String, fingerprint: String) -> String {
         "serverlab/\(recipe):\(fingerprint.prefix(12))"

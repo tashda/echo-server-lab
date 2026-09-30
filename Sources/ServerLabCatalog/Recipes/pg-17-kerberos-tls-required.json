@@ -1,0 +1,17 @@
+{
+  "name": "pg-17-kerberos-tls-required",
+  "summary": "PostgreSQL 17 with GSSAPI logins for labuser@LAB.TEST (shared Samba DC) at pg-<id>.lab.test over required TLS; password logins for everyone else.",
+  "engine": "postgresql",
+  "version": "17",
+  "settings": {
+    "kerberos": true,
+    "tls": {
+      "mode": "required"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

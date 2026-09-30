@@ -97,6 +97,8 @@ Servers made of several parts: PostgreSQL 13–18 primary with a streaming stand
 strict (TDS 8 on SQL Server 2025, TLS 1.3 on PostgreSQL), client-certificate login (PostgreSQL),
 and expired, wrong-host and self-signed certificates, all from a per-machine lab CA.
 Network faults on any server through a Toxiproxy part (latency, bandwidth, hangs, resets, cuts).
+Kerberos through a shared Samba Active Directory domain (LAB.TEST) for SQL Server 2019–2025 and
+PostgreSQL 16–18.
 
 Sample files live on testlab in `/opt/serverlab/samples` (downloaded from their sources and
 checked against `LabSamples`), mirrored in the `samples-v1` release of this repo.

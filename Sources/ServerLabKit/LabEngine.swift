@@ -56,8 +56,16 @@ public protocol LabEngine: Sendable {
     func waitUntilReady(_ server: ServerEndpoint, timeout: Duration) async throws
 
     /// The containers the recipe's `topology` setting asks for, with the files and arguments its
-    /// `tls` setting needs (`tls` holds the issued certificates). One container unless overridden.
-    func topology(for recipe: Recipe, password: String, tls: ServerTLS?) throws -> ServerTopology
+    /// `tls` and `kerberos` settings need (`setup` holds certificates and keytab). One container
+    /// unless overridden.
+    func topology(for recipe: Recipe, setup: ServerSetup) throws -> ServerTopology
+
+    /// The account and SPNs the engine's service needs in the domain, for a server published on
+    /// `hostPort`. `serverID` makes host and account names unique in the shared domain.
+    func kerberosService(for recipe: Recipe, serverID: String, hostPort: Int) throws -> KerberosService
+
+    /// Runs once every part is up, through the driver: logins for the domain user, ….
+    func configure(_ server: LabServer) async throws
 
     /// Returns once the parts work together (a standby streams from its primary, …).
     func waitUntilTopologyReady(_ server: LabServer) async throws
@@ -67,13 +75,20 @@ public protocol LabEngine: Sendable {
 }
 
 extension LabEngine {
-    public func topology(for recipe: Recipe, password: String, tls: ServerTLS?) throws -> ServerTopology {
+    public func topology(for recipe: Recipe, setup: ServerSetup) throws -> ServerTopology {
         guard recipe.settings.topology == nil else {
             throw ServerLabError.unsupported("Topology '\(recipe.settings.topology ?? "")' on \(kind.rawValue)")
         }
-        guard tls == nil else { throw ServerLabError.unsupported("TLS on \(kind.rawValue)") }
+        guard setup.tls == nil else { throw ServerLabError.unsupported("TLS on \(kind.rawValue)") }
+        guard setup.kerberos == nil else { throw ServerLabError.unsupported("Kerberos on \(kind.rawValue)") }
         return .single
     }
+
+    public func kerberosService(for recipe: Recipe, serverID: String, hostPort: Int) throws -> KerberosService {
+        throw ServerLabError.unsupported("Kerberos on \(kind.rawValue)")
+    }
+
+    public func configure(_ server: LabServer) async throws {}
 
     public func waitUntilTopologyReady(_ server: LabServer) async throws {}
 

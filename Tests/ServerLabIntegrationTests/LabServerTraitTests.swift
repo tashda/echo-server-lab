@@ -1,4 +1,5 @@
 import Foundation
+import Logging
 import PostgresKit
 import ServerLabKit
 import ServerLabTesting
@@ -344,5 +345,48 @@ struct SQLServerFaultTests {
         await #expect(throws: (any Error).self) { _ = try await client.metadata.listDatabases() }
         try? await client.shutdownGracefully()
         try await server.clearFaults()
+    }
+}
+
+// MARK: - Kerberos (needs *.lab.test to resolve to the lab host: Pi-hole wildcard)
+
+@Suite(.enabled(if: integrationEnabled), .server("pg-17-kerberos"), .serialized)
+struct PostgresKerberosTests {
+    @Test func domainUserLogsInWithATicket() async throws {
+        let server = try #require(LabServer.current)
+        let kerberos = try #require(server.kerberos)
+        let databases = try await kerberos.withTicket(password: server.password) {
+            let client = try await PostgresClient.connect(configuration: PostgresConfiguration(
+                host: kerberos.serviceHost, port: server.port, database: "postgres",
+                username: "labuser", password: nil, sslMode: .disable
+            ))
+            defer { client.close() }
+            return try await client.metadata.listDatabases()
+        }
+        #expect(databases.contains("labdata"))
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mssql-2022-kerberos"), .serialized)
+struct SQLServerKerberosTests {
+    @Test(arguments: [true, false])
+    func domainUserLogsInWithKerberos(withTicketFromCache: Bool) async throws {
+        let server = try #require(LabServer.current)
+        let kerberos = try #require(server.kerberos)
+        try await kerberos.withTicket(password: server.password, credentials: withTicketFromCache ? .ticketCache : .password) {
+            try await logIn(server, kerberos, password: withTicketFromCache ? "" : server.password)
+        }
+    }
+
+    func logIn(_ server: LabServer, _ kerberos: LabKerberosInfo, password: String) async throws {
+        let client = try await SQLServerClient.connect(
+            hostname: kerberos.serviceHost, port: server.port,
+            authentication: .windowsIntegrated(username: "labuser", password: password,
+                                               domain: kerberos.realm),
+            tlsEnabled: true, trustServerCertificate: true,
+            logger: { var logger = Logger(label: "kerberos-test"); logger.logLevel = ProcessInfo.processInfo.environment["SERVERLAB_DEBUG"] == "1" ? .trace : .warning; return logger }()
+        )
+        #expect(try await client.metadata.listDatabases().contains { $0.name == "master" })
+        try await client.shutdownGracefully()
     }
 }

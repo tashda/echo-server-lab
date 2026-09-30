@@ -40,6 +40,16 @@ public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
             return
         }
         let lab = try ServerLab.standard()
+        // SERVERLAB_SERVER=<container>: run against a server already up (e.g. while debugging one),
+        // when its recipe matches; it is left running.
+        if let name = ProcessInfo.processInfo.environment["SERVERLAB_SERVER"],
+           let existing = try? await lab.server(named: name), existing.recipe == recipeName {
+            let wire = capture ? LabWire(lab: lab, server: existing) : nil
+            try await LabServer.$current.withValue(existing) {
+                try await LabWire.$current.withValue(wire) { try await function() }
+            }
+            return
+        }
         var server = try await lab.start(
             recipeNamed: recipeName,
             owner: test.name,

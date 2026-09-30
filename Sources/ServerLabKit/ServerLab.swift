@@ -51,10 +51,12 @@ public struct LabServer: Sendable, Hashable, Codable {
     public var parts: [LabServerPart]
     /// Set when the recipe asked for TLS: the mode, the certificate kind and the files a client needs.
     public var tls: EndpointTLS?
+    /// Set when the recipe asked for Kerberos: realm, service name, domain user and a krb5.conf.
+    public var kerberos: LabKerberosInfo?
 
     public init(recipe: String, engine: EngineKind, version: String, host: String, port: Int, username: String,
                 password: String, containerID: String, containerName: String, expires: Date, parts: [LabServerPart] = [],
-                tls: EndpointTLS? = nil) {
+                tls: EndpointTLS? = nil, kerberos: LabKerberosInfo? = nil) {
         self.recipe = recipe
         self.engine = engine
         self.version = version
@@ -69,6 +71,7 @@ public struct LabServer: Sendable, Hashable, Codable {
             ? [LabServerPart(role: "server", containerID: containerID, containerName: containerName, port: port)]
             : parts
         self.tls = tls
+        self.kerberos = kerberos
     }
 
     public var endpoint: ServerEndpoint {
@@ -113,6 +116,12 @@ public struct LabServer: Sendable, Hashable, Codable {
             variables["SERVERLAB_TLS_CA"] = tls.caPath
             variables["SERVERLAB_TLS_CLIENT_CERT"] = tls.clientCertificatePath
             variables["SERVERLAB_TLS_CLIENT_KEY"] = tls.clientKeyPath
+        }
+        if let kerberos {
+            variables["SERVERLAB_KERBEROS_REALM"] = kerberos.realm
+            variables["SERVERLAB_KERBEROS_HOST"] = kerberos.serviceHost
+            variables["SERVERLAB_KERBEROS_USER"] = kerberos.userPrincipal
+            variables["SERVERLAB_KRB5_CONFIG"] = kerberos.configurationPath
         }
         switch engine {
         case .sqlServer:

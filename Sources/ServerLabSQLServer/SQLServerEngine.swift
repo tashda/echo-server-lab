@@ -45,36 +45,57 @@ public struct SQLServerEngine: LabEngine {
         )
     }
 
-    /// TLS through mssql.conf: the lab's certificate, `forceencryption`, and `forcestrict` (2025+).
-    public func topology(for recipe: Recipe, password: String, tls: ServerTLS?) throws -> ServerTopology {
+    /// TLS and Active Directory through mssql.conf: the lab's certificate, `forceencryption`,
+    /// `forcestrict` (2025+), and the service account's keytab for Kerberos and NTLM logins.
+    public func topology(for recipe: Recipe, setup: ServerSetup) throws -> ServerTopology {
         guard recipe.settings.topology == nil else {
             throw ServerLabError.unsupported("Topology '\(recipe.settings.topology ?? "")' on SQL Server")
         }
-        guard let tls else { return .single }
-        switch tls.mode {
-        case .clientCertificate:
-            throw ServerLabError.unsupported("Client-certificate login on SQL Server")
-        case .strict where recipe.version < "2025":
-            throw ServerLabError.unsupported("Strict encryption (TDS 8) on SQL Server \(recipe.version); it needs 2025")
-        case .strict where tls.certificateKind != .valid:
-            throw ServerLabError.unsupported("Strict encryption with a \(tls.certificateKind.rawValue) certificate (the lab could not log in)")
-        default:
-            break
+        guard setup.tls != nil || setup.kerberos != nil || recipe.settings.kerberos == true else { return .single }
+        var network = ["[network]"]
+        var files: [String: ContainerFile] = [:]
+        if let tls = setup.tls {
+            switch tls.mode {
+            case .clientCertificate:
+                throw ServerLabError.unsupported("Client-certificate login on SQL Server")
+            case .strict where recipe.version < "2025":
+                throw ServerLabError.unsupported("Strict encryption (TDS 8) on SQL Server \(recipe.version); it needs 2025")
+            case .strict where tls.certificateKind != .valid:
+                throw ServerLabError.unsupported("Strict encryption with a \(tls.certificateKind.rawValue) certificate (the lab could not log in)")
+            default:
+                break
+            }
+            network += ["tlscert = /var/opt/mssql/tls/server.pem", "tlskey = /var/opt/mssql/tls/server.key",
+                        "forceencryption = \(tls.mode == .optional ? 0 : 1)"]
+            if tls.mode == .strict { network.append("forcestrict = 1") }
+            files["/var/opt/mssql/tls/server.pem"] = ContainerFile(tls.server.certificatePEM, mode: 0o400, owner: 10001)
+            files["/var/opt/mssql/tls/server.key"] = ContainerFile(tls.server.keyPEM, mode: 0o400, owner: 10001)
         }
-        var configuration = """
-            [network]
-            tlscert = /var/opt/mssql/tls/server.pem
-            tlskey = /var/opt/mssql/tls/server.key
-            forceencryption = \(tls.mode == .optional ? 0 : 1)
-
-            """
-        if tls.mode == .strict { configuration += "forcestrict = 1\n" }
+        if let kerberos = setup.kerberos {
+            network += ["privilegedadaccount = \(kerberos.service.account)", "kerberoskeytabfile = \(Self.keytabPath)"]
+            files[Self.keytabPath] = ContainerFile(kerberos.keytab, mode: 0o440, owner: 10001)
+            files["/etc/krb5.conf"] = ContainerFile(kerberos.containerConfiguration)
+        }
         // The images run SQL Server as uid 10001 (mssql); the seeded images have no mssql.conf of their own.
-        return ServerTopology(mainRole: "server", mainFiles: [
-            "/var/opt/mssql/mssql.conf": ContainerFile(configuration, owner: 10001),
-            "/var/opt/mssql/tls/server.pem": ContainerFile(tls.server.certificatePEM, mode: 0o400, owner: 10001),
-            "/var/opt/mssql/tls/server.key": ContainerFile(tls.server.keyPEM, mode: 0o400, owner: 10001),
-        ])
+        files["/var/opt/mssql/mssql.conf"] = ContainerFile(network.joined(separator: "\n") + "\n", owner: 10001)
+        return ServerTopology(mainRole: "server", mainFiles: files)
+    }
+
+    static let keytabPath = "/var/opt/mssql/secrets/mssql.keytab"
+
+    /// `sql-<id>` with `MSSQLSvc/sql-<id>.lab.test:<port>` (what clients ask for) and the portless SPN.
+    public func kerberosService(for recipe: Recipe, serverID: String, hostPort: Int) throws -> KerberosService {
+        let host = "sql-\(serverID).\(LabDomain.dnsName)"
+        return KerberosService(hostName: host, account: "sql-\(serverID)",
+                               servicePrincipals: ["MSSQLSvc/\(host):\(hostPort)", "MSSQLSvc/\(host)"])
+    }
+
+    /// A Windows login for the domain user, through the driver.
+    public func configure(_ server: LabServer) async throws {
+        guard server.kerberos != nil else { return }
+        try await SQLServerSession.with(server.endpoint) { client in
+            try await client.serverSecurity.createWindowsLogin(name: "\(LabDomain.netbiosName)\\\(LabDomain.user)")
+        }
     }
 
     public func waitUntilReady(_ server: ServerEndpoint, timeout: Duration) async throws {

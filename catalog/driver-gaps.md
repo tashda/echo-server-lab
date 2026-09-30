@@ -66,6 +66,8 @@ Still open, found while building:
 |---|---|---|
 | postgres-wire | driver agent | Connecting with `sslCertPath`/`sslKeyPath` (client-certificate login) logs a PostgresNIO warning, "Trying to lease connection from `PostgresClient`, but `PostgresClient.run()` hasn't been called yet". Login works; the warning suggests an unused PostgresNIO client on that path. Repro: `pg-17-tls-client-certificate`, `PostgresClientCertificateTests`. |
 | sqlserver-nio | core | A failed certificate check is thrown **and** logged twice at error level ("TDS pipeline error", "Uncaught error: NIOSSLExtraError.failedToValidateHostname"). Repro: `mssql-2022-tls-wrong-host`, `SQLServerWrongHostCertificateTests`. |
+| sqlserver-nio | core | Windows login with a password fails over to NTLMv2 when `KRB5CCNAME` names a FILE cache: GSS "Moving credentials between different types not yet supported (from XCTEMP to FILE)". SQL Server on Linux then refuses NTLM ("untrusted domain"). Repro: `mssql-2022-kerberos`, set `KRB5CCNAME=FILE:/tmp/x`, `.windowsIntegrated(username:password:domain:)`. `LabKerberosInfo.withTicket(credentials: .password)` clears `KRB5CCNAME` to avoid it. |
+| sqlserver-nio | core | A `serverSPN` connection option (like SqlClient/JDBC `ServerSPN`) so clients can reach a server by IP or alias and still ask for `MSSQLSvc/<name>:<port>`. |
 | sqlserver-nio | core | TLS key logging (`SSLKEYLOGFILE`, NIOSSL `keyLogCallback`) so the lab's captures of encrypted TDS can be decrypted in Wireshark. |
 | postgres-wire | lab | The same key logging for PostgreSQL. |
 

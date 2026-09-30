@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2025-kerberos",
+  "summary": "SQL Server 2025 in the lab's Active Directory domain (LAB.TEST, shared Samba DC): Kerberos logins as LAB\\\\labuser at sql-<id>.lab.test.",
+  "engine": "sqlserver",
+  "version": "2025",
+  "settings": {
+    "kerberos": true
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

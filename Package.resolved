@@ -1,5 +1,5 @@
 {
-  "originHash" : "a82ad6f85d11943408c702f933a38099e0d71ddbb18f1726c4c2c4cfe7580dac",
+  "originHash" : "fc4f0f5ce4e048cd286b6ad1444f886350a3d245cd9eed4bb7af4fd2a32d0d63",
   "pins" : [
     {
       "identity" : "postgres-wire",
@@ -16,7 +16,7 @@
       "location" : "https://github.com/tashda/sqlserver-nio",
       "state" : {
         "branch" : "dev",
-        "revision" : "60823967230182402de489c93e04f860e04f1aa0"
+        "revision" : "8b97a8af59f2ef8a3e54785a5b8d354a7a7b0241"
       }
     },
     {

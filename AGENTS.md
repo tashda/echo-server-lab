@@ -84,6 +84,17 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    `clearFaults()`, and `cutConnections()` / `restoreConnections()` for a network cut. By hand:
    `serverlab fault <server> latency 400 | cut | restore | clear`. For a server crash or restart use
    `stop(part:)` / `start(part:)` instead.
+8. **Kerberos / Active Directory:** `*-kerberos` recipes (`mssql-2019/2022/2025-kerberos`,
+   `pg-16/17/18-kerberos`, `-kerberos-tls-required`) join the lab domain `LAB.TEST`: one shared Samba
+   DC (`serverlab-domain`, KDC on the lab host's port 19088) that starts with the first Kerberos
+   server and goes with the last. Each server gets its own service account and host name
+   (`server.kerberos.serviceHost`, e.g. `sql-1a2b3c4d.lab.test`; `*.lab.test` resolves to the lab
+   host through Pi-hole). The domain user is `labuser@LAB.TEST` with the lab password; SQL Server
+   has a Windows login `LAB\labuser`, PostgreSQL a `gss` rule and role `labuser`. Connect to
+   `serviceHost` (not the IP), inside
+   `server.kerberos!.withTicket(password: server.password) { … }` (`credentials: .password` when the
+   driver logs in with the password itself). It sets `KRB5_CONFIG` (`~/.echo-testlab/krb5.conf`) and
+   a ticket cache of its own, and makes Kerberos logins take turns: GSS state is per process.
 
 ## Adding a scenario
 

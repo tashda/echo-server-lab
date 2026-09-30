@@ -58,15 +58,19 @@ public struct ServerSettings: Codable, Sendable, Hashable {
     /// Encrypted connections: the mode and which certificate the server presents. Nil is no TLS setup
     /// (SQL Server still encrypts the login with its own self-signed certificate).
     public var tls: TLSSettings?
+    /// Kerberos (and NTLM on SQL Server) logins through an Active Directory domain: a Samba DC part,
+    /// a service account with SPNs, and the domain user `labuser`.
+    public var kerberos: Bool?
 
     public init(agent: Bool? = nil, collation: String? = nil, memoryMB: Int? = nil, imageVariant: String? = nil,
-                topology: String? = nil, tls: TLSSettings? = nil) {
+                topology: String? = nil, tls: TLSSettings? = nil, kerberos: Bool? = nil) {
         self.agent = agent
         self.collation = collation
         self.memoryMB = memoryMB
         self.imageVariant = imageVariant
         self.topology = topology
         self.tls = tls
+        self.kerberos = kerberos
     }
 }
 

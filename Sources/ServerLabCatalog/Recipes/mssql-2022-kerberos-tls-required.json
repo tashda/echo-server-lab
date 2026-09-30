@@ -1,0 +1,17 @@
+{
+  "name": "mssql-2022-kerberos-tls-required",
+  "summary": "SQL Server 2022 in the lab's Active Directory domain (LAB.TEST, shared Samba DC): Kerberos logins as LAB\\\\labuser at sql-<id>.lab.test over required TLS.",
+  "engine": "sqlserver",
+  "version": "2022",
+  "settings": {
+    "kerberos": true,
+    "tls": {
+      "mode": "required"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}
