@@ -17,20 +17,20 @@ this file; change both together.
 
 ## Capacity: look before you start
 
-`testlab` has 14 GB of RAM and 4 vCPUs. The lab lets its servers use at most **12 GB together**,
+`testlab` has 20 GB of RAM and 4 vCPUs. The lab lets its servers use at most **18 GB together**,
 and that budget also counts what every other container on the host uses (sqlserver-nio's
 `nio-lab-*` fixtures share `testlab`).
 
 | Server | Memory each | At most at once on an otherwise empty host |
 |---|---|---|
-| SQL Server (any version) | 3 GB (`mssql-*-wideworldimporters`: 4 GB) | 4 |
-| PostgreSQL | 1 GB | 12 |
-| Mixed | add them up | e.g. 2 SQL Server + 6 PostgreSQL |
+| SQL Server (any version) | 3 GB (`mssql-*-wideworldimporters`: 4 GB) | 6 |
+| PostgreSQL | 1 GB | 18 |
+| Mixed | add them up | e.g. 4 SQL Server + 6 PostgreSQL |
 
 A builder (making a seeded image) counts like a server while it runs.
 
 **Before you start servers**, run `swift run serverlab ps`. Its last line says how much of the
-budget is taken (`Reserved 9031 of 12288 MB on testlab`). If what you need does not fit:
+budget is taken (`Reserved 9031 of 18432 MB on testlab`). If what you need does not fit:
 
 - Wait, or use fewer servers at once (one suite at a time instead of many in parallel).
 - Never remove containers that are not yours to make room. Lab containers are named

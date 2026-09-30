@@ -28,7 +28,7 @@ public struct LabHost: Sendable, Hashable {
         name: "testlab",
         dockerHost: "ssh://testlab",
         address: "192.168.1.153",
-        memoryBudgetMB: 12_288,
+        memoryBudgetMB: 18_432,
         isDedicated: true,
         samplesDirectory: "/opt/serverlab/samples"
     )
