@@ -86,8 +86,14 @@ Pick the smallest change that works:
    and session reset, cancellation and deadlines, errors, streaming, value formatting
    (`SQLServerRow`, `SQLServerCellFormatter`, `SQLServerExactFormat`), `Tests/Fixtures` and
    `.github/workflows`. Never edit those; add the need to `catalog/driver-gaps.md` marked **core**.
-   Read the driver's own `AGENTS.md`. Transport and security test servers (TLS, Strict, Toxiproxy,
-   availability groups, Kerberos) stay in sqlserver-nio's `Tests/Fixtures`, not here.
+   Read the driver's own `AGENTS.md`.
+
+**The lab provides every way of testing everything** (owner, 2026-09-30): not only content but
+every server setup a driver or Echo can meet: TLS in every mode, TDS 8 strict, Kerberos, client
+certificates, failover pairs and availability groups, network faults. Each driver agent stays
+responsible for its driver working with them; the lab is responsible for offering the servers. When
+a test needs a setup the lab lacks, add it here (a recipe, a server part, a setting), not a private
+fixture in the driver.
    Otherwise fix it in the driver repo on `dev`, with a test,
    run against a lab server (`serverlab up … --env`). Commit, then `git fetch && git rebase
    origin/dev`, then push; never stash staged changes before committing. Then
