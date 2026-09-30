@@ -48,13 +48,28 @@ public struct LabServer: Sendable, Hashable, Codable {
     public var containerName: String
     public var expires: Date
 
+    public init(recipe: String, engine: EngineKind, version: String, host: String, port: Int, username: String,
+                password: String, containerID: String, containerName: String, expires: Date) {
+        self.recipe = recipe
+        self.engine = engine
+        self.version = version
+        self.host = host
+        self.port = port
+        self.username = username
+        self.password = password
+        self.containerID = containerID
+        self.containerName = containerName
+        self.expires = expires
+    }
+
     public var endpoint: ServerEndpoint {
         ServerEndpoint(host: host, port: port, username: username, password: password)
     }
 
-    /// `SERVERLAB_*` variables for scripts and other test runners.
+    /// `SERVERLAB_*` variables for scripts, plus the variables the engine's driver test suite reads
+    /// (`TDS_*` for sqlserver-nio, `POSTGRES_*` for postgres-wire).
     public var environment: [String: String] {
-        [
+        var variables = [
             "SERVERLAB_RECIPE": recipe,
             "SERVERLAB_ENGINE": engine.rawValue,
             "SERVERLAB_VERSION": version,
@@ -64,5 +79,14 @@ public struct LabServer: Sendable, Hashable, Codable {
             "SERVERLAB_PASSWORD": password,
             "SERVERLAB_CONTAINER": containerName,
         ]
+        switch engine {
+        case .sqlServer:
+            variables.merge(["TDS_HOSTNAME": host, "TDS_PORT": String(port), "TDS_USERNAME": username,
+                             "TDS_PASSWORD": password, "TDS_DATABASE": "master"]) { current, _ in current }
+        case .postgres:
+            variables.merge(["POSTGRES_HOST": host, "POSTGRES_PORT": String(port), "POSTGRES_USERNAME": username,
+                             "POSTGRES_PASSWORD": password, "POSTGRES_DATABASE": "postgres"]) { current, _ in current }
+        }
+        return variables
     }
 }

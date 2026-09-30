@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2025-security",
+  "summary": "SQL Server 2025: logins of every kind, roles, grants and denies, masking, row-level security in LabData.",
+  "engine": "sqlserver",
+  "version": "2025",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "security"
+    }
+  ]
+}

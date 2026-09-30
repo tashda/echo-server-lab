@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2019-security",
+  "summary": "SQL Server 2019: logins of every kind, roles, grants and denies, masking, row-level security in LabData.",
+  "engine": "sqlserver",
+  "version": "2019",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "security"
+    }
+  ]
+}

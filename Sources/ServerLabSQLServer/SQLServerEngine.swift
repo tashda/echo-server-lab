@@ -13,6 +13,7 @@ public struct SQLServerEngine: LabEngine {
         SQLServerAgentJobsPack(),
         SQLServerProgrammabilityPack(),
         SQLServerIndexesPack(),
+        SQLServerSecurityPack(),
     ]
 
     public init() {}

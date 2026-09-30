@@ -67,3 +67,25 @@ import Testing
         #expect(Set(variants).count == variants.count)
     }
 }
+
+@Suite struct LabServerEnvironmentTests {
+    private func server(_ engine: EngineKind) -> LabServer {
+        LabServer(recipe: "r", engine: engine, version: "1", host: "10.0.0.1", port: 32768, username: "u", password: "p",
+                  containerID: "id", containerName: "serverlab-r-1", expires: Date())
+    }
+
+    @Test func sqlServerExportsDriverTestVariables() {
+        let variables = server(.sqlServer).environment
+        #expect(variables["TDS_HOSTNAME"] == "10.0.0.1")
+        #expect(variables["TDS_PORT"] == "32768")
+        #expect(variables["SERVERLAB_CONTAINER"] == "serverlab-r-1")
+        #expect(variables["POSTGRES_HOST"] == nil)
+    }
+
+    @Test func postgresExportsDriverTestVariables() {
+        let variables = server(.postgres).environment
+        #expect(variables["POSTGRES_HOST"] == "10.0.0.1")
+        #expect(variables["POSTGRES_DATABASE"] == "postgres")
+        #expect(variables["TDS_HOSTNAME"] == nil)
+    }
+}

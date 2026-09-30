@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2022-security",
+  "summary": "SQL Server 2022: logins of every kind, roles, grants and denies, masking, row-level security in LabData.",
+  "engine": "sqlserver",
+  "version": "2022",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "security"
+    }
+  ]
+}

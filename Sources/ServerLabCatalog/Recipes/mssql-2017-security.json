@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2017-security",
+  "summary": "SQL Server 2017: logins of every kind, roles, grants and denies, masking, row-level security in LabData.",
+  "engine": "sqlserver",
+  "version": "2017",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "security"
+    }
+  ]
+}
