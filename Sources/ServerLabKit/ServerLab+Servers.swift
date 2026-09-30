@@ -31,8 +31,11 @@ extension ServerLab {
         let network = kerberos ? Self.domainNetwork : topology.parts.isEmpty ? nil : try await createNetwork(forServer: name)
         let tlsLabel = tls.map { ["--label", "\(LabLabels.tls)=\($0.1.mode.rawValue)/\($0.1.certificate.rawValue)"] } ?? []
         var domainArguments: [String] = []
-        func networkArguments(_ role: String) -> [String] {
-            tlsLabel + (role == topology.mainRole ? domainArguments : []) + (network.map { ["--network", $0, "--network-alias", role] } ?? [])
+        func networkArguments(_ role: String, hostname: String?) -> [String] {
+            let domain = role == topology.mainRole ? domainArguments : []
+            // Kerberos sets the host name itself (the service name).
+            let name = domain.isEmpty ? hostname.map { ["--hostname", $0] } ?? [] : []
+            return tlsLabel + domain + name + (network.map { ["--network", $0, "--network-alias", role] } ?? [])
         }
 
         // Kerberos: the service's account, SPNs and keytab exist in the domain before it starts.
@@ -60,10 +63,10 @@ extension ServerLab {
         do {
             main = try await startContainer(
                 image: image, spec: mainSpec, role: .server, recipe: recipe, owner: owner, lease: lease,
-                fingerprint: nil, environment: [:],
+                fingerprint: nil, environment: topology.mainEnvironment,
                 command: topology.mainArguments.isEmpty ? [] : spec.command + topology.mainArguments,
                 name: name, server: name, part: topology.mainRole, port: kerberos ? mainPort : nil,
-                extraArguments: networkArguments(topology.mainRole)
+                extraArguments: networkArguments(topology.mainRole, hostname: spec.hostname)
             )
         } catch {
             try? await remove(serverNamed: name)
@@ -87,7 +90,8 @@ extension ServerLab {
                 let started = try await startContainer(
                     image: part.container.image, spec: part.container, role: .server, recipe: recipe, owner: owner, lease: lease,
                     fingerprint: nil, environment: part.container.environment, command: part.container.command,
-                    name: "\(name)-\(part.role)", server: name, part: part.role, extraArguments: networkArguments(part.role)
+                    name: "\(name)-\(part.role)", server: name, part: part.role,
+                    extraArguments: networkArguments(part.role, hostname: part.container.hostname)
                 )
                 current = started.id
                 server.parts.append(LabServerPart(role: part.role, containerID: started.id, containerName: started.name, port: started.port))
@@ -98,7 +102,7 @@ extension ServerLab {
             }
             if !topology.parts.isEmpty {
                 log("Waiting for \(server.parts.map { $0.role }.joined(separator: ", ")) to work together")
-                try await engine.waitUntilTopologyReady(server)
+                try await engine.waitUntilTopologyReady(server, files: PartFileCopier(lab: self, server: server))
             }
             try await engine.configure(server)
         } catch {

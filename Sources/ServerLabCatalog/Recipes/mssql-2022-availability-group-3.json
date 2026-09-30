@@ -1,0 +1,15 @@
+{
+  "name": "mssql-2022-availability-group-3",
+  "summary": "SQL Server 2022 availability group LabAG with a primary and two readable secondaries.",
+  "engine": "sqlserver",
+  "version": "2022",
+  "settings": {
+    "topology": "availability-group",
+    "replicas": 3
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

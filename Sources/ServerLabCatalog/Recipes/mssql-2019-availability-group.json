@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2019-availability-group",
+  "summary": "SQL Server 2019 Always On availability group LabAG (CLUSTER_TYPE NONE): primary and a readable secondary, LabData seeded automatically; promote fails over.",
+  "engine": "sqlserver",
+  "version": "2019",
+  "settings": {
+    "topology": "availability-group"
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

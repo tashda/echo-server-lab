@@ -390,3 +390,50 @@ struct SQLServerKerberosTests {
         try await client.shutdownGracefully()
     }
 }
+
+// MARK: - Availability groups
+
+@Suite(.enabled(if: integrationEnabled), .server("mssql-2022-availability-group"))
+struct SQLServerAvailabilityGroupTests {
+    func connect(_ server: LabServer, _ role: String) async throws -> SQLServerClient {
+        let endpoint = try server.endpoint(of: role)
+        return try await SQLServerClient.connect(
+            hostname: endpoint.host, port: endpoint.port, database: "LabData",
+            authentication: .sqlPassword(username: endpoint.username, password: endpoint.password),
+            tlsEnabled: true, trustServerCertificate: true
+        )
+    }
+
+    func rows(_ server: LabServer, _ role: String) async throws -> Int64 {
+        let client = try await connect(server, role)
+        defer { Task { try? await client.shutdownGracefully() } }
+        return try await client.metadata.tableProperties(database: "LabData", schema: "dbo", table: "Replicated").rowCount
+    }
+
+    @Test func secondaryFollowsAndTakesOverOnFailover() async throws {
+        let server = try #require(LabServer.current)
+        #expect(server.parts.map(\.role) == ["primary", "secondary"])
+
+        let primary = try await connect(server, "primary")
+        let admin = primary.admin.scoped(to: "LabData")
+        try await admin.createTable(name: "Replicated", columns: [
+            SQLServerColumnDefinition(name: "Id", definition: .standard(.init(dataType: .int))),
+            SQLServerColumnDefinition(name: "Label", definition: .standard(.init(dataType: .nvarchar(length: .length(50)), isNullable: true))),
+        ])
+        try await admin.insertRows(into: "Replicated", columns: ["Id", "Label"],
+                                   values: (1...3).map { [.int($0), .nString("row \($0)")] })
+        #expect(try await primary.availabilityGroups.listGroups().map(\.name) == ["LabAG"])
+        try await primary.shutdownGracefully()
+
+        try await retryUntilReady("rows on the secondary", timeout: .seconds(60), every: .milliseconds(500)) {
+            guard try await rows(server, "secondary") == 3 else { throw CancellationError() }
+        }
+
+        try await server.promote(part: "secondary")
+        let promoted = try await connect(server, "secondary")
+        try await promoted.admin.scoped(to: "LabData").insertRows(into: "Replicated", columns: ["Id", "Label"],
+                                                                  values: [[.int(4), .nString("after failover")]])
+        try await promoted.shutdownGracefully()
+        #expect(try await rows(server, "secondary") == 4)
+    }
+}

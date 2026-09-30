@@ -95,7 +95,7 @@ extension PostgresEngine {
         }
     }
 
-    public func waitUntilTopologyReady(_ server: LabServer) async throws {
+    public func waitUntilTopologyReady(_ server: LabServer, files: any ServerPartFiles) async throws {
         guard server.parts.contains(where: { $0.role == Self.standbyRole }) else { return }
         try await retryUntilReady("standby streaming from \(server.containerName)", timeout: .seconds(120)) {
             let standbys = try await PostgresSession.with(server.endpoint) { try await $0.metadata.listStandbys() }
@@ -105,7 +105,8 @@ extension PostgresEngine {
         }
     }
 
-    public func promote(_ part: ServerEndpoint) async throws {
+    public func promote(_ role: String, of server: LabServer) async throws {
+        let part = try server.endpoint(of: role)
         let promoted = try await PostgresSession.with(part) { client in
             try await client.replication.promote(wait: true, waitSeconds: 60)
         }

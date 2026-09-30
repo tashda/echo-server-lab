@@ -61,9 +61,11 @@ public struct ServerSettings: Codable, Sendable, Hashable {
     /// Kerberos (and NTLM on SQL Server) logins through an Active Directory domain: a Samba DC part,
     /// a service account with SPNs, and the domain user `labuser`.
     public var kerberos: Bool?
+    /// Replicas of an `availability-group` topology, the primary included (default 2).
+    public var replicas: Int?
 
     public init(agent: Bool? = nil, collation: String? = nil, memoryMB: Int? = nil, imageVariant: String? = nil,
-                topology: String? = nil, tls: TLSSettings? = nil, kerberos: Bool? = nil) {
+                topology: String? = nil, tls: TLSSettings? = nil, kerberos: Bool? = nil, replicas: Int? = nil) {
         self.agent = agent
         self.collation = collation
         self.memoryMB = memoryMB
@@ -71,6 +73,7 @@ public struct ServerSettings: Codable, Sendable, Hashable {
         self.topology = topology
         self.tls = tls
         self.kerberos = kerberos
+        self.replicas = replicas
     }
 }
 

@@ -10,13 +10,17 @@ public struct ServerTopology: Sendable {
     public var mainFiles: [String: ContainerFile]
     /// Arguments added to the engine's command for the main container.
     public var mainArguments: [String]
+    /// Environment added for the main container on top of its seeded image's (e.g. HADR on).
+    public var mainEnvironment: [String: String]
     /// Containers started after the main one, in order, each once the one before is ready.
     public var parts: [ServerPartSpec]
 
-    public init(mainRole: String, mainFiles: [String: ContainerFile] = [:], mainArguments: [String] = [], parts: [ServerPartSpec] = []) {
+    public init(mainRole: String, mainFiles: [String: ContainerFile] = [:], mainArguments: [String] = [],
+                mainEnvironment: [String: String] = [:], parts: [ServerPartSpec] = []) {
         self.mainRole = mainRole
         self.mainFiles = mainFiles
         self.mainArguments = mainArguments
+        self.mainEnvironment = mainEnvironment
         self.parts = parts
     }
 

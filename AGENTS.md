@@ -95,6 +95,12 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    `server.kerberos!.withTicket(password: server.password) { … }` (`credentials: .password` when the
    driver logs in with the password itself). It sets `KRB5_CONFIG` (`~/.echo-testlab/krb5.conf`) and
    a ticket cache of its own, and makes Kerberos logins take turns: GSS state is per process.
+9. **Availability groups:** `mssql-2019/2022/2025-availability-group` (primary + readable
+   `secondary`) and `mssql-2022-availability-group-3` (`secondary`, `secondary2`): Always On group
+   `LabAG`, CLUSTER_TYPE NONE, certificate-authenticated endpoints on 5022, LabData seeded
+   automatically. Read from `endpoint(of: "secondary")`; `server.promote(part: "secondary")` fails
+   over (the others step down, the target forces the failover) and returns once its databases take
+   connections.
 
 ## Adding a scenario
 

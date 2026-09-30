@@ -67,11 +67,13 @@ public protocol LabEngine: Sendable {
     /// Runs once every part is up, through the driver: logins for the domain user, ….
     func configure(_ server: LabServer) async throws
 
-    /// Returns once the parts work together (a standby streams from its primary, …).
-    func waitUntilTopologyReady(_ server: LabServer) async throws
+    /// Sets the parts up to work together and returns once they do (a standby streams from its
+    /// primary, an availability group's databases are synchronized, …). `files` copies files the
+    /// servers wrote (certificates) from one part to others.
+    func waitUntilTopologyReady(_ server: LabServer, files: any ServerPartFiles) async throws
 
-    /// Turns a standby or secondary into a primary, through the driver.
-    func promote(_ part: ServerEndpoint) async throws
+    /// Makes the part with this role the primary (a standby, an AG secondary), through the driver.
+    func promote(_ role: String, of server: LabServer) async throws
 }
 
 extension LabEngine {
@@ -90,9 +92,9 @@ extension LabEngine {
 
     public func configure(_ server: LabServer) async throws {}
 
-    public func waitUntilTopologyReady(_ server: LabServer) async throws {}
+    public func waitUntilTopologyReady(_ server: LabServer, files: any ServerPartFiles) async throws {}
 
-    public func promote(_ part: ServerEndpoint) async throws {
+    public func promote(_ role: String, of server: LabServer) async throws {
         throw ServerLabError.unsupported("Promoting a \(kind.rawValue) server")
     }
 }
@@ -131,9 +133,12 @@ public struct ContainerSpec: Sendable, Hashable {
     public var files: [String: ContainerFile]
     /// More container ports to publish on fixed host ports (e.g. a proxy's control API).
     public var extraPorts: [Int]
+    /// The container's host name, which becomes SQL Server's `@@SERVERNAME` when a seeded image is
+    /// built. Nil: Docker's (the container ID).
+    public var hostname: String?
 
     public init(image: String, internalPort: Int, environment: [String: String], command: [String] = [], memoryMB: Int,
-                files: [String: ContainerFile] = [:], extraPorts: [Int] = []) {
+                files: [String: ContainerFile] = [:], extraPorts: [Int] = [], hostname: String? = nil) {
         self.image = image
         self.internalPort = internalPort
         self.environment = environment
@@ -141,7 +146,15 @@ public struct ContainerSpec: Sendable, Hashable {
         self.memoryMB = memoryMB
         self.files = files
         self.extraPorts = extraPorts
+        self.hostname = hostname
     }
+}
+
+/// Copies files between a running server's parts.
+public protocol ServerPartFiles: Sendable {
+    /// Copies `path` from the part with role `source` into the same directory of each target part,
+    /// keeping owner and mode.
+    func copy(_ path: String, from source: String, to targets: [String]) async throws
 }
 
 /// A file put into a container, with the owner and mode the server insists on (PostgreSQL refuses

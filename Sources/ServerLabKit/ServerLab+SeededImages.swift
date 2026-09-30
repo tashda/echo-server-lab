@@ -39,7 +39,8 @@ extension ServerLab {
             fingerprint: fingerprint,
             environment: spec.environment,
             command: spec.command,
-            extraArguments: samples.isEmpty ? [] : ["--volume", "\(host.samplesDirectory):\(LabSamples.containerDirectory):ro"]
+            extraArguments: (samples.isEmpty ? [] : ["--volume", "\(host.samplesDirectory):\(LabSamples.containerDirectory):ro"])
+                + (spec.hostname.map { ["--hostname", $0] } ?? [])
         )
         do {
             let endpoint = ServerEndpoint(host: host.address, port: builder.port, username: engine.adminUsername, password: password)

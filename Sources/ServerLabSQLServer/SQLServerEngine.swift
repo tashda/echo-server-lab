@@ -36,22 +36,30 @@ public struct SQLServerEngine: LabEngine {
             "MSSQL_MEMORY_LIMIT_MB": String(max(2_048, memoryMB - 512)),
         ]
         if let collation = recipe.settings.collation { environment["MSSQL_COLLATION"] = collation }
+        let availabilityGroup = recipe.settings.topology == Self.availabilityGroup
+        if availabilityGroup { environment["MSSQL_ENABLE_HADR"] = "1" }
         // The image declares no volumes, so /var/opt/mssql is kept by `docker commit`.
         return ContainerSpec(
             image: "mcr.microsoft.com/mssql/server:\(recipe.version)-latest",
             internalPort: 1433,
             environment: environment,
-            memoryMB: memoryMB
+            memoryMB: memoryMB,
+            // @@SERVERNAME comes from the builder's host name; an AG names its replicas by it.
+            hostname: availabilityGroup ? Self.primaryRole : nil
         )
     }
 
     /// TLS and Active Directory through mssql.conf: the lab's certificate, `forceencryption`,
     /// `forcestrict` (2025+), and the service account's keytab for Kerberos and NTLM logins.
     public func topology(for recipe: Recipe, setup: ServerSetup) throws -> ServerTopology {
-        guard recipe.settings.topology == nil else {
-            throw ServerLabError.unsupported("Topology '\(recipe.settings.topology ?? "")' on SQL Server")
+        let availabilityGroup: Bool
+        switch recipe.settings.topology {
+        case nil: availabilityGroup = false
+        case Self.availabilityGroup?: availabilityGroup = true
+        case let other?: throw ServerLabError.unsupported("Topology '\(other)' on SQL Server (use \(Self.availabilityGroup))")
         }
-        guard setup.tls != nil || setup.kerberos != nil || recipe.settings.kerberos == true else { return .single }
+        if availabilityGroup, recipe.settings.kerberos == true { throw ServerLabError.unsupported("Kerberos on an availability group") }
+        guard availabilityGroup || setup.tls != nil || setup.kerberos != nil || recipe.settings.kerberos == true else { return .single }
         var network = ["[network]"]
         var files: [String: ContainerFile] = [:]
         if let tls = setup.tls {
@@ -77,8 +85,11 @@ public struct SQLServerEngine: LabEngine {
             files["/etc/krb5.conf"] = ContainerFile(kerberos.containerConfiguration)
         }
         // The images run SQL Server as uid 10001 (mssql); the seeded images have no mssql.conf of their own.
-        files["/var/opt/mssql/mssql.conf"] = ContainerFile(network.joined(separator: "\n") + "\n", owner: 10001)
-        return ServerTopology(mainRole: "server", mainFiles: files)
+        if network.count > 1 {
+            files["/var/opt/mssql/mssql.conf"] = ContainerFile(network.joined(separator: "\n") + "\n", owner: 10001)
+        }
+        guard availabilityGroup else { return ServerTopology(mainRole: "server", mainFiles: files) }
+        return try availabilityGroupTopology(for: recipe, password: setup.password, files: files)
     }
 
     static let keytabPath = "/var/opt/mssql/secrets/mssql.keytab"

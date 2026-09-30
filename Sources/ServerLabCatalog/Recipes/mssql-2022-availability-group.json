@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2022-availability-group",
+  "summary": "SQL Server 2022 Always On availability group LabAG (CLUSTER_TYPE NONE): primary and a readable secondary, LabData seeded automatically; promote fails over.",
+  "engine": "sqlserver",
+  "version": "2022",
+  "settings": {
+    "topology": "availability-group"
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

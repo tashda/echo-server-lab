@@ -28,7 +28,7 @@ extension ServerLab {
 
     /// Promotes a standby or secondary to primary through the driver (`standby` when `role` is nil).
     public func promote(part role: String? = nil, of server: LabServer) async throws {
-        try await engine(for: server.engine).promote(try server.endpoint(of: role ?? "standby"))
+        try await engine(for: server.engine).promote(role ?? server.parts.dropFirst().first?.role ?? "standby", of: server)
     }
 
     /// A running lab server by its main container's name, for tools that did not start it (CLI, Echo Labs).
@@ -104,4 +104,24 @@ extension ServerLab {
 extension LabServer {
     /// The role of the container tests connect to by default.
     public var mainRole: String { parts.first?.role ?? "server" }
+}
+
+/// Copies files between a server's parts through Docker (a tar stream keeps owner and mode).
+struct PartFileCopier: ServerPartFiles {
+    let lab: ServerLab
+    let server: LabServer
+
+    func copy(_ path: String, from source: String, to targets: [String]) async throws {
+        let archive = try await lab.docker.runData(["cp", "\(try server.part(source).containerID):\(path)", "-"])
+        let file = FileManager.default.temporaryDirectory.appending(path: "serverlab-copy-\(UUID().uuidString).tar")
+        try archive.write(to: file)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let directory = (path as NSString).deletingLastPathComponent
+        for target in targets {
+            let result = try await lab.docker.runAllowingFailure(["cp", "--archive", "-", "\(try server.part(target).containerID):\(directory)"], input: file)
+            guard result.status == 0 else {
+                throw ServerLabError.dockerFailed(command: "cp \(path) to \(target)", status: result.status, output: result.standardError)
+            }
+        }
+    }
 }
