@@ -70,8 +70,10 @@ extension ServerLab {
         for line in output.split(separator: "\n") {
             let fields = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
             guard fields.count == 3 else { continue }
+            let isProxy = fields[2] == Self.faultProxyRole
             parts.append(LabServerPart(role: fields[2], containerID: fields[0], containerName: fields[1],
-                                       port: try await hostPort(of: fields[1], internalPort: internalPort)))
+                                       port: try await hostPort(of: fields[1], internalPort: internalPort),
+                                       controlPort: isProxy ? try await hostPort(of: fields[1], internalPort: 8474) : nil))
         }
         return parts
     }

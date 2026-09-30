@@ -45,11 +45,14 @@ public struct LabServerPart: Sendable, Hashable, Codable {
     public var containerName: String
     /// The host port, fixed for the server's life (it survives `stop(part:)` and `start(part:)`).
     public var port: Int
+    /// A second published port for parts that have one: the fault proxy's control API.
+    public var controlPort: Int?
 
-    public init(role: String, containerID: String, containerName: String, port: Int) {
+    public init(role: String, containerID: String, containerName: String, port: Int, controlPort: Int? = nil) {
         self.role = role
         self.containerID = containerID
         self.containerName = containerName
         self.port = port
+        self.controlPort = controlPort
     }
 }

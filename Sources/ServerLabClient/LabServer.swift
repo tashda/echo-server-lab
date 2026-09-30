@@ -48,6 +48,8 @@ public struct LabServerPart: Codable, Sendable, Hashable {
     public var containerID: String
     public var containerName: String
     public var port: Int
+    /// The fault proxy's control API port (part `proxy` only).
+    public var controlPort: Int?
 }
 
 /// How a TLS lab server must be reached.
@@ -83,8 +85,9 @@ public enum ServerLabCLI {
     }
 
     /// Starts a fresh server from `recipe`. It is removed by `down(_:)` or when `leaseMinutes` pass.
-    public static func up(_ recipe: String, owner: String, leaseMinutes: Int = 120, capture: Bool = false) async throws -> LabServer {
-        let output = try await run(executable(), ["up", recipe, "--json", "--owner", owner, "--lease", String(leaseMinutes)] + (capture ? ["--capture"] : []))
+    public static func up(_ recipe: String, owner: String, leaseMinutes: Int = 120, capture: Bool = false, faults: Bool = false) async throws -> LabServer {
+        let output = try await run(executable(), ["up", recipe, "--json", "--owner", owner, "--lease", String(leaseMinutes)]
+            + (capture ? ["--capture"] : []) + (faults ? ["--faults"] : []))
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode(LabServer.self, from: Data(output.utf8))
@@ -107,6 +110,19 @@ public enum ServerLabCLI {
     /// Promotes a standby (or secondary) to primary.
     public static func promote(_ server: LabServer, part: String = "standby") async throws {
         _ = try await run(executable(), ["promote", server.containerName, "--part", part])
+    }
+
+    /// Adds a network fault on the server's `proxy` part (`up(..., faults: true)`): `kind` is latency,
+    /// bandwidth, timeout, reset, slow-close, limit or slicer, `value` its number. Returns the fault's name.
+    @discardableResult
+    public static func fault(_ server: LabServer, _ kind: String, _ value: Int, upstream: Bool = false) async throws -> String {
+        try await run(executable(), ["fault", server.containerName, kind, String(value)] + (upstream ? ["--upstream"] : []))
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// `clear` (all faults, or `name`), `cut` (drop connections) or `restore`.
+    public static func fault(_ server: LabServer, _ action: String, name: String? = nil) async throws {
+        _ = try await run(executable(), ["fault", server.containerName, action] + (name.map { [$0] } ?? []))
     }
 
     /// The server's recorded traffic, decoded by Wireshark (needs `capture: true` at `up`).

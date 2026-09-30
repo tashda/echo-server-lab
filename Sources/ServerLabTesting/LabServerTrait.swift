@@ -18,6 +18,9 @@ public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
     public let lease: Duration
     /// Record the server's traffic; read it with `LabWire.current`.
     public let capture: Bool
+    /// Put a fault proxy in front of the server: connect to `endpoint(of: "proxy")`, then
+    /// `addFault(_:)`, `cutConnections()`, ….
+    public let faults: Bool
 
     public var isRecursive: Bool { false }
 
@@ -37,16 +40,18 @@ public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
             return
         }
         let lab = try ServerLab.standard()
-        let server = try await lab.start(
+        var server = try await lab.start(
             recipeNamed: recipeName,
             owner: test.name,
             lease: lease,
             log: { print("[serverlab] \($0)") }
         )
         do {
+            if faults { server = try await lab.startFaultProxy(for: server) }
             if capture { try await lab.startCapture(of: server) }
-            let wire = capture ? LabWire(lab: lab, server: server) : nil
-            try await LabServer.$current.withValue(server) {
+            let started = server
+            let wire = capture ? LabWire(lab: lab, server: started) : nil
+            try await LabServer.$current.withValue(started) {
                 try await LabWire.$current.withValue(wire) { try await function() }
             }
         } catch {
@@ -59,8 +64,8 @@ public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
 
 extension Trait where Self == LabServerTrait {
     /// A fresh server from the named recipe for this suite or test.
-    public static func server(_ recipe: String, lease: Duration = .seconds(2 * 3600), capture: Bool = false) -> Self {
-        LabServerTrait(recipeName: recipe, lease: lease, capture: capture)
+    public static func server(_ recipe: String, lease: Duration = .seconds(2 * 3600), capture: Bool = false, faults: Bool = false) -> Self {
+        LabServerTrait(recipeName: recipe, lease: lease, capture: capture, faults: faults)
     }
 }
 
@@ -81,6 +86,26 @@ extension LabServer {
     /// Promotes a standby (or secondary) to primary through the driver.
     public func promote(part: String = "standby") async throws {
         try await ServerLab.standard().promote(part: part, of: self)
+    }
+
+    /// Adds a network fault to connections through the `proxy` part (`.server(..., faults: true)`).
+    @discardableResult
+    public func addFault(_ fault: LabFault, direction: LabFaultDirection = .downstream) async throws -> String {
+        try await ServerLab.standard().addFault(fault, direction: direction, to: self)
+    }
+
+    /// Removes one fault, or all of them.
+    public func clearFaults(_ name: String? = nil) async throws {
+        try await ServerLab.standard().clearFaults(name, of: self)
+    }
+
+    /// Drops open connections through the proxy and refuses new ones until `restoreConnections()`.
+    public func cutConnections() async throws {
+        try await ServerLab.standard().cutConnections(of: self)
+    }
+
+    public func restoreConnections() async throws {
+        try await ServerLab.standard().restoreConnections(of: self)
     }
 }
 

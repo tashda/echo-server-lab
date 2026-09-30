@@ -114,15 +114,18 @@ public struct ContainerSpec: Sendable, Hashable {
     public var memoryMB: Int
     /// Files put into the container before it starts, by absolute path (configuration, certificates).
     public var files: [String: ContainerFile]
+    /// More container ports to publish on fixed host ports (e.g. a proxy's control API).
+    public var extraPorts: [Int]
 
     public init(image: String, internalPort: Int, environment: [String: String], command: [String] = [], memoryMB: Int,
-                files: [String: ContainerFile] = [:]) {
+                files: [String: ContainerFile] = [:], extraPorts: [Int] = []) {
         self.image = image
         self.internalPort = internalPort
         self.environment = environment
         self.command = command
         self.memoryMB = memoryMB
         self.files = files
+        self.extraPorts = extraPorts
     }
 }
 

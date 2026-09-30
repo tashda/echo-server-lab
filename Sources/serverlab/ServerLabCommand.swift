@@ -9,7 +9,7 @@ struct ServerLabCommand: AsyncParsableCommand {
         commandName: "serverlab",
         abstract: "Start disposable database servers from recipes.",
         discussion: "The host is testlab unless SERVERLAB_HOST=local.",
-        subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, StopPart.self, StartPart.self, Promote.self,
+        subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, StopPart.self, StartPart.self, Promote.self, Fault.self,
                       Images.self, Prune.self, Reap.self, Wire.self, Pcap.self]
     )
 }
@@ -46,11 +46,13 @@ struct Up: AsyncParsableCommand {
     @Flag(help: "Print JSON.") var json = false
     @Option(help: "Who asked for the server (shown in `serverlab ps`).") var owner = "cli"
     @Flag(help: "Record the server's traffic (see `serverlab wire` and `serverlab pcap`).") var capture = false
+    @Flag(help: "Put a fault proxy in front of the server (part `proxy`; see `serverlab fault`).") var faults = false
 
     func run() async throws {
         let lab = try ServerLab.standard()
         let log: LabLog = { line in FileHandle.standardError.write(Data((line + "\n").utf8)) }
-        let server = try await lab.start(recipeNamed: recipe, owner: owner, lease: .seconds(lease * 60), log: log)
+        var server = try await lab.start(recipeNamed: recipe, owner: owner, lease: .seconds(lease * 60), log: log)
+        if faults { server = try await lab.startFaultProxy(for: server, log: log) }
         if capture { try await lab.startCapture(of: server) }
         if env {
             for (key, value) in server.environment.sorted(by: { $0.key < $1.key }) { print("export \(key)='\(value)'") }
@@ -134,6 +136,46 @@ struct Promote: AsyncParsableCommand {
         let lab = try ServerLab.standard()
         try await lab.promote(part: part, of: lab.server(named: name))
         print("promoted \(part) of \(name)")
+    }
+}
+
+struct Fault: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Add or remove network faults on a server's proxy part (`up --faults`).",
+        discussion: """
+            Kinds: latency <ms>, bandwidth <KB/s>, timeout <ms> (0 = silent), reset <ms>, slow-close <ms>,
+            limit <bytes>, slicer <bytes>; and clear [name], cut, restore. Prints the fault's name.
+            """
+    )
+
+    @Argument(help: "Server container name.") var name: String
+    @Argument(help: "latency, bandwidth, timeout, reset, slow-close, limit, slicer, clear, cut or restore.") var kind: String
+    @Argument(help: "The fault's value (or the fault to clear).") var value: String?
+    @Flag(help: "Act on data sent to the server instead of data sent to the client.") var upstream = false
+
+    func run() async throws {
+        let lab = try ServerLab.standard()
+        let server = try await lab.server(named: name)
+        switch kind {
+        case "clear": try await lab.clearFaults(value, of: server)
+        case "cut": try await lab.cutConnections(of: server)
+        case "restore": try await lab.restoreConnections(of: server)
+        default:
+            guard let number = value.flatMap({ Int($0) }) else { throw ValidationError("\(kind) needs a number") }
+            let fault: LabFault = switch kind {
+            case "latency": .latency(milliseconds: number)
+            case "bandwidth": .bandwidth(kilobytesPerSecond: number)
+            case "timeout": .timeout(milliseconds: number)
+            case "reset": .resetPeer(afterMilliseconds: number)
+            case "slow-close": .slowClose(milliseconds: number)
+            case "limit": .limitData(bytes: number)
+            case "slicer": .slicer(averageBytes: number, delayMicroseconds: 1_000)
+            default: throw ValidationError("Unknown fault \(kind)")
+            }
+            print(try await lab.addFault(fault, direction: upstream ? .upstream : .downstream, to: server))
+            return
+        }
+        print("\(kind) \(name)")
     }
 }
 

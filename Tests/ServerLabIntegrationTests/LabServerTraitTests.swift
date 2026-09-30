@@ -293,3 +293,56 @@ struct SQLServerStrictEncryptionTests {
         await #expect(throws: (any Error).self) { try await sqlServer(server, trust: true).shutdownGracefully() }
     }
 }
+
+// MARK: - Faults
+
+@Suite(.enabled(if: integrationEnabled), .server("pg-17-empty", faults: true))
+struct PostgresFaultTests {
+    func connectThroughProxy(_ server: LabServer) async throws -> PostgresClient {
+        let proxy = try server.endpoint(of: "proxy")
+        return try await PostgresClient.connect(configuration: PostgresConfiguration(
+            host: proxy.host, port: proxy.port, database: "postgres",
+            username: proxy.username, password: proxy.password, sslMode: .disable, connectTimeout: 3
+        ))
+    }
+
+    @Test func latencySlowsQueriesAndACutDropsConnections() async throws {
+        let server = try #require(LabServer.current)
+        let client = try await connectThroughProxy(server)
+        let clock = ContinuousClock()
+        let fast = try await clock.measure { _ = try await client.metadata.listDatabases() }
+
+        let latency = try await server.addFault(.latency(milliseconds: 400))
+        let slow = try await clock.measure { _ = try await client.metadata.listDatabases() }
+        #expect(slow >= .milliseconds(400))
+        #expect(slow > fast)
+        try await server.clearFaults(latency)
+
+        try await server.cutConnections()
+        await #expect(throws: (any Error).self) { _ = try await client.metadata.listDatabases() }
+        client.close()
+        await #expect(throws: (any Error).self) { try await connectThroughProxy(server).close() }
+        try await server.restoreConnections()
+        let again = try await connectThroughProxy(server)
+        #expect(try await again.metadata.listDatabases().contains("postgres"))
+        again.close()
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mssql-2022-empty", faults: true))
+struct SQLServerFaultTests {
+    @Test func resetPeerBreaksTheConnection() async throws {
+        let server = try #require(LabServer.current)
+        let proxy = try server.endpoint(of: "proxy")
+        let client = try await SQLServerClient.connect(
+            hostname: proxy.host, port: proxy.port,
+            authentication: .sqlPassword(username: proxy.username, password: proxy.password),
+            tlsEnabled: true, trustServerCertificate: true
+        )
+        _ = try await client.metadata.listDatabases()
+        try await server.addFault(.resetPeer(afterMilliseconds: 0))
+        await #expect(throws: (any Error).self) { _ = try await client.metadata.listDatabases() }
+        try? await client.shutdownGracefully()
+        try await server.clearFaults()
+    }
+}

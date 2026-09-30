@@ -188,6 +188,8 @@ extension ServerLab {
         var id: String
         var name: String
         var port: Int
+        /// Host ports of `ContainerSpec.extraPorts`, by container port.
+        var extraPorts: [Int: Int] = [:]
     }
 
     func startContainer(
@@ -230,10 +232,12 @@ extension ServerLab {
         // the container. The range is below Linux's and Docker's ephemeral ports; a taken port is retried.
         for _ in 1...10 {
             let port = Int.random(in: Self.hostPorts)
+            let extraPorts = Dictionary(uniqueKeysWithValues: spec.extraPorts.map { ($0, Int.random(in: Self.hostPorts)) })
             let id = try await docker.run(
                 ["create", "--name", name, "--env-file", envFile.path,
-                 "--publish", "\(port):\(spec.internalPort)",
-                 "--memory", "\(spec.memoryMB)m", "--memory-swap", "\(spec.memoryMB)m"]
+                 "--publish", "\(port):\(spec.internalPort)"]
+                + extraPorts.sorted { $0.key < $1.key }.flatMap { ["--publish", "\($0.value):\($0.key)"] }
+                + ["--memory", "\(spec.memoryMB)m", "--memory-swap", "\(spec.memoryMB)m"]
                 + LabLabels.arguments(labels)
                 + extraArguments
                 + [image] + command
@@ -245,7 +249,7 @@ extension ServerLab {
                 throw error
             }
             let started = try await docker.runAllowingFailure(["start", id])
-            if started.status == 0 { return StartedContainer(id: id, name: name, port: port) }
+            if started.status == 0 { return StartedContainer(id: id, name: name, port: port, extraPorts: extraPorts) }
             _ = try await docker.runAllowingFailure(["rm", "--force", "--volumes", id])
             let message = started.standardError
             guard message.contains("already allocated") || message.contains("address already in use") else {

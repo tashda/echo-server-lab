@@ -7,6 +7,8 @@ public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
     public let recipeName: String
     public let leaseMinutes: Int
     public let capture: Bool
+    /// A fault proxy in front of the server (part `proxy`); see `ServerLabCLI.fault`.
+    public let faults: Bool
 
     public var isRecursive: Bool { false }
 
@@ -20,7 +22,7 @@ public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
             try await function()
             return
         }
-        let server = try await ServerLabCLI.up(recipeName, owner: test.name, leaseMinutes: leaseMinutes, capture: capture)
+        let server = try await ServerLabCLI.up(recipeName, owner: test.name, leaseMinutes: leaseMinutes, capture: capture, faults: faults)
         do {
             let wire = capture ? LabWire(server: server) : nil
             try await LabServer.$current.withValue(server) {
@@ -35,8 +37,8 @@ public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
 }
 
 extension Trait where Self == LabServerTrait {
-    public static func server(_ recipe: String, leaseMinutes: Int = 120, capture: Bool = false) -> Self {
-        LabServerTrait(recipeName: recipe, leaseMinutes: leaseMinutes, capture: capture)
+    public static func server(_ recipe: String, leaseMinutes: Int = 120, capture: Bool = false, faults: Bool = false) -> Self {
+        LabServerTrait(recipeName: recipe, leaseMinutes: leaseMinutes, capture: capture, faults: faults)
     }
 }
 

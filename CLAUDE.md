@@ -77,6 +77,13 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    and for client-certificate servers the admin user's certificate and key; `--env` sets
    `SERVERLAB_TLS_*`. Verify against `caPath`; with `capture: true`, `containsPlaintext` shows the
    traffic really is encrypted.
+7. **Network faults:** `.server("recipe", faults: true)` (or `serverlab up <recipe> --faults`) puts
+   a Toxiproxy part `proxy` in front of any server. Connect to `server.endpoint(of: "proxy")`, then
+   `server.addFault(.latency(milliseconds: 400))`, `.bandwidth`, `.timeout` (0 = silent hang),
+   `.resetPeer`, `.slowClose`, `.limitData`, `.slicer` (downstream by default, `direction: .upstream`),
+   `clearFaults()`, and `cutConnections()` / `restoreConnections()` for a network cut. By hand:
+   `serverlab fault <server> latency 400 | cut | restore | clear`. For a server crash or restart use
+   `stop(part:)` / `start(part:)` instead.
 
 ## Adding a scenario
 

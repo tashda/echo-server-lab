@@ -55,6 +55,7 @@ swift run serverlab down <container> | --all
 swift run serverlab stop <server> [--part standby]  # stop without removing (same port on start)
 swift run serverlab start <server> [--part standby]
 swift run serverlab promote <server>                # standby becomes primary
+swift run serverlab fault <server> latency 400       # after `up <recipe> --faults`; cut, restore, clear
 ```
 
 In a test (`ServerLabTesting`):
@@ -95,6 +96,7 @@ Servers made of several parts: PostgreSQL 13–18 primary with a streaming stand
 (`pg-<v>-primary-standby`); stop, start and promote any part. TLS: required, optional,
 strict (TDS 8 on SQL Server 2025, TLS 1.3 on PostgreSQL), client-certificate login (PostgreSQL),
 and expired, wrong-host and self-signed certificates, all from a per-machine lab CA.
+Network faults on any server through a Toxiproxy part (latency, bandwidth, hangs, resets, cuts).
 
 Sample files live on testlab in `/opt/serverlab/samples` (downloaded from their sources and
 checked against `LabSamples`), mirrored in the `samples-v1` release of this repo.
