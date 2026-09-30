@@ -85,6 +85,8 @@ instead of `testlab`. The integration tests run with `SERVERLAB_INTEGRATION=1`.
 | `Sources/ServerLabTesting` | The `.server(...)` trait. |
 | `Sources/serverlab` | The command-line tool. |
 | `Sources/TDSSpec` | MS-TDS reference (spec JSON) and a TDS decoder that explains bytes, messages and captures. |
+| `Sources/PostgresProtocol` | PostgreSQL frontend/backend protocol decoder for explained captures. |
+| `Sources/WireExplanation` | Field trees shared by both decoders. |
 | `Sources/tds-mcp` | MCP server (stdio) over TDSSpec and lab captures; replaces the TypeScript tds-mcp repo. |
 | `catalog/` | Everything each engine has, what creates it, what the drivers still lack. |
 

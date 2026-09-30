@@ -1,16 +1,17 @@
 import Foundation
 import TDSSpec
+import WireExplanation
 
-/// One TDS message from a capture, decoded by the lab's own TDS decoder (not Wireshark's).
+/// One protocol message from a capture, decoded by the lab's own decoders (not Wireshark's).
 public struct ExplainedMessage: Sendable, Hashable, Codable {
     /// Seconds since the capture started (of the message's first packet).
     public var time: Double
     public var toServer: Bool
-    /// What it is: `PRELOGIN`, `LOGIN7`, `SQL batch`, `Tabular result`, `TLS (encrypted)`, ….
+    /// What it is: `PRELOGIN`, `LOGIN7`, `SQL batch`, `Tabular result`, `Parse`, `DataRow`, `TLS (encrypted)`, ….
     public var kind: String
     /// Every packet of the message, headers included.
     public var bytes: [UInt8]
-    public var explanation: TDSExplanation
+    public var explanation: WireExplanation
 }
 
 extension Array where Element == ExplainedMessage {
@@ -23,16 +24,18 @@ extension Array where Element == ExplainedMessage {
 }
 
 extension ServerLab {
-    /// The captured SQL Server traffic of a server, as whole TDS messages explained field by field.
-    /// Encrypted parts show as TLS records; connect without encryption to read everything.
+    /// The captured traffic of a server as whole protocol messages (TDS or PostgreSQL) explained
+    /// field by field by the lab's own decoders. Encrypted parts show as TLS records.
     public func explainedWire(of server: LabServer) async throws -> [ExplainedMessage] {
-        guard server.engine == .sqlServer else { throw ServerLabError.unsupported("Explained captures of \(server.engine.rawValue)") }
         let output = try await docker.run(
             ["run", "--rm", "--volume", "\(capturesDirectory):/captures:ro", Self.captureImage,
              "tshark", "-r", "/captures/\(server.containerName).pcap", "-Y", "tcp.len > 0", "-T", "fields",
              "-E", "separator=\t", "-e", "frame.time_relative", "-e", "tcp.dstport", "-e", "tcp.stream", "-e", "tcp.payload"]
         )
-        return TDSStreamReassembly.messages(fromTSharkFields: output, serverPort: server.engine.internalPort)
+        switch server.engine {
+        case .sqlServer: return TDSStreamReassembly.messages(fromTSharkFields: output, serverPort: server.engine.internalPort)
+        case .postgres: return PostgresStreamReassembly.messages(fromTSharkFields: output, serverPort: server.engine.internalPort)
+        }
     }
 }
 

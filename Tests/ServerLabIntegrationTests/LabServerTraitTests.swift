@@ -464,3 +464,33 @@ struct SQLServerTrafficMatchesTheSpecTests {
         #expect(results.contains("MAX (PLP)"))
     }
 }
+
+/// postgres-wire's own traffic (plain text) reading every column type and the JSON documents must
+/// decode against the protocol with nothing unexplained.
+@Suite(.enabled(if: integrationEnabled), .server("pg-17-column-types", capture: true))
+struct PostgresTrafficMatchesTheProtocolTests {
+    @Test func everyMessageDecodes() async throws {
+        let server = try #require(LabServer.current)
+        let wire = try #require(LabWire.current)
+        let client = try await PostgresClient.connect(configuration: PostgresConfiguration(
+            host: server.host, port: server.port, database: "labdata",
+            username: server.username, password: server.password, sslMode: .disable
+        ))
+        // What a user types in Echo's editor, and what Echo's explorer asks for.
+        for sql in ["SELECT * FROM all_types", "SELECT * FROM json_documents"] {
+            let rows = try await client.simpleQuery(sql)
+            for try await _ in rows {}
+        }
+        _ = try await client.metadata.listColumns(schema: "public", table: "all_types")
+        client.close()
+
+        let messages = try await wire.explainedMessages()
+        #expect(messages.specProblems.isEmpty, "\(messages.specProblems.prefix(10))")
+        #expect(messages.contains { $0.kind == "StartupMessage" })
+        #expect(messages.contains { $0.kind == "AuthenticationSASL" })
+        #expect(messages.contains { $0.kind == "DataRow" })
+        let text = messages.map(\.explanation.text).joined()
+        #expect(text.contains("all_types"))
+        #expect(!text.contains(server.password))
+    }
+}

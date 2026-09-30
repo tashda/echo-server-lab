@@ -101,7 +101,7 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    automatically. Read from `endpoint(of: "secondary")`; `server.promote(part: "secondary")` fails
    over (the others step down, the target forces the failover) and returns once its databases take
    connections.
-10. **What went over the wire, field by field (TDS):** the `TDSSpec` module (MS-TDS reference and a
+10. **What went over the wire, field by field (TDS and PostgreSQL):** the `TDSSpec` module (MS-TDS reference and a
     decoder) explains every captured SQL Server message: `LabWire.current.explainedMessages()` in
     tests, `serverlab explain <server>` by hand; `.specProblems` / the last line list every byte the
     decoder could not match to MS-TDS (empty means the traffic matches the spec). sqlserver-nio
@@ -111,6 +111,10 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
     (`swift run tds-mcp`, stdio) is this module plus `explain_capture` and `check_capture`; it
     replaces the old TypeScript tds-mcp repo. Fix the spec in `Sources/TDSSpec/Resources/spec`
     and say where the fix came from (MS-TDS section and date, or a capture).
+    PostgreSQL captures decode the same way (`PostgresProtocol` module: startup, SSL/GSS requests,
+    authentication with passwords and SCRAM proofs never shown, simple and extended queries,
+    DataRow values in text or binary by type OID, COPY, notifications); postgres-wire can connect
+    with `sslMode: .disable`, so its own traffic is readable.
 
 ## Adding a scenario
 

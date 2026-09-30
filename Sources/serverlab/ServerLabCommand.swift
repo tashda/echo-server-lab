@@ -232,8 +232,8 @@ struct Wire: AsyncParsableCommand {
 
 struct Explain: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
-        abstract: "Explain a captured SQL Server's traffic field by field with the lab's TDS decoder.",
-        discussion: "Ends with every byte the decoder could not match to MS-TDS; nothing there means the traffic matches the spec."
+        abstract: "Explain a captured server's traffic (TDS or PostgreSQL) field by field with the lab's decoders.",
+        discussion: "Ends with every byte the decoders could not match to the protocol (MS-TDS, PostgreSQL 3.x); nothing there means the traffic matches."
     )
 
     @Argument(help: "Server container name.") var name: String
@@ -254,7 +254,7 @@ struct Explain: AsyncParsableCommand {
             print(String(format: "%8.3fs %@ ", message.time, message.toServer ? "client →" : "server ←") + message.explanation.text + "\n")
         }
         let problems = messages.specProblems
-        print(problems.isEmpty ? "\(messages.count) messages, all match MS-TDS." : "Not in the spec:\n" + problems.joined(separator: "\n"))
+        print(problems.isEmpty ? "\(messages.count) messages, all match the protocol." : "Not in the protocol:\n" + problems.joined(separator: "\n"))
     }
 }
 

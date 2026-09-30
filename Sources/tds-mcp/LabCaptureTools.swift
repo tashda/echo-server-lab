@@ -6,11 +6,11 @@ import TDSSpec
 /// Tools over the traffic echo-server-lab recorded for a server (`serverlab up <recipe> --capture`).
 enum LabCaptureTools {
     static let all: [TDSTool] = [
-        TDSTool(name: "explain_capture", description: "Explain the recorded TDS traffic of a running echo-server-lab SQL Server (started with --capture or capture: true), message by message with every field, using this server's decoder. Encrypted parts show as TLS records.",
+        TDSTool(name: "explain_capture", description: "Explain the recorded traffic of a running echo-server-lab server (started with --capture or capture: true), message by message with every field: TDS for SQL Server, the frontend/backend protocol for PostgreSQL. Encrypted parts show as TLS records.",
                 parameters: [("server", "The server's container name (serverlab ps)", true),
                              ("contains", "Only messages whose explanation contains this text (e.g. 'COLMETADATA', 'sp_executesql')", false),
                              ("limit", "At most this many messages (default 20)", false)]),
-        TDSTool(name: "check_capture", description: "Check a recorded capture against MS-TDS: lists every byte sequence the decoder could not explain (unknown tokens or types, lengths past the end, leftovers). Empty means the traffic matches the spec.",
+        TDSTool(name: "check_capture", description: "Check a recorded capture against its protocol (MS-TDS or PostgreSQL 3.x): lists every byte sequence the decoder could not explain (unknown tokens, messages or types, lengths past the end, leftovers). Empty means the traffic matches.",
                 parameters: [("server", "The server's container name (serverlab ps)", true)]),
     ]
 
@@ -30,7 +30,7 @@ enum LabCaptureTools {
                 }.joined(separator: "\n\n") + "\n\n(\(chosen.count) of \(messages.count) messages)"
             case "check_capture":
                 let problems = messages.specProblems
-                return problems.isEmpty ? "All \(messages.count) messages match MS-TDS." : problems.joined(separator: "\n")
+                return problems.isEmpty ? "All \(messages.count) messages match the protocol." : problems.joined(separator: "\n")
             default:
                 return "Unknown tool: \(name)"
             }

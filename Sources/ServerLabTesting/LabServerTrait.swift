@@ -133,8 +133,8 @@ public struct LabWire: Sendable {
         return try await lab.wireMessages(of: server)
     }
 
-    /// SQL Server traffic so far as whole TDS messages, explained by the lab's TDS decoder.
-    /// `specProblems` on the result lists anything it could not match to MS-TDS.
+    /// The traffic so far as whole protocol messages (TDS or PostgreSQL), explained by the lab's
+    /// decoders. `specProblems` on the result lists anything they could not match to the protocol.
     public func explainedMessages() async throws -> [ExplainedMessage] {
         try await Task.sleep(for: .milliseconds(300))
         return try await lab.explainedWire(of: server)

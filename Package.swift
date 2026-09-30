@@ -31,7 +31,9 @@ let package = Package(
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "X509", package: "swift-certificates"),
                 .product(name: "CryptoExtras", package: "swift-crypto"),
+                "WireExplanation",
                 "TDSSpec",
+                "PostgresProtocol",
             ]
         ),
         // SQL Server: container settings, readiness and content packs, through SQLServerKit only.
@@ -56,10 +58,14 @@ let package = Package(
             dependencies: ["ServerLabCatalog"]
         ),
         .target(name: "ServerLabClient"),
-        .target(name: "TDSSpec", resources: [.copy("Resources/spec")]),
+        // Field trees for decoded protocol messages, shared by the TDS and PostgreSQL decoders.
+        .target(name: "WireExplanation"),
+        .target(name: "TDSSpec", dependencies: ["WireExplanation"], resources: [.copy("Resources/spec")]),
+        // PostgreSQL frontend/backend protocol decoder.
+        .target(name: "PostgresProtocol", dependencies: ["WireExplanation"]),
         // MCP server (stdio) over TDSSpec, and over lab captures through ServerLabKit.
         .executableTarget(name: "tds-mcp", dependencies: ["TDSSpec", "ServerLabCatalog"]),
-        .testTarget(name: "TDSSpecTests", dependencies: ["TDSSpec"]),
+        .testTarget(name: "TDSSpecTests", dependencies: ["TDSSpec", "PostgresProtocol"]),
         .executableTarget(
             name: "serverlab",
             dependencies: ["ServerLabCatalog", .product(name: "ArgumentParser", package: "swift-argument-parser")]
