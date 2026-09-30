@@ -1,0 +1,6 @@
+{
+  "name": "mssql-2019-empty",
+  "summary": "SQL Server 2019, nothing added.",
+  "engine": "sqlserver",
+  "version": "2019"
+}

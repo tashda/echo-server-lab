@@ -1,0 +1,17 @@
+{
+  "name": "mssql-2025-agent-jobs",
+  "summary": "SQL Server 2025 with Agent on and 20 jobs on every kind of schedule.",
+  "engine": "sqlserver",
+  "version": "2025",
+  "settings": {
+    "agent": true
+  },
+  "packs": [
+    {
+      "pack": "agent-jobs",
+      "params": {
+        "jobCount": 20
+      }
+    }
+  ]
+}

@@ -1,0 +1,6 @@
+{
+  "name": "pg-13-empty",
+  "summary": "PostgreSQL 13, nothing added.",
+  "engine": "postgresql",
+  "version": "13"
+}

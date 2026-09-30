@@ -1,0 +1,17 @@
+{
+  "name": "mssql-2017-agent-jobs",
+  "summary": "SQL Server 2017 with Agent on and 20 jobs on every kind of schedule.",
+  "engine": "sqlserver",
+  "version": "2017",
+  "settings": {
+    "agent": true
+  },
+  "packs": [
+    {
+      "pack": "agent-jobs",
+      "params": {
+        "jobCount": 20
+      }
+    }
+  ]
+}

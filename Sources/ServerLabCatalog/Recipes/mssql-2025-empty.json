@@ -1,0 +1,6 @@
+{
+  "name": "mssql-2025-empty",
+  "summary": "SQL Server 2025, nothing added.",
+  "engine": "sqlserver",
+  "version": "2025"
+}

@@ -1,0 +1,64 @@
+import Foundation
+import ServerLabCatalog
+import ServerLabKit
+import Testing
+
+/// Starts a fresh server from a recipe for a suite (or a single test) and removes it afterwards.
+///
+/// ```swift
+/// @Suite(.server("mssql-2022-agent-jobs"))
+/// struct JobActivityTests {
+///     @Test func listsJobs() async throws {
+///         let server = try #require(LabServer.current)
+///     }
+/// }
+/// ```
+public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
+    public let recipeName: String
+    public let lease: Duration
+
+    public var isRecursive: Bool { false }
+
+    public func scopeProvider(for test: Test, testCase: Test.Case?) -> LabServerTrait? {
+        if test.isSuite { return self }
+        return testCase == nil ? nil : self
+    }
+
+    public func provideScope(
+        for test: Test,
+        testCase: Test.Case?,
+        performing function: @Sendable () async throws -> Void
+    ) async throws {
+        // A test inside a suite that already has a server keeps the suite's server.
+        if LabServer.current != nil, !test.isSuite {
+            try await function()
+            return
+        }
+        let lab = try ServerLab.standard()
+        let server = try await lab.start(
+            recipeNamed: recipeName,
+            owner: test.name,
+            lease: lease,
+            log: { print("[serverlab] \($0)") }
+        )
+        do {
+            try await LabServer.$current.withValue(server) { try await function() }
+        } catch {
+            try? await lab.stop(server)
+            throw error
+        }
+        try await lab.stop(server)
+    }
+}
+
+extension Trait where Self == LabServerTrait {
+    /// A fresh server from the named recipe for this suite or test.
+    public static func server(_ recipe: String, lease: Duration = .seconds(2 * 3600)) -> Self {
+        LabServerTrait(recipeName: recipe, lease: lease)
+    }
+}
+
+extension LabServer {
+    /// The server the enclosing `.server(...)` trait started.
+    @TaskLocal public static var current: LabServer?
+}

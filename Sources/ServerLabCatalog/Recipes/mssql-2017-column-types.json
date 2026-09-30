@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2017-column-types",
+  "summary": "SQL Server 2017 with LabData: every column type, edge values and large values.",
+  "engine": "sqlserver",
+  "version": "2017",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "column-types"
+    }
+  ]
+}

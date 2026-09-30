@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2025-column-types",
+  "summary": "SQL Server 2025 with LabData: every column type, edge values and large values.",
+  "engine": "sqlserver",
+  "version": "2025",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "column-types"
+    }
+  ]
+}

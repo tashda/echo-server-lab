@@ -1,0 +1,14 @@
+{
+  "name": "pg-14-column-types",
+  "summary": "PostgreSQL 14 with labdata: every built-in type incl. json/jsonb, arrays and ranges.",
+  "engine": "postgresql",
+  "version": "14",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "column-types"
+    }
+  ]
+}

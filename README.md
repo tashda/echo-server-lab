@@ -44,7 +44,44 @@ and removes it when the suite ends. Nothing runs when nothing is being tested.
 - **Echo Labs:** a Servers section for recipes, running servers, logs and
   coverage against the Explorer blueprints.
 
-## Phase 1
+## Using it
 
-SQL Server 2017–2025 and PostgreSQL 13–18. Packs: all column types,
-programmability objects, Agent jobs on schedules.
+```bash
+swift run serverlab recipes                         # what can be asked for
+swift run serverlab build mssql-2022-agent-jobs     # build (or reuse) the seeded image
+eval "$(swift run serverlab up pg-17-column-types --env)"   # a fresh server, SERVERLAB_* set
+swift run serverlab ps                              # lab containers and reserved memory
+swift run serverlab down <container> | --all
+```
+
+In a test (`ServerLabTesting`):
+
+```swift
+@Suite(.server("mssql-2022-agent-jobs"))
+struct JobTests {
+    @Test func listsJobs() async throws {
+        let server = try #require(LabServer.current)   // host, port, username, password
+    }
+}
+```
+
+The password comes from `SERVERLAB_PASSWORD`, else `TESTLAB_PASSWORD` in
+`~/.echo-testlab/credentials.env`. `SERVERLAB_HOST=local` uses Docker on the Mac
+instead of `testlab`. The integration tests run with `SERVERLAB_INTEGRATION=1`.
+
+## Layout
+
+| Path | What |
+|---|---|
+| `Sources/ServerLabKit` | Recipes, Docker, seeded images, server lifetimes, memory budget. No driver. |
+| `Sources/ServerLabSQLServer`, `ServerLabPostgres` | Engines and packs, through the drivers only. |
+| `Sources/ServerLabCatalog` | The standard lab and the shipped recipes (`Recipes/*.json`). |
+| `Sources/ServerLabTesting` | The `.server(...)` trait. |
+| `Sources/serverlab` | The command-line tool. |
+| `catalog/` | Everything each engine has, what creates it, what the drivers still lack. |
+
+## Status
+
+Engines: SQL Server 2017–2025, PostgreSQL 13–18. Packs: `database`,
+`column-types` (both engines), `agent-jobs` (SQL Server). The next packs and the
+driver work they need are listed in `catalog/packs.md` and `catalog/driver-gaps.md`.

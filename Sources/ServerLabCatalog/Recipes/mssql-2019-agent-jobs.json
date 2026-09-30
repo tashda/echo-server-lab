@@ -1,0 +1,17 @@
+{
+  "name": "mssql-2019-agent-jobs",
+  "summary": "SQL Server 2019 with Agent on and 20 jobs on every kind of schedule.",
+  "engine": "sqlserver",
+  "version": "2019",
+  "settings": {
+    "agent": true
+  },
+  "packs": [
+    {
+      "pack": "agent-jobs",
+      "params": {
+        "jobCount": 20
+      }
+    }
+  ]
+}

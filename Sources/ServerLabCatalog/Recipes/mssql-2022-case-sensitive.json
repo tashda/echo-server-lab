@@ -1,0 +1,17 @@
+{
+  "name": "mssql-2022-case-sensitive",
+  "summary": "SQL Server 2022 with a case-sensitive server collation and LabData with every column type.",
+  "engine": "sqlserver",
+  "version": "2022",
+  "settings": {
+    "collation": "Latin1_General_100_CS_AS_SC_UTF8"
+  },
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "column-types"
+    }
+  ]
+}
