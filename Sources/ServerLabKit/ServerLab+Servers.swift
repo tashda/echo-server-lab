@@ -185,3 +185,23 @@ public struct RunningServer: Sendable, Hashable {
     public var owner: String
     public var expires: Date
 }
+
+extension ServerLab {
+    /// Seeded images on this host: one per recipe fingerprint.
+    public func seededImages() async throws -> [SeededImage] {
+        let format = "{{.Repository}}:{{.Tag}}\t{{.Size}}\t{{.CreatedSince}}\t{{.Label \"\(LabLabels.recipe)\"}}"
+        let output = try await docker.run(["images", "--filter", "label=\(LabLabels.role)=\(LabLabels.Role.seeded.rawValue)", "--format", format])
+        return output.split(separator: "\n").compactMap { line in
+            let fields = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
+            guard fields.count == 4 else { return nil }
+            return SeededImage(tag: fields[0], size: fields[1], created: fields[2], recipe: fields[3])
+        }
+    }
+}
+
+public struct SeededImage: Sendable, Hashable {
+    public var tag: String
+    public var size: String
+    public var created: String
+    public var recipe: String
+}
