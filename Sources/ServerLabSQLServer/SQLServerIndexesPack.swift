@@ -13,7 +13,7 @@ struct SQLServerIndexesPack: ContentPack {
     let version = 1
     let summary = "Every index kind (filtered, covering, columnstore, compressed) and constraint kind (FK cascade, untrusted, check, unique, default)."
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         let database = try parameters.string("database", default: SQLServerDatabasePack.defaultName)
         let products = max(try parameters.int("products", default: 200), 10)
         try await SQLServerSession.with(server, database: database) { client in
@@ -23,7 +23,7 @@ struct SQLServerIndexesPack: ContentPack {
             try await Self.addConstraints(client)
             try await Self.createIndexes(client)
         }
-        log("  shop: 6 tables, 4 foreign keys, checks, unique and default constraints, 9 indexes")
+        context.log("  shop: 6 tables, 4 foreign keys, checks, unique and default constraints, 9 indexes")
     }
 
     func verify(on server: ServerEndpoint, recipe: Recipe, parameters: PackParameters) async throws {

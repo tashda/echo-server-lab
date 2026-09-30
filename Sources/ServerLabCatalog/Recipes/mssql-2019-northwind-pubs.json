@@ -1,0 +1,20 @@
+{
+  "name": "mssql-2019-northwind-pubs",
+  "summary": "SQL Server 2019 with Northwind and pubs.",
+  "engine": "sqlserver",
+  "version": "2019",
+  "packs": [
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "Northwind"
+      }
+    },
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "pubs"
+      }
+    }
+  ]
+}

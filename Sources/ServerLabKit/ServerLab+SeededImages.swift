@@ -26,6 +26,8 @@ extension ServerLab {
             return tag
         }
 
+        let samples = try packs.flatMap { try $0.pack.requiredSamples(parameters: $0.use.params) }
+        try await ensureSamples(samples, log: log)
         log("Building \(tag) from \(spec.image)")
         let builder = try await startContainer(
             image: spec.image,
@@ -36,7 +38,8 @@ extension ServerLab {
             lease: .seconds(2 * 3600),
             fingerprint: fingerprint,
             environment: spec.environment,
-            command: spec.command
+            command: spec.command,
+            extraArguments: samples.isEmpty ? [] : ["--volume", "\(host.samplesDirectory):\(LabSamples.containerDirectory):ro"]
         )
         do {
             let endpoint = ServerEndpoint(host: host.address, port: builder.port, username: engine.adminUsername, password: password)
@@ -44,7 +47,9 @@ extension ServerLab {
             try await engine.waitUntilReady(endpoint, timeout: .seconds(300))
             for (use, pack) in packs {
                 log("Pack \(pack.name): creating")
-                try await pack.apply(to: endpoint, recipe: recipe, parameters: use.params, log: log)
+                let lab = self
+                let context = PackContext(log: log, sampleText: { try await lab.sampleText($0) })
+                try await pack.apply(to: endpoint, recipe: recipe, parameters: use.params, context: context)
                 log("Pack \(pack.name): checking")
                 try await pack.verify(on: endpoint, recipe: recipe, parameters: use.params)
             }

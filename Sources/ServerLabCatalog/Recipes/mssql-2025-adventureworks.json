@@ -1,0 +1,26 @@
+{
+  "name": "mssql-2025-adventureworks",
+  "summary": "SQL Server 2025 with AdventureWorks, AdventureWorksLT and AdventureWorksDW (2017 backups).",
+  "engine": "sqlserver",
+  "version": "2025",
+  "packs": [
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "AdventureWorks"
+      }
+    },
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "AdventureWorksLT"
+      }
+    },
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "AdventureWorksDW"
+      }
+    }
+  ]
+}

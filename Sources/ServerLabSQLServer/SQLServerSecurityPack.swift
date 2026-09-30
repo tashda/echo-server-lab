@@ -13,7 +13,7 @@ struct SQLServerSecurityPack: ContentPack {
     let version = 1
     let summary = "Logins of every kind, server/database/application roles, grants and denies, masking, row-level security, certificate login."
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         let database = try parameters.string("database", default: SQLServerDatabasePack.defaultName)
         try await SQLServerSession.with(server) { client in
             try await Self.serverLevel(client, password: server.password, database: database)
@@ -21,7 +21,7 @@ struct SQLServerSecurityPack: ContentPack {
         try await SQLServerSession.with(server, database: database) { client in
             try await Self.databaseLevel(client, password: server.password, database: database)
         }
-        log("  \(Self.logins.count + 1) logins, server role, certificate login, users, roles, masking, row-level security")
+        context.log("  \(Self.logins.count + 1) logins, server role, certificate login, users, roles, masking, row-level security")
     }
 
     func verify(on server: ServerEndpoint, recipe: Recipe, parameters: PackParameters) async throws {

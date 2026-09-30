@@ -8,7 +8,7 @@ struct SQLServerDatabasePack: ContentPack {
     let version = 1
     let summary = "A user database, optionally with its own collation."
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         let database = try parameters.string("name", default: SQLServerDatabasePack.defaultName)
         let collation = try parameters.optionalString("collation")
         try await SQLServerSession.with(server) { client in

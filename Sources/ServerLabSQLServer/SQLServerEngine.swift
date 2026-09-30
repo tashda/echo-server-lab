@@ -17,6 +17,7 @@ public struct SQLServerEngine: LabEngine {
         SQLServerPartitioningPack(),
         SQLServerTemporalPack(),
         SQLServerLinkedServersPack(),
+        SQLServerSamplePack(),
     ]
 
     public init() {}

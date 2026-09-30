@@ -12,7 +12,7 @@ struct PostgresProgrammabilityPack: ContentPack {
     let version = 1
     let summary = "Schemas, view, materialized view, functions, trigger, procedure, sequence, enum, domain, composite type."
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         let database = try parameters.string("database", default: PostgresDatabasePack.defaultName)
         let customers = max(try parameters.int("customers", default: 50), 1)
         try await PostgresSession.with(server, database: database) { client in
@@ -31,7 +31,7 @@ struct PostgresProgrammabilityPack: ContentPack {
             )
             _ = try await client.sequences.createSequence(name: "invoice_numbers", schema: "sales", startWith: 1, incrementBy: 10, maxValue: 1_000, cycle: true)
         }
-        log("  schemas, tables, views, functions, trigger, procedure, sequence, enum, domain, composite type")
+        context.log("  schemas, tables, views, functions, trigger, procedure, sequence, enum, domain, composite type")
     }
 
     func verify(on server: ServerEndpoint, recipe: Recipe, parameters: PackParameters) async throws {

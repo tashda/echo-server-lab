@@ -11,7 +11,7 @@ struct PostgresColumnTypesPack: ContentPack {
     let version = 2
     let summary = "Every built-in type (json, jsonb, arrays, ranges, network, geometric, text search) with edge values."
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         let database = try parameters.string("database", default: PostgresDatabasePack.defaultName)
         let generatedRows = try parameters.int("rows", default: 200)
         let largeValueKB = try parameters.int("largeValueKB", default: 1024)
@@ -31,7 +31,7 @@ struct PostgresColumnTypesPack: ContentPack {
                     values: Array(rows[batch..<min(batch + 100, rows.count)])
                 )
             }
-            log("  \(Self.typesTable): \(samples.count) types, \(rows.count) rows")
+            context.log("  \(Self.typesTable): \(samples.count) types, \(rows.count) rows")
 
             try await client.admin.createTable(name: Self.documentsTable, columns: [
                 Self.identityColumn,
@@ -54,7 +54,7 @@ struct PostgresColumnTypesPack: ContentPack {
                     ]]
                 )
             }
-            log("  \(Self.documentsTable): JSON documents up to \(largeValueKB) KB")
+            context.log("  \(Self.documentsTable): JSON documents up to \(largeValueKB) KB")
         }
     }
 

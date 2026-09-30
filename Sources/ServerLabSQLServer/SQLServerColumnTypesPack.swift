@@ -14,7 +14,7 @@ struct SQLServerColumnTypesPack: ContentPack {
     let version = 3
     let summary = "Every column type with edge values, NULLs and large nvarchar(max)/varbinary(max) values."
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         let database = try parameters.string("database", default: SQLServerDatabasePack.defaultName)
         let generatedRows = try parameters.int("rows", default: 200)
         let largeValueKB = try parameters.int("largeValueKB", default: 1024)
@@ -42,7 +42,7 @@ struct SQLServerColumnTypesPack: ContentPack {
                     values: Array(rows[batch..<min(batch + 100, rows.count)])
                 )
             }
-            log("  \(Self.typesTable): \(columns.count) types, \(rows.count) rows")
+            context.log("  \(Self.typesTable): \(columns.count) types, \(rows.count) rows")
 
             try await admin.createTable(
                 name: Self.largeTable,
@@ -60,7 +60,7 @@ struct SQLServerColumnTypesPack: ContentPack {
                     "BytesMax": .bytes(Self.largeBytes(kilobytes: kilobytes)),
                 ])
             }
-            log("  \(Self.largeTable): values up to \(largeValueKB) KB")
+            context.log("  \(Self.largeTable): values up to \(largeValueKB) KB")
         }
     }
 

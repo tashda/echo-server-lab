@@ -1,0 +1,20 @@
+{
+  "name": "mssql-2022-northwind-pubs",
+  "summary": "SQL Server 2022 with Northwind and pubs.",
+  "engine": "sqlserver",
+  "version": "2022",
+  "packs": [
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "Northwind"
+      }
+    },
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "pubs"
+      }
+    }
+  ]
+}

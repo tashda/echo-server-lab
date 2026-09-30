@@ -12,7 +12,7 @@ struct SQLServerAgentJobsPack: ContentPack {
     let version = 1
     let summary = "Agent jobs on minute, hourly, daily, weekly, monthly, one-time and no schedules; failures and an operator."
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         guard recipe.settings.agent == true else {
             throw ServerLabError.packRequirement(pack: name, reason: "set \"agent\": true in the recipe settings")
         }
@@ -28,7 +28,7 @@ struct SQLServerAgentJobsPack: ContentPack {
                 _ = try await Self.builder(index: index, agent: client.agent).commit()
             }
         }
-        log("  \(jobCount) jobs")
+        context.log("  \(jobCount) jobs")
     }
 
     func verify(on server: ServerEndpoint, recipe: Recipe, parameters: PackParameters) async throws {

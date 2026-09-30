@@ -59,9 +59,10 @@ public struct DockerCommand: Sendable {
         return Result(status: exitStatus, standardOutput: try await standardOutput, standardError: try await standardError)
     }
 
+    /// Reads a pipe to its end on a thread-pool thread (a byte-by-byte async read is slow for
+    /// large outputs such as sample scripts).
+    @concurrent
     private static func collect(_ handle: FileHandle) async throws -> String {
-        var bytes: [UInt8] = []
-        for try await byte in handle.bytes { bytes.append(byte) }
-        return String(decoding: bytes, as: UTF8.self)
+        String(decoding: try handle.readToEnd() ?? Data(), as: UTF8.self)
     }
 }

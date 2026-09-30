@@ -1,0 +1,17 @@
+{
+  "name": "pg-18-pagila",
+  "summary": "PostgreSQL 18 (pgvector image) with the pagila sample database; its schema needs PostgreSQL 18 and pgvector.",
+  "engine": "postgresql",
+  "version": "18",
+  "settings": {
+    "imageVariant": "pgvector"
+  },
+  "packs": [
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "pagila"
+      }
+    }
+  ]
+}

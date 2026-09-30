@@ -1,0 +1,20 @@
+{
+  "name": "mssql-2017-northwind-pubs",
+  "summary": "SQL Server 2017 with Northwind and pubs.",
+  "engine": "sqlserver",
+  "version": "2017",
+  "packs": [
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "Northwind"
+      }
+    },
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "pubs"
+      }
+    }
+  ]
+}

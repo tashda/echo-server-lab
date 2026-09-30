@@ -1,0 +1,14 @@
+{
+  "name": "pg-16-chinook",
+  "summary": "PostgreSQL 16 with the Chinook sample database.",
+  "engine": "postgresql",
+  "version": "16",
+  "packs": [
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "chinook"
+      }
+    }
+  ]
+}

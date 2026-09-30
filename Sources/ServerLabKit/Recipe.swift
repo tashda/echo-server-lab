@@ -50,11 +50,15 @@ public struct ServerSettings: Codable, Sendable, Hashable {
     public var collation: String?
     /// Hard memory limit of the container, in MB. The engine picks a default when nil.
     public var memoryMB: Int?
+    /// An image built on the engine's official one with extras, e.g. `pgvector` or `postgis` for
+    /// PostgreSQL. Nil uses the official image.
+    public var imageVariant: String?
 
-    public init(agent: Bool? = nil, collation: String? = nil, memoryMB: Int? = nil) {
+    public init(agent: Bool? = nil, collation: String? = nil, memoryMB: Int? = nil, imageVariant: String? = nil) {
         self.agent = agent
         self.collation = collation
         self.memoryMB = memoryMB
+        self.imageVariant = imageVariant
     }
 }
 

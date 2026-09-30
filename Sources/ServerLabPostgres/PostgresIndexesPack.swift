@@ -13,7 +13,7 @@ struct PostgresIndexesPack: ContentPack {
     let version = 1
     let summary = "Every index method (btree, hash, GIN, GiST, SP-GiST, BRIN; expression, partial, covering) and constraint kind (FK, check, unique, exclusion)."
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         let database = try parameters.string("database", default: PostgresDatabasePack.defaultName)
         let products = max(try parameters.int("products", default: 200), 10)
         try await PostgresSession.with(server, database: database) { client in
@@ -23,7 +23,7 @@ struct PostgresIndexesPack: ContentPack {
             try await Self.addConstraints(client)
             try await Self.createIndexes(client)
         }
-        log("  shop: 6 tables, btree/hash/GIN/GiST/SP-GiST/BRIN indexes, FK/check/unique/exclusion constraints")
+        context.log("  shop: 6 tables, btree/hash/GIN/GiST/SP-GiST/BRIN indexes, FK/check/unique/exclusion constraints")
     }
 
     func verify(on server: ServerEndpoint, recipe: Recipe, parameters: PackParameters) async throws {

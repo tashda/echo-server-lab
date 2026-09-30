@@ -15,6 +15,7 @@ public struct PostgresEngine: LabEngine {
         PostgresSecurityPack(),
         PostgresPartitioningPack(),
         PostgresExtensionsPack(),
+        PostgresSamplePack(),
     ]
 
     public init() {}
@@ -32,12 +33,22 @@ public struct PostgresEngine: LabEngine {
             environment["POSTGRES_INITDB_ARGS"] = "--lc-collate=\(collation) --lc-ctype=\(collation)"
         }
         return ContainerSpec(
-            image: "postgres:\(recipe.version)",
+            image: try Self.image(version: recipe.version, variant: recipe.settings.imageVariant),
             internalPort: 5432,
             environment: environment,
             command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=200"],
             memoryMB: recipe.settings.memoryMB ?? 1_024
         )
+    }
+
+    /// The official image, or one built on it by the extension's own project.
+    static func image(version: String, variant: String?) throws -> String {
+        switch variant {
+        case nil: "postgres:\(version)"
+        case "pgvector": "pgvector/pgvector:pg\(version)"
+        case "postgis": "postgis/postgis:\(version)-3.5"
+        case let other?: throw ServerLabError.invalidParameter("imageVariant \(other)", expected: "pgvector or postgis")
+        }
     }
 
     public func waitUntilReady(_ server: ServerEndpoint, timeout: Duration) async throws {
@@ -76,7 +87,7 @@ struct PostgresDatabasePack: ContentPack {
     let version = 1
     let summary = "A database next to the default one."
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         let database = try parameters.string("name", default: Self.defaultName)
         try await PostgresSession.with(server) { client in
             guard try await !client.metadata.listDatabases().contains(database) else { return }

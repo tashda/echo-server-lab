@@ -11,13 +11,16 @@ public struct LabHost: Sendable, Hashable {
     public var memoryBudgetMB: Int
     /// True when only the lab uses this host's Docker, so unused volumes may be pruned.
     public var isDedicated: Bool
+    /// Directory on the Docker host holding sample database files (see `LabSamples`).
+    public var samplesDirectory: String
 
-    public init(name: String, dockerHost: String?, address: String, memoryBudgetMB: Int, isDedicated: Bool) {
+    public init(name: String, dockerHost: String?, address: String, memoryBudgetMB: Int, isDedicated: Bool, samplesDirectory: String) {
         self.name = name
         self.dockerHost = dockerHost
         self.address = address
         self.memoryBudgetMB = memoryBudgetMB
         self.isDedicated = isDedicated
+        self.samplesDirectory = samplesDirectory
     }
 
     /// The Proxmox VM `testlab` (192.168.1.153), reached over SSH (`Host testlab` in ~/.ssh/config).
@@ -26,7 +29,8 @@ public struct LabHost: Sendable, Hashable {
         dockerHost: "ssh://testlab",
         address: "192.168.1.153",
         memoryBudgetMB: 12_288,
-        isDedicated: true
+        isDedicated: true,
+        samplesDirectory: "/opt/serverlab/samples"
     )
 
     /// Docker on this Mac (OrbStack, Colima or Docker Desktop).
@@ -35,7 +39,8 @@ public struct LabHost: Sendable, Hashable {
         dockerHost: nil,
         address: "127.0.0.1",
         memoryBudgetMB: 8_192,
-        isDedicated: false
+        isDedicated: false,
+        samplesDirectory: FileManager.default.homeDirectoryForCurrentUser.appending(path: ".echo-testlab/samples").path
     )
 
     /// `SERVERLAB_HOST` selects `testlab` (default) or `local`.

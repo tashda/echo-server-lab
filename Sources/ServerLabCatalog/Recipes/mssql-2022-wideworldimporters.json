@@ -1,0 +1,17 @@
+{
+  "name": "mssql-2022-wideworldimporters",
+  "summary": "SQL Server 2022 with WideWorldImporters (temporal, in-memory, JSON, RLS, columnstore).",
+  "engine": "sqlserver",
+  "version": "2022",
+  "settings": {
+    "memoryMB": 4096
+  },
+  "packs": [
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "WideWorldImporters"
+      }
+    }
+  ]
+}

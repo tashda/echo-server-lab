@@ -1,0 +1,26 @@
+{
+  "name": "mssql-2019-adventureworks",
+  "summary": "SQL Server 2019 with AdventureWorks, AdventureWorksLT and AdventureWorksDW (2017 backups).",
+  "engine": "sqlserver",
+  "version": "2019",
+  "packs": [
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "AdventureWorks"
+      }
+    },
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "AdventureWorksLT"
+      }
+    },
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "AdventureWorksDW"
+      }
+    }
+  ]
+}

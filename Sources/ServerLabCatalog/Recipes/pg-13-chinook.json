@@ -1,0 +1,14 @@
+{
+  "name": "pg-13-chinook",
+  "summary": "PostgreSQL 13 with the Chinook sample database.",
+  "engine": "postgresql",
+  "version": "13",
+  "packs": [
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "chinook"
+      }
+    }
+  ]
+}

@@ -1,6 +1,6 @@
 import Foundation
 import ServerLabCatalog
-import ServerLabKit
+@testable import ServerLabKit
 import Testing
 
 @Suite struct ContainerSpecTests {
@@ -87,5 +87,26 @@ import Testing
         #expect(variables["POSTGRES_HOST"] == "10.0.0.1")
         #expect(variables["POSTGRES_DATABASE"] == "postgres")
         #expect(variables["TDS_HOSTNAME"] == nil)
+    }
+}
+
+@Suite struct DockerStatsParsingTests {
+    @Test func memoryUsageUnits() {
+        #expect(ServerLab.megabytes("1.5GiB") == 1536)
+        #expect(ServerLab.megabytes("512MiB") == 512)
+        #expect(ServerLab.megabytes("2048KiB") == 2)
+        #expect(ServerLab.megabytes("garbage") == 0)
+    }
+}
+
+@Suite struct ImageVariantTests {
+    @Test func postgresVariantsUseTheirProjectsImages() throws {
+        let engine = try #require(ServerLab.standardEngines.first { $0.kind == .postgres })
+        func image(_ variant: String?) throws -> String {
+            try engine.containerSpec(for: Recipe(name: "r", engine: .postgres, version: "18", settings: .init(imageVariant: variant)), password: "p").image
+        }
+        #expect(try image(nil) == "postgres:18")
+        #expect(try image("pgvector") == "pgvector/pgvector:pg18")
+        #expect(throws: ServerLabError.self) { try image("nope") }
     }
 }

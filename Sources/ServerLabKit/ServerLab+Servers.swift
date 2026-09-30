@@ -84,13 +84,33 @@ extension ServerLab {
         return expired.count
     }
 
-    /// Memory reserved by lab containers that are running now, in MB.
+    /// Memory taken on the host, in MB: the limits of running lab containers plus what every other
+    /// container actually uses (other tools share the host, e.g. sqlserver-nio's nio-lab fixtures).
     public func reservedMemoryMB() async throws -> Int {
-        let ids = try await docker.run(["ps", "--quiet", "--filter", "label=\(LabLabels.managed)=true"])
-            .split(separator: "\n").map(String.init)
-        guard !ids.isEmpty else { return 0 }
-        let limits = try await docker.run(["inspect", "--format", "{{.HostConfig.Memory}}"] + ids)
-        return limits.split(separator: "\n").compactMap { Int($0) }.reduce(0, +) / (1024 * 1024)
+        let labIDs = Set(try await docker.run(["ps", "--quiet", "--no-trunc", "--filter", "label=\(LabLabels.managed)=true"])
+            .split(separator: "\n").map(String.init))
+        var reserved = 0
+        if !labIDs.isEmpty {
+            let limits = try await docker.run(["inspect", "--format", "{{.HostConfig.Memory}}"] + labIDs.sorted())
+            reserved += limits.split(separator: "\n").compactMap { Int($0) }.reduce(0, +) / (1024 * 1024)
+        }
+        let usage = try await docker.run(["stats", "--no-stream", "--format", "{{.ID}}\t{{.MemUsage}}"])
+        for line in usage.split(separator: "\n") {
+            let fields = line.split(separator: "\t")
+            guard fields.count == 2, !labIDs.contains(where: { $0.hasPrefix(fields[0]) }) else { continue }
+            reserved += Self.megabytes(String(fields[1].split(separator: "/").first ?? ""))
+        }
+        return reserved
+    }
+
+    /// "1.089GiB" or "512MiB" (docker stats) in MB.
+    static func megabytes(_ text: String) -> Int {
+        let trimmed = text.trimmingCharacters(in: .whitespaces)
+        let units: [(String, Double)] = [("GiB", 1024), ("MiB", 1), ("KiB", 1.0 / 1024), ("GB", 1000), ("MB", 1), ("kB", 1.0 / 1000), ("B", 1.0 / 1_048_576)]
+        for (unit, factor) in units where trimmed.hasSuffix(unit) {
+            return Int((Double(trimmed.dropLast(unit.count)) ?? 0) * factor)
+        }
+        return 0
     }
 
     func waitForBudget(neededMB: Int, log: LabLog) async throws {
@@ -118,7 +138,8 @@ extension ServerLab {
         lease: Duration,
         fingerprint: String?,
         environment: [String: String],
-        command: [String]
+        command: [String],
+        extraArguments: [String] = []
     ) async throws -> StartedContainer {
         let name = "serverlab-\(recipe.name)-\(UUID().uuidString.prefix(8).lowercased())"
         var labels = [
@@ -144,6 +165,7 @@ extension ServerLab {
              "--publish", String(spec.internalPort),
              "--memory", "\(spec.memoryMB)m", "--memory-swap", "\(spec.memoryMB)m"]
             + LabLabels.arguments(labels)
+            + extraArguments
             + [image] + command
         )
         let mapping = try await docker.run(["port", id, "\(spec.internalPort)/tcp"])

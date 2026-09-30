@@ -12,7 +12,7 @@ struct PostgresSecurityPack: ContentPack {
     let version = 1
     let summary = "Roles with every attribute, nested membership, database/schema/table/column/default privileges, row-level security."
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         let database = try parameters.string("database", default: PostgresDatabasePack.defaultName)
         let password = server.password
         // Roles are cluster-wide; create them from the default database.
@@ -59,7 +59,7 @@ struct PostgresSecurityPack: ContentPack {
             _ = try await security.createPolicy(name: "hide_high_salaries", table: "salaries", schema: Self.schema, command: .select,
                                                 to: ["PUBLIC"], using: "salary <= 70000", permissive: false)
         }
-        log("  8 roles, nested membership, privileges down to columns, 2 row-level security policies")
+        context.log("  8 roles, nested membership, privileges down to columns, 2 row-level security policies")
     }
 
     func verify(on server: ServerEndpoint, recipe: Recipe, parameters: PackParameters) async throws {

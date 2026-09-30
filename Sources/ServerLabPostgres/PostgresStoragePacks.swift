@@ -9,7 +9,7 @@ struct PostgresPartitioningPack: ContentPack {
     let version = 1
     let summary = "Range (with default), list and hash partitioned tables with rows in every partition."
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         let database = try parameters.string("database", default: PostgresDatabasePack.defaultName)
         try await PostgresSession.with(server, database: database) { client in
             let admin = client.admin
@@ -52,7 +52,7 @@ struct PostgresPartitioningPack: ContentPack {
                 [PostgresInsertValue($0), .jsonbLiteral(#"{"n": \#($0)}"#)]
             })
         }
-        log("  orders by range (5 partitions incl. default), customers by list, events by hash")
+        context.log("  orders by range (5 partitions incl. default), customers by list, events by hash")
     }
 
     func verify(on server: ServerEndpoint, recipe: Recipe, parameters: PackParameters) async throws {
@@ -82,7 +82,7 @@ struct PostgresExtensionsPack: ContentPack {
     static let extensions = ["citext", "hstore", "ltree", "pg_trgm", "uuid-ossp", "pgcrypto", "btree_gist", "intarray",
                              "fuzzystrmatch", "tablefunc", "unaccent", "cube", "earthdistance", "postgres_fdw"]
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         let database = try parameters.string("database", default: PostgresDatabasePack.defaultName)
         try await PostgresSession.with(server, database: database) { client in
             for extensionName in Self.extensions {
@@ -128,7 +128,7 @@ struct PostgresExtensionsPack: ContentPack {
                 PostgresColumnDefinition(name: "title", dataType: "text"),
             ], options: ["schema_name": Self.schema, "table_name": "catalog_items"])
         }
-        log("  \(Self.extensions.count) extensions, catalog_items using them, postgres_fdw loopback foreign table")
+        context.log("  \(Self.extensions.count) extensions, catalog_items using them, postgres_fdw loopback foreign table")
     }
 
     func verify(on server: ServerEndpoint, recipe: Recipe, parameters: PackParameters) async throws {

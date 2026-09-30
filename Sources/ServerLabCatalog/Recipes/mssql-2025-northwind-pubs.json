@@ -1,0 +1,20 @@
+{
+  "name": "mssql-2025-northwind-pubs",
+  "summary": "SQL Server 2025 with Northwind and pubs.",
+  "engine": "sqlserver",
+  "version": "2025",
+  "packs": [
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "Northwind"
+      }
+    },
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "pubs"
+      }
+    }
+  ]
+}

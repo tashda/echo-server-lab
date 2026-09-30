@@ -34,6 +34,11 @@ public protocol LabEngine: Sendable {
     func waitUntilReady(_ server: ServerEndpoint, timeout: Duration) async throws
 }
 
+extension ContentPack {
+    /// Sample files (`LabSamples`) the pack needs mounted in the builder. Most packs need none.
+    public func requiredSamples(parameters: PackParameters) throws -> [String] { [] }
+}
+
 extension LabEngine {
     public func pack(named name: String) -> (any ContentPack)? {
         packs.first { $0.name == name }
@@ -47,9 +52,10 @@ public protocol ContentPack: Sendable {
     var version: Int { get }
     var summary: String { get }
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws
     /// Throws `ServerLabError.packCheckFailed` when the server does not hold what the pack promised.
     func verify(on server: ServerEndpoint, recipe: Recipe, parameters: PackParameters) async throws
+    func requiredSamples(parameters: PackParameters) throws -> [String]
 }
 
 public struct ContainerSpec: Sendable, Hashable {

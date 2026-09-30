@@ -13,7 +13,7 @@ struct SQLServerProgrammabilityPack: ContentPack {
     let version = 1
     let summary = "Schemas, views, indexed view, procedures, scalar/inline/multi-statement functions, triggers, sequences, synonyms, types."
 
-    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, log: LabLog) async throws {
+    func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         let database = try parameters.string("database", default: SQLServerDatabasePack.defaultName)
         let customers = try parameters.int("customers", default: 50)
         try await SQLServerSession.with(server, database: database) { client in
@@ -26,7 +26,7 @@ struct SQLServerProgrammabilityPack: ContentPack {
             try await Self.createTriggers(client, database: database)
             try await Self.createSequencesSynonymsAndTypes(client, database: database)
         }
-        log("  schemas, tables, views, procedures, functions, triggers, sequences, synonyms, types")
+        context.log("  schemas, tables, views, procedures, functions, triggers, sequences, synonyms, types")
     }
 
     func verify(on server: ServerEndpoint, recipe: Recipe, parameters: PackParameters) async throws {

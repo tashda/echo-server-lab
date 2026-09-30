@@ -1,0 +1,17 @@
+{
+  "name": "mssql-2017-wideworldimporters",
+  "summary": "SQL Server 2017 with WideWorldImporters (temporal, in-memory, JSON, RLS, columnstore).",
+  "engine": "sqlserver",
+  "version": "2017",
+  "settings": {
+    "memoryMB": 4096
+  },
+  "packs": [
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "WideWorldImporters"
+      }
+    }
+  ]
+}
