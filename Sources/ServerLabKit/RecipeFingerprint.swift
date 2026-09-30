@@ -1,4 +1,4 @@
-import Crypto
+import CryptoKit
 import Foundation
 
 /// Identifies a seeded image: the same recipe, pack versions, base image and password give the same
