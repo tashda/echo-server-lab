@@ -1,0 +1,642 @@
+{
+  "_meta": {
+    "source": "MS-TDS v20260223 §2.2.6",
+    "note": "TDS client and server message definitions. Messages are framed in TDS packets (8-byte header + payload)."
+  },
+  "packet_header": {
+    "description": "All TDS messages are wrapped in packets with an 8-byte header",
+    "structure": [
+      {
+        "field": "Type",
+        "offset": 0,
+        "size": 1,
+        "desc": "Packet type (see packet_types)"
+      },
+      {
+        "field": "Status",
+        "offset": 1,
+        "size": 1,
+        "desc": "0x00=normal, 0x01=EOM (last packet of message), 0x02=IGNORE, 0x08=RESETCONNECTION, 0x10=RESETCONNECTIONSKIPTRAN"
+      },
+      {
+        "field": "Length",
+        "offset": 2,
+        "size": 2,
+        "endian": "big-endian",
+        "desc": "Total packet length including header (512-32767 bytes per negotiated size)"
+      },
+      {
+        "field": "SPID",
+        "offset": 4,
+        "size": 2,
+        "endian": "big-endian",
+        "desc": "Server Process ID; server sets this; client sends 0x0000"
+      },
+      {
+        "field": "PacketID",
+        "offset": 6,
+        "size": 1,
+        "desc": "Sequence counter 1-255, wraps to 1 (not 0). Resets to 0 on new connection."
+      },
+      {
+        "field": "Window",
+        "offset": 7,
+        "size": 1,
+        "desc": "Always 0x00 (unused)"
+      }
+    ]
+  },
+  "packet_types": {
+    "0x01": "SQL Batch (client→server)",
+    "0x02": "Pre-TDS7 Login (legacy, client→server)",
+    "0x03": "RPC Request (client→server)",
+    "0x04": "Tabular Result (server→client, token stream)",
+    "0x06": "Attention (client→server, cancel)",
+    "0x07": "Bulk Load (client→server)",
+    "0x08": "Federated Authentication Token (client→server)",
+    "0x0E": "Transaction Manager Request (client→server)",
+    "0x10": "TDS7+ Login (client→server)",
+    "0x11": "SSPI (client→server)",
+    "0x12": "PRELOGIN (client→server; also used for TLS handshake encapsulation in TDS 7.x)"
+  },
+  "all_headers": {
+    "description": "ALL_HEADERS structure prepended to SQLBatch, RPC, and TransactionManagerRequest messages",
+    "section": "2.2.5.3",
+    "structure": [
+      {
+        "field": "TotalLength",
+        "type": "ULONG",
+        "desc": "Total byte count of ALL_HEADERS structure including TotalLength field itself"
+      },
+      {
+        "field": "Headers",
+        "type": "REPEAT",
+        "fields": [
+          {
+            "field": "HeaderLength",
+            "type": "ULONG",
+            "desc": "Length of this header including HeaderLength field"
+          },
+          {
+            "field": "HeaderType",
+            "type": "USHORT",
+            "desc": "0x0002=Query Notifications, 0x0003=MARS SMP, 0x0004=Trace Activity"
+          },
+          {
+            "field": "HeaderData",
+            "type": "BYTES"
+          }
+        ]
+      }
+    ],
+    "transaction_descriptor_header": {
+      "type": "0x0002",
+      "description": "Transaction descriptor header (most commonly needed)",
+      "fields": [
+        {
+          "field": "TransactionDescriptor",
+          "type": "8 BYTES (ULONGLONG)",
+          "desc": "Current transaction descriptor from ENVCHANGE type 8"
+        },
+        {
+          "field": "OutstandingRequestCount",
+          "type": "ULONG",
+          "desc": "Number of open requests on current connection; typically 1"
+        }
+      ],
+      "note": "For non-MARS, non-transactional requests: TransactionDescriptor = 0x0000000000000000"
+    }
+  },
+  "messages": [
+    {
+      "name": "PRELOGIN",
+      "direction": "client",
+      "packet_type": "0x12",
+      "section": "2.2.6.5",
+      "description": "Initial handshake. Client sends version, encryption support, MARS support, and optional trace/nonce info. Server responds with its own PRELOGIN. In TDS 7.x, TLS handshake follows using PRELOGIN packet type.",
+      "structure": {
+        "format": "Option token table followed by option data",
+        "option_table": "PL_OPTION_TOKEN(1) + Offset(2, big-endian) + Length(2, big-endian) repeated for each option, terminated by TERMINATOR(0xFF)",
+        "option_tokens": [
+          {
+            "token": "0x00",
+            "name": "VERSION",
+            "length": 6,
+            "format": "MajorVer(1) + MinorVer(1) + SubBuild(2, little-endian) + Build(2, little-endian)"
+          },
+          {
+            "token": "0x01",
+            "name": "ENCRYPTION",
+            "length": 1,
+            "values": {
+              "0x00": "ENCRYPT_OFF",
+              "0x01": "ENCRYPT_ON",
+              "0x02": "ENCRYPT_NOT_SUP",
+              "0x03": "ENCRYPT_REQ",
+              "0x80": "ENCRYPT_CLIENT_CERT (bit; sent as 0x80 with OFF, 0x81 with ON, 0x83 with REQ)",
+              "0x20": "ENCRYPT_EXT (reserved bit)"
+            }
+          },
+          {
+            "token": "0x02",
+            "name": "INSTOPT",
+            "format": "Variable-length instance name (null-terminated ASCII)"
+          },
+          {
+            "token": "0x03",
+            "name": "THREADID",
+            "length": 4,
+            "format": "Client thread ID (for diagnostics)"
+          },
+          {
+            "token": "0x04",
+            "name": "MARS",
+            "length": 1,
+            "values": {
+              "0x00": "MARS disabled",
+              "0x01": "MARS enabled"
+            }
+          },
+          {
+            "token": "0x05",
+            "name": "TRACEID",
+            "length": 36,
+            "format": "ConnectionID(16 bytes GUID) + ActivityID(16 bytes GUID) + ActivitySeq(4 bytes ULONG)",
+            "note": "TDS 7.4+"
+          },
+          {
+            "token": "0x06",
+            "name": "FEDAUTHREQUIRED",
+            "length": 1,
+            "values": {
+              "0x00": "Federated auth not required",
+              "0x01": "Federated auth required"
+            }
+          },
+          {
+            "token": "0x07",
+            "name": "NONCEOPT",
+            "length": 32,
+            "format": "32-byte client nonce for federated auth"
+          },
+          {
+            "token": "0xFF",
+            "name": "TERMINATOR",
+            "length": 0,
+            "format": "End of option table"
+          }
+        ]
+      },
+      "encryption_negotiation_matrix": {
+        "description": "Final encryption determined by combining client and server ENCRYPTION values",
+        "rules": [
+          "Client ENCRYPT_ON + Server ENCRYPT_ON → Encrypt all",
+          "Client ENCRYPT_ON + Server ENCRYPT_NOT_SUP → Connection failed",
+          "Client ENCRYPT_NOT_SUP + Server ENCRYPT_ON → Encrypt login only (TDS 7.x) or Connection failed (TDS 8.0)",
+          "Client ENCRYPT_OFF + Server ENCRYPT_OFF → No encryption",
+          "Client ENCRYPT_REQ + any Server not ENCRYPT_REQ → Connection failed",
+          "TDS 8.0: TLS established before PRELOGIN, so encryption always active"
+        ]
+      }
+    },
+    {
+      "name": "LOGIN7",
+      "direction": "client",
+      "packet_type": "0x10",
+      "section": "2.2.6.4",
+      "description": "Client login request. Complex fixed-header + variable-length data section + optional FeatureExt.",
+      "fixed_header_fields": [
+        {
+          "field": "Length",
+          "type": "ULONG",
+          "desc": "Total length of LOGIN7 record"
+        },
+        {
+          "field": "TDSVersion",
+          "type": "ULONG",
+          "desc": "0x74000004=TDS7.4, 0x73000000=TDS7.3, etc."
+        },
+        {
+          "field": "PacketSize",
+          "type": "ULONG",
+          "desc": "Requested packet size (512-32767)"
+        },
+        {
+          "field": "ClientProgVer",
+          "type": "ULONG",
+          "desc": "Client program version"
+        },
+        {
+          "field": "ClientPID",
+          "type": "ULONG",
+          "desc": "Client process ID"
+        },
+        {
+          "field": "ConnectionID",
+          "type": "ULONG",
+          "desc": "Connection ID (0 for initial)"
+        },
+        {
+          "field": "OptionFlags1",
+          "type": "BYTE",
+          "desc": "fByteOrder(1=big-endian), fChar(1=EBCDIC), fFloat(2-bit: 0=IEEE754 LE, 1=IEEE754 BE, 2=VAX), fDumpLoad, fUseDB, fDatabase, fSetLang"
+        },
+        {
+          "field": "OptionFlags2",
+          "type": "BYTE",
+          "desc": "fLanguage, fODBC, fTransBoundary, fCacheConnect, fUserType(3-bit: 0=normal, 1=server, 2=remuser, 3=sqlrepl), fIntSecurity(1=integrated security/SSPI)"
+        },
+        {
+          "field": "TypeFlags",
+          "type": "BYTE",
+          "desc": "fSQLType(4-bit: 0=SQL_DFLT, 1=SQL_TSQL), fOLEDB, fReadOnlyIntent"
+        },
+        {
+          "field": "OptionFlags3",
+          "type": "BYTE",
+          "desc": "fChangePassword, fSendYukonBinaryXML, fUserInstance, fUnknownCollationHandling, fExtension(1=FeatureExt present)"
+        },
+        {
+          "field": "ClientTimezone",
+          "type": "LONG"
+        },
+        {
+          "field": "ClientLCID",
+          "type": "ULONG"
+        },
+        {
+          "field": "OffsetLength fields",
+          "type": "13x (Offset:USHORT + Length:USHORT)",
+          "desc": "ibHostName/cchHostName, ibUserName/cchUserName, ibPassword/cchPassword, ibAppName/cchAppName, ibServerName/cchServerName, ibExtension/cbExtension, ibCltIntName/cchCltIntName, ibLanguage/cchLanguage, ibDatabase/cchDatabase, ibClientID(6 bytes), ibSSPI/cbSSPI, ibAtchDBFile/cchAtchDBFile, ibChangePassword/cchChangePassword"
+        },
+        {
+          "field": "cbSSPILong",
+          "type": "ULONG",
+          "desc": "If cbSSPI > 0xFFFF use this field for actual SSPI length"
+        }
+      ],
+      "variable_data": "Hostname + Username + Password + AppName + ServerName + Extension(FeatureExt if fExtension=1) + InterfaceName + Language + Database + ClientID(6) + SSPI + AttachDBFile + NewPassword",
+      "password_encoding": "Swap high and low nibbles of each byte, then XOR with 0xA5. Encoded in UTF-16LE.",
+      "feature_ext": {
+        "description": "Optional feature negotiation appended to LOGIN7 data when OptionFlags3.fExtension=1",
+        "format": "1*FeatureExtOpt terminated by TERMINATOR(0xFF). Each FeatureExtOpt: FeatureId(1) + FeatureDataLen(4) + FeatureData.",
+        "feature_ids": [
+          {
+            "id": "0x01",
+            "name": "SESSIONRECOVERY",
+            "data_format": "SessionRecoveryDataToBe: 1*SessionStateData (see SESSIONSTATE token)"
+          },
+          {
+            "id": "0x02",
+            "name": "FEDAUTH",
+            "data_format": "bFedAuthLibrary(1) + bFedAuthEcho(1 bit) + [token data based on bFedAuthLibrary]"
+          },
+          {
+            "id": "0x04",
+            "name": "COLUMNENCRYPTION",
+            "data_format": "COLUMNENCRYPTION_VERSION(1) + [EnclaveType if version>=2]"
+          },
+          {
+            "id": "0x05",
+            "name": "GLOBALTRANSACTIONS",
+            "data_format": "empty (0 bytes)"
+          },
+          {
+            "id": "0x08",
+            "name": "AZURESQLSUPPORT",
+            "data_format": "empty (0 bytes)"
+          },
+          {
+            "id": "0x09",
+            "name": "DATACLASSIFICATION",
+            "data_format": "DATACLASSIFICATION_VERSION(1): 1=basic, 2=with ranking"
+          },
+          {
+            "id": "0x0A",
+            "name": "UTF8_SUPPORT",
+            "data_format": "empty (0 bytes)"
+          },
+          {
+            "id": "0x0B",
+            "name": "AZURESQLDNSCACHING",
+            "data_format": "empty (0 bytes)"
+          },
+          {
+            "id": "0x0D",
+            "name": "JSONSUPPORT",
+            "data_format": "JSONSUPPORT_VERSION(1)=1"
+          },
+          {
+            "id": "0x0E",
+            "name": "VECTORSUPPORT",
+            "data_format": "VECTORSUPPORT_VERSION(1)=1"
+          },
+          {
+            "id": "0x0F",
+            "name": "ENHANCEDROUTINGSUPPORT",
+            "data_format": "empty (0 bytes)"
+          },
+          {
+            "id": "0x10",
+            "name": "USERAGENT",
+            "data_format": "UserAgent string bytes"
+          },
+          {
+            "id": "0xFF",
+            "name": "TERMINATOR",
+            "data_format": "End of FeatureExt"
+          }
+        ]
+      }
+    },
+    {
+      "name": "SQLBatch",
+      "direction": "client",
+      "packet_type": "0x01",
+      "section": "2.2.6.7",
+      "description": "Sends one or more SQL statements as Unicode text.",
+      "structure": "ALL_HEADERS + [EnclavePackage] + SQLText(UNICODESTREAM)",
+      "notes": [
+        "EnclavePackage only for Always Encrypted with enclave computations (TDS 7.4)"
+      ]
+    },
+    {
+      "name": "RPC",
+      "direction": "client",
+      "packet_type": "0x03",
+      "section": "2.2.6.6",
+      "description": "Remote Procedure Call. Calls stored procedures by name (US_VARCHAR) or well-known ProcID. Client sends typed parameters; server returns RETURNSTATUS + RETURNVALUE* for output params.",
+      "structure": "ALL_HEADERS + ProcIDSwitch + OptionFlags(2) + 0*ParameterData",
+      "proc_id_switch": {
+        "note": "CRITICAL: US_VARCHAR and B_VARCHAR use CHARACTER count in the length prefix, NOT byte count. Server reads length_field * 2 bytes of UTF-16LE data. Writing byte count (chars * 2) instead of char count doubles the server's read length → 'TDS stream incorrect'.",
+        "user_proc_by_name": "US_VARCHAR: USHORT(char_count) + UTF-16LE chars. No 0xFFFF prefix for named procs.",
+        "builtin_proc_by_id": "0xFFFF(2) + USHORT(ProcID). IDs: 1=sp_cursor, 2=sp_cursoropen, 3=sp_cursorprepare, 4=sp_cursorexecute, 5=sp_cursorprepexec, 6=sp_cursorunprepare, 7=sp_cursorfetch, 8=sp_cursoroption, 9=sp_cursorclose, 11=sp_executesql, 12=sp_prepare, 13=sp_execute, 14=sp_prepexec, 15=sp_unprepare"
+      },
+      "string_length_encoding": {
+        "US_VARCHAR": "USHORT = character count (NOT byte count). Then character_count * 2 bytes of UTF-16LE follow. Used for: procedure names, some other string fields. USHORT max = 65535 chars.",
+        "B_VARCHAR": "BYTE = character count (NOT byte count). Then character_count * 2 bytes of UTF-16LE follow. Used for: parameter names, column names, short strings. BYTE max = 255 chars.",
+        "US_VARBYTE": "USHORT = byte count. Then byte_count bytes follow. Used for binary data, SSPI tokens.",
+        "B_VARBYTE": "BYTE = byte count. Then byte_count bytes follow.",
+        "swift_read_example": "readUSVarchar(): readUShort() → N chars, then readUTF16String(length: N*2). readBVarchar(): readByte() → N chars, then readUTF16String(length: N*2).",
+        "swift_write_example": "For US_VARCHAR proc name: buffer.writeInteger(UInt16(procChars.count), endianness: .little) — NOT procChars.count*2 (byte count)."
+      },
+      "option_flags": "2 bytes: Bit 0x0001=WITH RECOMPILE, Bit 0x0002=NoMetaData (server sends COLMETADATA 0xFFFF)",
+      "parameter_data": {
+        "fields": [
+          {
+            "field": "ParamName",
+            "type": "B_VARCHAR (1-byte char count + UTF-16LE chars)",
+            "desc": "Parameter name including @; max 128 chars. Length=0 for unnamed params. Server returns this name (with @) in RETURNVALUE tokens."
+          },
+          {
+            "field": "StatusFlags",
+            "type": "BYTE",
+            "desc": "0x00=input, 0x01=ByRef (output parameter). Server sends RETURNVALUE for each output parameter."
+          },
+          {
+            "field": "TYPE_INFO",
+            "type": "TYPE_INFO",
+            "desc": "Type hint for the parameter. Server uses declared parameter type for conversion."
+          },
+          {
+            "field": "Value",
+            "type": "TYPE_VARBYTE"
+          }
+        ],
+        "type_encoding_by_kind": {
+          "INTN": "0x26 + MaxLen(1: 1/2/4/8) + ByteLen(1: 0=null, else=MaxLen) + data. MaxLen=0 is INVALID — always use 1/2/4/8.",
+          "NVARCHAR": "0xE7 + MaxLen(2, byte count, e.g. 8000 for NVARCHAR(4000)) + Collation(5) + ActualLen(2, byte count, 0xFFFF=null) + UTF-16LE data.",
+          "VARCHAR": "0xA7 + MaxLen(2, byte count, e.g. 8000) + Collation(5) + ActualLen(2, 0xFFFF=null) + bytes.",
+          "null_placeholder_for_out": "When param.data is nil for an OUTPUT param, send NVARCHAR(8000) NULL: 0xE7 + 0x40 0x1F + 5-zero-collation + 0xFF 0xFF. Server uses the declared parameter type regardless of client type hint.",
+          "TDSData_string_note": "TDSData(string:) stores UTF-16LE bytes with .varchar metadata (historical). In RPC encoding, re-emit as NVARCHAR to avoid server interpreting UTF-16LE bytes as single-byte varchar characters."
+        }
+      },
+      "server_response_token_order": "RETURNSTATUS(0x79, Int32) → RETURNVALUE*(0xAC, one per output param) → [COLMETADATA + ROW*] → DONEINPROC* → DONEPROC",
+      "known_bugs_fixed_sqlserver_nio": [
+        "FIXED 2026-03-04: US_VARCHAR proc name wrote byte count (chars*2) instead of char count → 'TDS stream incorrect'",
+        "FIXED 2026-03-04: NULL param encoding sent INTN MaxLen=0 (invalid) → use NVARCHAR(8000) NULL for unknown-type out params",
+        "FIXED 2026-03-04: nvarchar maxLen used actual value byte count (0 for empty string) → use 8000 as default maxLen",
+        "FIXED 2026-03-04: TokenHandler.onReturnValue called callback twice (once directly, once via tokenHandler) → doubled return values",
+        "FIXED 2026-03-04: call() returnValues never populated (missing onReturnValue callback in RpcRequest)"
+      ]
+    },
+    {
+      "name": "BulkLoad",
+      "direction": "client",
+      "packet_type": "0x07",
+      "section": "2.2.6.2",
+      "description": "Bulk insert data. Initiated by INSERT BULK T-SQL statement. Binary data stream, not token-based.",
+      "structure": "Binary data matching the format described by the INSERT BULK statement metadata"
+    },
+    {
+      "name": "Attention",
+      "direction": "client",
+      "packet_type": "0x06",
+      "section": "2.2.6.1",
+      "description": "Requests server cancel the current outstanding request. No payload — header only. Server acknowledges with DONE token (DONE_ATTN bit set).",
+      "structure": "No payload (8-byte header only)"
+    },
+    {
+      "name": "FederatedAuthToken",
+      "direction": "client",
+      "packet_type": "0x08",
+      "section": "2.2.6.3",
+      "description": "Sends federated authentication token to server after receiving FEDAUTHINFO.",
+      "structure": "TokenLength(4) + Token bytes + [Nonce signature if applicable]"
+    },
+    {
+      "name": "SSPI",
+      "direction": "client",
+      "packet_type": "0x11",
+      "section": "2.2.6.8",
+      "description": "SPNEGO/SSPI security token. Initial token sent in LOGIN7 body; subsequent exchanges use SSPI message type. Server responds with SSPI token or final LOGINACK.",
+      "structure": "SSPIData = US_VARCHAR format (2-byte length + bytes)"
+    },
+    {
+      "name": "TransactionManagerRequest",
+      "direction": "client",
+      "packet_type": "0x0E",
+      "section": "2.2.6.9",
+      "description": "Transaction control (begin, commit, rollback, savepoint, DTC).",
+      "structure": "ALL_HEADERS + RequestType(USHORT) + [RequestPayload]",
+      "request_types": [
+        {
+          "type": 0,
+          "name": "TM_GET_DTC_ADDRESS",
+          "payload": "US_VARBYTE (zero-length)",
+          "response": "Single-column binary result set with DTC network address"
+        },
+        {
+          "type": 1,
+          "name": "TM_PROPAGATE_XACT",
+          "payload": "US_VARBYTE (opaque DTC buffer)",
+          "response": "Local transaction descriptor in varbinary result set"
+        },
+        {
+          "type": 5,
+          "name": "TM_BEGIN_XACT",
+          "payload": "ISOLATION_LEVEL(1) + BEGIN_XACT_NAME(B_VARBYTE)",
+          "note": "TDS 7.2+; ISOLATION_LEVEL: 0x00=current, 0x01=ReadUncommitted, 0x02=ReadCommitted, 0x03=RepeatableRead, 0x04=Serializable, 0x05=Snapshot"
+        },
+        {
+          "type": 6,
+          "name": "TM_PROMOTE_XACT",
+          "payload": "none",
+          "note": "TDS 7.2+; promotes local transaction to distributed; only for transactions started by TM_BEGIN_XACT or piggybacked"
+        },
+        {
+          "type": 7,
+          "name": "TM_COMMIT_XACT",
+          "payload": "XACT_NAME(B_VARBYTE) + XACT_FLAGS(BYTE: fBeginXact+7reserved) + [ISOLATION_LEVEL if fBeginXact=1] + [BEGIN_XACT_NAME if fBeginXact=1]",
+          "note": "TDS 7.2+"
+        },
+        {
+          "type": 8,
+          "name": "TM_ROLLBACK_XACT",
+          "payload": "Same as TM_COMMIT_XACT",
+          "note": "TDS 7.2+; if XACT_NAME=savepoint name, rolls back to savepoint only"
+        },
+        {
+          "type": 9,
+          "name": "TM_SAVE_XACT",
+          "payload": "XACT_SAVEPOINT_NAME(B_VARBYTE)",
+          "note": "TDS 7.2+; nonempty name required"
+        }
+      ],
+      "notes": [
+        "For MARS-capable clients, explicit transactions should use TransactionManagerRequest messages; issuing raw SQL BEGIN/COMMIT/ROLLBACK without updating the client transaction descriptor breaks subsequent SQLBatch/RPC framing.",
+        "While an explicit transaction is active, every SQLBatch, RPC, and TransactionManagerRequest MUST carry the current transaction descriptor in ALL_HEADERS.TransactionDescriptor.",
+        "The transaction descriptor value is learned from ENVCHANGE type 8 and cleared when ENVCHANGE type 9, 10, or 17 is received."
+      ]
+    },
+    {
+      "name": "TabularResult (Login Response)",
+      "direction": "server",
+      "packet_type": "0x04",
+      "description": "Server response to LOGIN7. Contains token stream: [ENVCHANGE...] LOGINACK [FEATUREEXTACK] DONE",
+      "typical_token_sequence": [
+        "ENVCHANGE (database)",
+        "ENVCHANGE (packet size)",
+        "ENVCHANGE (language)",
+        "LOGINACK",
+        "FEATUREEXTACK (if FeatureExt negotiated)",
+        "DONE (DONE_FINAL)"
+      ]
+    },
+    {
+      "name": "TabularResult (Query Response)",
+      "direction": "server",
+      "packet_type": "0x04",
+      "description": "Server response to SQLBatch or RPC. Token stream varies by query type.",
+      "select_token_sequence": [
+        "COLMETADATA",
+        "ROW* (or NBCROW*)",
+        "DONE (with row count if SELECT)"
+      ],
+      "stored_proc_token_sequence": [
+        "RETURNSTATUS",
+        "RETURNVALUE* (output params)",
+        "COLMETADATA",
+        "ROW*",
+        "DONEINPROC*",
+        "DONEPROC"
+      ],
+      "error_token_sequence": [
+        "ERROR",
+        "DONE (DONE_ERROR set)"
+      ],
+      "notes": [
+        "Under MARS, query requests inside an explicit transaction must reuse the current transaction descriptor in ALL_HEADERS; a zero descriptor is only valid when no explicit transaction is active.",
+        "Clients should treat ENVCHANGE types 8, 9, 10, and 17 as connection-level transaction state updates, not just informational tokens."
+      ]
+    }
+  ],
+  "known_issues_sqlserver_nio": [
+    {
+      "id": "tds-version-upgrade",
+      "title": "TDS Version: Must negotiate 7.3+ for native date/time types",
+      "fixed_date": "2026-03-04",
+      "symptom": "DATE, TIME, DATETIME2, DATETIMEOFFSET columns returned as nvarchar strings instead of native types",
+      "root_cause": "Login7Message.swift was sending TDS 7.2 (0x72090002). SQL Server downconverts newer types to nvarchar for TDS 7.2 clients.",
+      "fix": "Login7Message.swift: changed TDS version bytes to 7.4 (0x04000074 → bytes [0x04, 0x00, 0x00, 0x74]). TDS 7.3+ is the minimum for native DATE/TIME/DATETIME2/DATETIMEOFFSET.",
+      "tds_ref": "§2.2.6.4 LOGIN7 TDSVersion field"
+    },
+    {
+      "id": "bytelen-type-row-parsing",
+      "title": "BYTELEN_TYPE (date/time) row values need 1-byte length prefix read",
+      "fixed_date": "2026-03-04",
+      "symptom": "DATE, TIME, DATETIME2, DATETIMEOFFSET columns decode incorrectly; null handling broken",
+      "root_cause": "TDSTokenParser.swift parseColumnValue() was reading fixed-length bytes directly. With TDS 7.3+, these types are BYTELEN_TYPE: each row value has a 1-byte length prefix (0x00=null, N=N data bytes).",
+      "fix": "parseColumnValue() case .date, .time, .datetime2, .datetimeOffset: use readByteLengthPayload(nullMarker: 0x00) to read the 1-byte length prefix first.",
+      "wire_format": {
+        "date": "0x03 03_bytes_LE_days",
+        "time_scale_s": "0x03..0x05 (3-5 bytes depending on scale)",
+        "datetime2_scale_s": "0x06..0x08 (time_bytes + 3 date bytes)",
+        "datetimeoffset_scale_s": "0x08..0x0A (time_bytes + 3 date bytes + 2 offset bytes)"
+      },
+      "tds_ref": "§2.2.5.5.1.5 BYTELEN_TYPE, §2.2.5.4 type date 0x28, time 0x29, datetime2 0x2A, datetimeoffset 0x2B"
+    },
+    {
+      "id": "colmetadata-scale-double-read",
+      "title": "COLMETADATA scale byte double-read for time/datetime2/datetimeoffset",
+      "fixed_date": "2026-03-04",
+      "symptom": "SELECT returning time/datetime2/datetimeoffset columns parses 0 tokens; query appears to hang or stall",
+      "root_cause": "TDSTokenParser+ColMetadata.swift length switch fell through to 'default' case (reads 1 byte as length) for time/datetime2/datetimeoffset. Then isScaleType()=true read ANOTHER byte as scale. Two bytes consumed where one expected → buffer misaligned → needMoreData loop.",
+      "fix": "Add explicit cases in the ColMetadata length switch: case .time, .datetime2, .datetimeOffset: length = 0 (no length byte; scale byte handled separately by isScaleType path). Case .date: length = 3 (DATE has no scale).",
+      "tds_ref": "§2.2.5.5.1.3 FIXEDLENTYPE, TYPE_INFO for time/datetime2/datetimeoffset have only a Scale byte, no MaxLen."
+    },
+    {
+      "id": "listcolumns-concurrent-schema-queries",
+      "title": "listColumns concurrent calls trigger N full-schema queries",
+      "fixed_date": "2026-03-04",
+      "symptom": "listColumns() for N tables in the same schema concurrently causes timeout (10s per operation) for large schemas (AdventureWorks Production/Sales with 25+ tables)",
+      "root_cause": "schema_catalog mode called listColumnsForSchema() which runs loadColumnsFromCatalogForDatabase() — a full-schema JOIN query. N concurrent calls = N full-schema queries on the DB simultaneously. Cache only helped after first query completed, not for concurrent starters.",
+      "fix": "Changed listColumns() schema_catalog path to call loadColumnsFromCatalog(isView:false, includeDefaultMetadata:true) — a fast per-table query. This also provides defaultDefinition. isView=false is safe for both tables and views (view columns have no default/computed constraints so LEFT JOINs return NULL naturally). Also removed unnecessary isViewObject() round-trip query when willUseSchemaBulk=true.",
+      "performance": "SQLServerMetadataAnalysisTests: 90/90 tables in 19s (was 64s failing at 60s budget)"
+    },
+    {
+      "id": "catalog-missing-default-definition",
+      "title": "loadColumnsFromCatalogForDatabase missing defaultDefinition (default constraint text)",
+      "fixed_date": "2026-03-04",
+      "symptom": "Column metadata for tables returns hasDefaultValue=true but defaultDefinition=nil even when column has a DEFAULT constraint",
+      "root_cause": "loadColumnsFromCatalogForDatabase (bulk schema query) only checked c.default_object_id != 0 for hasDefaultValue but didn't join sys.default_constraints to get the definition text.",
+      "fix": "Added LEFT JOIN sys.default_constraints AS dc ON c.default_object_id = dc.object_id AND o.type = 'U' and CAST(dc.definition AS NVARCHAR(4000)) AS default_definition to the SELECT.",
+      "note": "View columns naturally return NULL for default_definition (views have no default constraints) so the same query works for both tables and views."
+    },
+    {
+      "id": "tdspacket-decoder-absolute-offset-stall",
+      "title": "TDSPacket decoder reads header from absolute offset 0 instead of readerIndex — multi-packet stall",
+      "fixed_date": "2026-03-05",
+      "symptom": "Queries returning large result sets (many TDS packets) stall indefinitely or until commandTimeout fires. Small result sets (1 packet) work fine.",
+      "root_cause": "TDSPacketDecoder.decode() runs a while loop to consume multiple TDS packets per TCP segment. TDSPacket.init?(from:) read the packet header using buffer.getInteger(at: 0) and buffer.getInteger(at: 2) — absolute indices from the buffer's origin. After the first packet was consumed via buffer.readSlice(), readerIndex advanced to N bytes. The second iteration still read from at:0 (first packet's stale type/length bytes). When the last short packet arrived, the stale 'length' exceeded readableBytes → returned nil → decode loop exited with .needMoreData → permanent stall.",
+      "fix": "TDSPacket.swift init?(from buffer: inout ByteBuffer): save let ri = buffer.readerIndex before reading header fields. Use buffer.getInteger(at: ri) for typeByte and buffer.getInteger(at: ri + 2) for length.",
+      "file": "Sources/SQLServerTDS/Packet/TDSPacket.swift"
+    },
+    {
+      "id": "stall-fixes-history",
+      "title": "Historical stall/hang fixes — see Docs/test-stall-fix.txt",
+      "description": "Complete history of TDS protocol stall fixes is documented in the sqlserver-nio repo at Docs/test-stall-fix.txt. Key fixes include: packet decoder header at readerIndex (not offset 0), token parser not consuming unknown bytes, request buffer hygiene on completion, ALL_HEADERS transaction descriptor on every batch, ENVCHANGE updating connection state, PLP/NVARCHAR(MAX) cast to NVARCHAR(4000) in metadata queries."
+    },
+    {
+      "id": "utf16-length-contract",
+      "title": "readUTF16String(length:) expects UTF-16 code units, not raw byte count",
+      "fixed_date": "2026-03-11",
+      "symptom": "nvarchar/nchar values and other UTF-16 payloads decode as nil or appear truncated/garbled.",
+      "root_cause": "The ByteBuffer helper multiplies the supplied length by 2 before reading. Callers that passed readableBytes instead of readableBytes / 2 tried to consume twice the payload.",
+      "fix": "When decoding an in-memory UTF-16 payload, first validate readableBytes is even and then call readUTF16String(length: readableBytes / 2).",
+      "file": "Sources/SQLServerTDS/Utilities/TDS+ByteBuffer.swift"
+    },
+    {
+      "id": "connection-scoped-metadata-facades",
+      "title": "Connection-backed metadata and agent facades must not escape withConnection closures",
+      "fixed_date": "2026-03-11",
+      "symptom": "Metadata or Agent calls intermittently fail with connection closed after a facade was constructed inside client.withConnection { ... } and then reused later.",
+      "root_cause": "SQLServerMetadataOperations created from a SQLServerConnection is tied to that checkout. After the closure returns, the pooled connection can be released or invalidated while the facade is still retained.",
+      "fix": "Use client-scoped entry points such as SQLServerClient.fetchAgentStatus() or SQLServerAgentOperations(client: client) when the operation should span pooled connection checkouts.",
+      "files": [
+        "Sources/SQLServerKit/Metadata/SQLServerMetadataOperations.swift",
+        "Tests/AgentTests/AgentTestBase.swift"
+      ]
+    }
+  ]
+}

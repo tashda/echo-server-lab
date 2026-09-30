@@ -1,0 +1,781 @@
+{
+  "_meta": {
+    "source": "MS-TDS v20260223 \u00a74",
+    "note": "Binary packet examples from the spec. Hex bytes are space-separated; each example includes field annotations."
+  },
+  "examples": [
+    {
+      "id": "4.1",
+      "name": "Pre-Login Request",
+      "section": "4.1",
+      "direction": "client\u2192server",
+      "packet_type": "0x12",
+      "hex": "12 01 00 2F 00 00 01 00 00 00 1A 00 06 01 00 20 00 01 02 00 21 00 01 03 00 22 00 04 04 00 26 00 01 FF 00 00 00 00 00 01 00 10 00 00 00",
+      "annotations": [
+        {
+          "offset": "0-7",
+          "bytes": "12 01 00 2F 00 00 01 00",
+          "field": "Packet Header",
+          "desc": "Type=0x12 PRELOGIN, Status=0x01 EOM, Length=0x002F(47), SPID=0, PacketID=1, Window=0"
+        },
+        {
+          "offset": "8+",
+          "field": "PRELOGIN option table",
+          "desc": "Entries: VERSION(0x00), ENCRYPTION(0x01), INSTOPT(0x02), THREADID(0x03), MARS(0x04) each with Offset+Length, terminated by 0xFF"
+        },
+        {
+          "field": "ENCRYPTION option",
+          "desc": "0x00=ENCRYPT_OFF, 0x01=ENCRYPT_ON, 0x02=ENCRYPT_NOT_SUP, 0x03=ENCRYPT_REQ; bit 0x80=ENCRYPT_CLIENT_CERT (0x80/0x81/0x83), bit 0x20=ENCRYPT_EXT (reserved). Checked against MS-TDS 2.2.6.5, June 2026."
+        }
+      ],
+      "notes": [
+        "Pre-Login is the first message in TDS 7.x after TCP connect",
+        "For TDS 8.0, TLS is established at TCP level BEFORE PRELOGIN",
+        "VERSION field in PRELOGIN response is used by client to determine if DoneRowCount is LONG or ULONGLONG"
+      ]
+    },
+    {
+      "id": "4.2",
+      "name": "Login Request (LOGIN7)",
+      "section": "4.2",
+      "direction": "client\u2192server",
+      "packet_type": "0x10",
+      "hex": "10 01 00 90 00 00 01 00",
+      "annotations": [
+        {
+          "offset": "0-7",
+          "bytes": "10 01 00 90 00 00 01 00",
+          "field": "Packet Header",
+          "desc": "Type=0x10 LOGIN7, Status=0x01 EOM, Length=0x0090(144)"
+        },
+        {
+          "offset": "8-11",
+          "field": "Length",
+          "desc": "DWORD: total LOGIN7 structure length (not counting packet header)"
+        },
+        {
+          "offset": "12-15",
+          "field": "TDSVersion",
+          "desc": "e.g. 0x74000004 for TDS 7.4, little-endian"
+        },
+        {
+          "offset": "16-19",
+          "field": "PacketSize",
+          "desc": "Requested packet size (e.g. 0x00001000 = 4096)"
+        },
+        {
+          "offset": "20-23",
+          "field": "ClientProgVer",
+          "desc": "Client program version"
+        },
+        {
+          "offset": "24-27",
+          "field": "ClientPID",
+          "desc": "Client process ID"
+        },
+        {
+          "offset": "28-31",
+          "field": "ConnectionID",
+          "desc": "Connection ID (0 for initial)"
+        },
+        {
+          "offset": "32",
+          "field": "OptionFlags1",
+          "desc": "fByteOrder(0x01), fChar(0x02), fFloat(0x0C), fDumpLoad(0x10), fUseDB(0x20), fDatabase(0x40), fSetLang(0x80)"
+        },
+        {
+          "offset": "33",
+          "field": "OptionFlags2",
+          "desc": "fLanguage(0x01), fODBC(0x02), fTransBoundary(0x04), fCacheConnect(0x08), fUserType(0x70), fIntSecurity(0x80)"
+        },
+        {
+          "offset": "34",
+          "field": "TypeFlags",
+          "desc": "fSQLType(0x0F), fOLEDB(0x10), fReadOnlyIntent(0x20)"
+        },
+        {
+          "offset": "35",
+          "field": "OptionFlags3",
+          "desc": "fChangePassword(0x01), fSendYukonBinary(0x02), fUserInstance(0x04), fUnknownCollationHandling(0x08), fExtension(0x10=FeatureExt present)"
+        },
+        {
+          "offset": "36-39",
+          "field": "ClientTimeZone",
+          "desc": "Minutes offset from UTC (little-endian INT32)"
+        },
+        {
+          "offset": "40-43",
+          "field": "ClientLCID",
+          "desc": "Client locale ID"
+        },
+        {
+          "offset": "44+",
+          "field": "Offset/Length pairs",
+          "desc": "HostName, UserName, Password, AppName, ServerName, Extension, CltIntName, Language, Database, ClientID(6 bytes MAC), SSPI, AttachDBFile, ChangePassword"
+        }
+      ],
+      "notes": [
+        "Password is XOR-obfuscated: each byte b \u2192 ((b & 0x0F) << 4 | (b & 0xF0) >> 4) ^ 0xA5",
+        "fExtension=0x10 in OptionFlags3 means FeatureExt is present (after offsets table)",
+        "FeatureExt is at offset given by Extension field in offset table",
+        "For SPNEGO/Windows auth: fIntSecurity=0x80 in OptionFlags2, SSPI field contains Kerberos/NTLM token"
+      ]
+    },
+    {
+      "id": "4.3",
+      "name": "Login Request with Federated Authentication",
+      "section": "4.3",
+      "direction": "client\u2192server",
+      "packet_type": "0x10",
+      "notes": [
+        "Same as LOGIN7 but includes FeatureExt with FEDAUTH feature (FeatureId=0x02)",
+        "FEDAUTH FeatureData: Library(1 byte) + bFedAuthLibrary option bits + optional nonce",
+        "If bFedAuthLibrary requires server info: server sends FEDAUTHINFO token first, then client sends Federated Auth Token (packet 0x08)",
+        "If bFedAuthLibrary can acquire token independently: token sent with initial LOGIN7"
+      ]
+    },
+    {
+      "id": "4.4",
+      "name": "Login Response",
+      "section": "4.4",
+      "direction": "server\u2192client",
+      "packet_type": "0x04",
+      "token_stream": "ENVCHANGE* \u2192 INFO* \u2192 LOGINACK \u2192 DONE",
+      "annotations": [
+        {
+          "field": "ENVCHANGE (type 1)",
+          "desc": "Database name changed (e.g. to 'testdb')"
+        },
+        {
+          "field": "ENVCHANGE (type 2)",
+          "desc": "Language changed"
+        },
+        {
+          "field": "ENVCHANGE (type 4)",
+          "desc": "Collation changed (5-byte collation value)"
+        },
+        {
+          "field": "LOGINACK (0xAD)",
+          "desc": "Interface=0x01(SQL), TDSVersion(4B), ProgName(B_VARCHAR), ProgVersion(4B)"
+        },
+        {
+          "field": "DONE (0xFD)",
+          "desc": "Status=0x00 (no more results), CurCmd=0x00, DoneRowCount=0"
+        }
+      ]
+    },
+    {
+      "id": "4.5",
+      "name": "Login Response with Federated Authentication",
+      "section": "4.5",
+      "direction": "server\u2192client",
+      "packet_type": "0x04",
+      "token_stream": "ENVCHANGE* \u2192 INFO* \u2192 LOGINACK \u2192 FEATUREEXTACK \u2192 DONE",
+      "notes": [
+        "FEATUREEXTACK contains FeatureId=0x02 (FEDAUTH) acknowledgement",
+        "FEATUREEXTACK is terminated with 0xFF",
+        "FeatureExtAck entries: FeatureId(1B) + FeatureDataLen(4B) + FeatureData"
+      ]
+    },
+    {
+      "id": "4.6",
+      "name": "SQL Batch Client Request",
+      "section": "4.6",
+      "direction": "client\u2192server",
+      "packet_type": "0x01",
+      "hex": "01 01 00 5C 00 00 01 00 16 00 00 00 12 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00",
+      "annotations": [
+        {
+          "offset": "0-7",
+          "bytes": "01 01 00 5C 00 00 01 00",
+          "field": "Packet Header",
+          "desc": "Type=0x01 SQLBatch, Status=0x01 EOM, Length=0x005C(92)"
+        },
+        {
+          "offset": "8-11",
+          "bytes": "16 00 00 00",
+          "field": "ALL_HEADERS.TotalLength",
+          "desc": "22 bytes total (but spec example shows 0x16=22; note: can be 22 bytes for minimal header)"
+        },
+        {
+          "offset": "12-15",
+          "bytes": "12 00 00 00",
+          "field": "ALL_HEADERS.Header.HeaderLength",
+          "desc": "18 bytes for this Transaction Descriptor header"
+        },
+        {
+          "offset": "16-17",
+          "bytes": "02 00",
+          "field": "ALL_HEADERS.Header.HeaderType",
+          "desc": "0x0002 = Transaction Descriptor"
+        },
+        {
+          "offset": "18-25",
+          "bytes": "00 00 00 00 00 00 00 00",
+          "field": "TransactionDescriptor",
+          "desc": "8-byte ULONGLONG. 0 = not in explicit transaction; ENVCHANGE type 8 provides this value when BEGIN TRAN is used"
+        },
+        {
+          "offset": "26-29",
+          "bytes": "01 00 00 00",
+          "field": "OutstandingRequestCount",
+          "desc": "1 = one open request on this connection"
+        },
+        {
+          "offset": "30+",
+          "field": "SQL text",
+          "desc": "UTF-16LE encoded SQL string (no length prefix)"
+        }
+      ],
+      "notes": [
+        "ALL_HEADERS is required for SQLBatch, RPC, and TransactionManager requests",
+        "For non-transactional requests: TransactionDescriptor = 0x0000000000000000",
+        "For requests inside a transaction: use TransactionDescriptor from ENVCHANGE type 8"
+      ]
+    },
+    {
+      "id": "4.7",
+      "name": "SQL Batch Server Response",
+      "section": "4.7",
+      "direction": "server\u2192client",
+      "packet_type": "0x04",
+      "token_stream": "COLMETADATA \u2192 ROW* \u2192 DONE",
+      "example_sql": "SELECT 'foo'",
+      "annotations": [
+        {
+          "field": "COLMETADATA (0x81)",
+          "desc": "Count=1, col: UserType=0, Flags=0x09 (fNullable+fReadOnlyIntent), TypeName=VARCHAR(3), ColName='' "
+        },
+        {
+          "field": "ROW (0xD1)",
+          "desc": "One row: varchar data 'foo' (3 bytes, Windows-1252/Latin-1)"
+        },
+        {
+          "field": "DONE (0xFD)",
+          "desc": "Status=0x10 (DONE_COUNT), CurCmd, RowCount=1"
+        }
+      ],
+      "notes": [
+        "COLMETADATA precedes every result set",
+        "ROW token followed immediately by column data per TYPE_INFO rules",
+        "DONE_COUNT (0x10) bit set means RowCount field is valid"
+      ]
+    },
+    {
+      "id": "4.8",
+      "name": "RPC Client Request",
+      "section": "4.8",
+      "direction": "client\u2192server",
+      "packet_type": "0x03",
+      "hex": "03 01 00 2F 00 00 01 00",
+      "annotations": [
+        {
+          "offset": "0-7",
+          "bytes": "03 01 00 2F 00 00 01 00",
+          "field": "Packet Header",
+          "desc": "Type=0x03 RPC, Status=0x01 EOM, Length=0x002F(47)"
+        },
+        {
+          "offset": "8+",
+          "field": "ALL_HEADERS",
+          "desc": "Same Transaction Descriptor header as SQLBatch"
+        },
+        {
+          "field": "ProcName or ProcID",
+          "desc": "Either US_VARCHAR proc name ('foo3') OR USHORT(0xFFFF) + USHORT ProcID for special stored procs"
+        },
+        {
+          "field": "OptionFlags",
+          "desc": "USHORT: 0x0000=normal, 0x0001=WITH RECOMPILE, 0x0002=NO METADATA, 0x0004=REUSE METADATA"
+        },
+        {
+          "field": "Parameters",
+          "desc": "Zero or more RPC parameters: ParamName(B_VARCHAR) + StatusFlags(1B, 0x01=OUTPUT, 0x02=DEFAULT) + TYPE_INFO + value"
+        }
+      ],
+      "special_proc_ids": {
+        "0xFFA3": "sp_cursor (1)",
+        "0xFFA4": "sp_cursoropen (2)",
+        "0xFFA5": "sp_cursorprepare (3)",
+        "0xFFA6": "sp_cursorexecute (4)",
+        "0xFFA7": "sp_cursorprepexec (5)",
+        "0xFFA8": "sp_cursorunprepare (6)",
+        "0xFFA9": "sp_cursorfetch (7)",
+        "0xFFAA": "sp_cursoroption (8)",
+        "0xFFAB": "sp_cursorclose (9)",
+        "0xFFAC": "sp_executesql (10)",
+        "0xFFAD": "sp_prepare (11)",
+        "0xFFAE": "sp_execute (12)",
+        "0xFFAF": "sp_prepexec (13)",
+        "0xFFB0": "sp_prepexecrpc (14)",
+        "0xFFB1": "sp_unprepare (15)"
+      },
+      "notes": [
+        "Use 0xFFFF + ProcID for well-known special stored procedures",
+        "ParamName is B_VARCHAR (1-byte length prefix, UTF-16LE); empty string means unnamed parameter",
+        "OUTPUT parameters: StatusFlags bit 0x01 set; server returns RETURNVALUE tokens"
+      ]
+    },
+    {
+      "id": "4.9",
+      "name": "RPC Server Response",
+      "section": "4.9",
+      "direction": "server\u2192client",
+      "packet_type": "0x04",
+      "token_stream": "[RETURNSTATUS] \u2192 [RETURNVALUE*] \u2192 [COLMETADATA \u2192 ROW*] \u2192 DONEINPROC* \u2192 DONEPROC",
+      "annotations": [
+        {
+          "field": "DONEINPROC (0xFF)",
+          "desc": "Intermediate DONE for each statement inside the proc; Status=0x01 (DONE_MORE)"
+        },
+        {
+          "field": "RETURNSTATUS (0x79)",
+          "desc": "4-byte INT32 return value of stored procedure"
+        },
+        {
+          "field": "DONEPROC (0xFE)",
+          "desc": "Final DONE for the procedure; Status=0x00 (final)"
+        }
+      ]
+    },
+    {
+      "id": "4.10",
+      "name": "Attention Request",
+      "section": "4.10",
+      "direction": "client\u2192server",
+      "packet_type": "0x06",
+      "hex": "06 01 00 08 00 00 01 00",
+      "annotations": [
+        {
+          "offset": "0-7",
+          "bytes": "06 01 00 08 00 00 01 00",
+          "field": "Packet Header",
+          "desc": "Type=0x06 ATTENTION, Status=0x01 EOM, Length=0x0008(8) \u2014 header only, no payload"
+        }
+      ],
+      "notes": [
+        "Attention is ONLY a packet header \u2014 8 bytes total, no payload",
+        "Server responds with DONE token with Status having DONE_ATTN bit (0x20) set",
+        "Pre-SQL Server 7.0: attention was 1-byte out-of-band message containing 'A'",
+        "TDS 7.x+: attention is in-band using ATTENTION packet type (0x06)"
+      ]
+    },
+    {
+      "id": "4.11",
+      "name": "SSPI Message",
+      "section": "4.11",
+      "direction": "client\u2192server",
+      "packet_type": "0x11",
+      "notes": [
+        "Used in SPNEGO (Windows Integrated Authentication) flows",
+        "Contains SSPI token for Kerberos or NTLM exchange step 2+",
+        "First SSPI exchange is inside the LOGIN7 message; subsequent exchanges use packet type 0x11"
+      ]
+    },
+    {
+      "id": "4.12",
+      "name": "SQL Command with Binary Data (Bulk Load)",
+      "section": "4.12",
+      "direction": "client\u2192server",
+      "packet_type": "0x07",
+      "hex": "07 01 00 26 00 00 01 00",
+      "annotations": [
+        {
+          "offset": "0-7",
+          "bytes": "07 01 00 26 00 00 01 00",
+          "field": "Packet Header",
+          "desc": "Type=0x07 BulkLoadBCP, Status=0x01 EOM, Length=0x0026(38)"
+        },
+        {
+          "offset": "8+",
+          "field": "COLMETADATA (0x81)",
+          "desc": "Defines columns for the bulk load. bit column: UserType=0, Flags, TypeId=0x32 (BITTYPE/FIXEDLENTYPE 1 byte)"
+        },
+        {
+          "field": "BulkLoadBCP data",
+          "desc": "ROW token (0xD1) + data for each row defined by COLMETADATA; no DONE token mid-stream"
+        },
+        {
+          "field": "DONE (0xFD)",
+          "desc": "Status=0x10 DONE_COUNT + RowCount"
+        }
+      ],
+      "flow": [
+        "Client \u2192 Server: SQLBatch 'INSERT BULK tablename ...'",
+        "Server \u2192 Client: Tabular Result (ready signal)",
+        "Client \u2192 Server: BulkLoadBCP packet(s) with COLMETADATA + ROW* + DONE",
+        "Server \u2192 Client: Tabular Result: DONE (rows affected)"
+      ]
+    },
+    {
+      "id": "4.13",
+      "name": "Transaction Manager Request",
+      "section": "4.13",
+      "direction": "client\u2192server",
+      "packet_type": "0x0E",
+      "hex": "0E 01 00 20 00 00 01 00",
+      "annotations": [
+        {
+          "offset": "0-7",
+          "bytes": "0E 01 00 20 00 00 01 00",
+          "field": "Packet Header",
+          "desc": "Type=0x0E Transaction Manager Request"
+        },
+        {
+          "offset": "8+",
+          "field": "ALL_HEADERS",
+          "desc": "Transaction Descriptor header"
+        },
+        {
+          "field": "RequestType",
+          "desc": "USHORT: TM_BEGIN_XACT=0x0005, TM_COMMIT_XACT=0x0007, TM_ROLLBACK_XACT=0x0008, TM_SAVEPOINT=0x0009, TM_RELEASE=0x000A, TM_RESETCONN=0x000E, TM_PROMOTE_XACT=0x0016 (example in \u00a74.13)"
+        },
+        {
+          "field": "Payload",
+          "desc": "Depends on RequestType: TM_BEGIN_XACT has IsolationLevel(1B) + Name(B_VARCHAR); TM_PROMOTE_XACT has no payload; TM_COMMIT_XACT has Flags"
+        }
+      ],
+      "notes": [
+        "TM_PROMOTE_XACT (0x0016) promotes local transaction to distributed (DTC)",
+        "TM_BEGIN_XACT response: ENVCHANGE type 8 (new transaction descriptor) + DONE",
+        "TM_COMMIT_XACT response: ENVCHANGE type 9 (commit) + DONE",
+        "TM_ROLLBACK_XACT response: ENVCHANGE type 10 (rollback) + DONE"
+      ]
+    },
+    {
+      "id": "4.14",
+      "name": "TVP Insert Statement",
+      "section": "4.14",
+      "direction": "client\u2192server",
+      "description": "RPC with Table-Valued Parameter",
+      "packet_type": "0x03",
+      "tvp_structure": {
+        "TVP_TYPE_INFO": {
+          "token": "0xF3",
+          "fields": [
+            {
+              "field": "UserType",
+              "value": "0x00000000"
+            },
+            {
+              "field": "Flags",
+              "desc": "Standard column flags"
+            },
+            {
+              "field": "Type",
+              "value": "0xF3",
+              "desc": "TVP type indicator"
+            },
+            {
+              "field": "TVP_TYPENAME",
+              "desc": "DbName(B_VARCHAR) + OwningSchema(B_VARCHAR) + TypeName(US_VARCHAR)"
+            }
+          ]
+        },
+        "TVP_COLMETADATA": {
+          "fields": [
+            {
+              "field": "Count",
+              "type": "USHORT",
+              "desc": "Number of TVP columns"
+            },
+            {
+              "field": "Per-column",
+              "desc": "UserType(ULONG) + Flags(USHORT) + TYPE_INFO + ColName(B_VARCHAR) [+ optional tokens like TVP_ORDER_UNIQUE, TVP_COLUMN_ORDERING]"
+            }
+          ]
+        },
+        "TVP_END_TOKEN": "0x00 \u2014 terminates TVP_COLMETADATA optional token list",
+        "TVP_ROW": "0x01 \u2014 each row: data for each column per TYPE_INFO",
+        "TVP_NULL_TOKEN": "0xFFFF in Count field of TVP_COLMETADATA indicates NULL TVP (no rows)"
+      },
+      "notes": [
+        "TVP is sent as an RPC parameter with type 0xF3",
+        "TVP_COLMETADATA precedes row data",
+        "Row data follows: TVP_ROW(0x01) + column values",
+        "TVP_END_TOKEN(0x00) terminates the TVP data stream"
+      ]
+    },
+    {
+      "id": "4.15",
+      "name": "SparseColumn Select Statement",
+      "section": "4.15",
+      "direction": "server\u2192client",
+      "packet_type": "0x04",
+      "annotations": [
+        {
+          "field": "COLMETADATA",
+          "desc": "Column with fSparseColumn flag: Flags |= 0x0400 (bit 10). Type is XML (0xF1 XMLTYPE). ColName is typically '__$sparse_columns'"
+        },
+        {
+          "field": "Data",
+          "desc": "XML value encoded as PLP (Partially Length-Prefixed). TotalLength field can be 0xFFFFFFFFFFFFFFFE (unknown length)."
+        },
+        {
+          "field": "NBCROW (0xD2)",
+          "desc": "Used instead of ROW when NBCROW feature is negotiated. NULL bitmap precedes column data."
+        }
+      ],
+      "sparse_column_flags": {
+        "fSparseColumn": "0x0400 in Flags \u2014 column is a sparse column",
+        "fSparseColumnSet": "0x0800 in Flags \u2014 column is the sparse column set (XML representation of all sparse cols)"
+      },
+      "plp_unknown_length": "0xFFFFFFFFFFFFFFFE",
+      "plp_null": "0xFFFFFFFFFFFFFFFF",
+      "notes": [
+        "SparseColumn requires NBCROW feature support (TDS 7.3+)",
+        "SQL Server 2008 TDS version 0x03000A73 does NOT support NBCROW and fSparseColumnSet",
+        "PLP data: 8-byte TotalLength + repeated (4-byte ChunkLen + data) chunks, ChunkLen=0 terminates"
+      ]
+    },
+    {
+      "id": "4.16",
+      "name": "FeatureExt with SESSIONRECOVERY",
+      "section": "4.16",
+      "direction": "client\u2192server (in LOGIN7)",
+      "feature_id": "0x01",
+      "sessionrecovery_structure": {
+        "InitSessionRecoveryData": {
+          "fields": [
+            {
+              "field": "RecoveryDatabase",
+              "type": "B_VARCHAR",
+              "desc": "Target database name"
+            },
+            {
+              "field": "RecoveryCollation",
+              "type": "5 bytes",
+              "desc": "Collation for recovery"
+            },
+            {
+              "field": "RecoveryLanguage",
+              "type": "B_VARCHAR",
+              "desc": "Target language"
+            },
+            {
+              "field": "SessionStateDataSet",
+              "desc": "StateId(1B) + StateLen(USHORT) + StateValue(StateLen bytes), repeated; terminated when no more entries"
+            }
+          ]
+        },
+        "SessionStateDataSet_StateIds": {
+          "0x01": "DBSTATE \u2014 database name",
+          "0x02": "LANGUAGESTATE \u2014 language",
+          "0x03": "SETOPTIONSSTATE \u2014 SET options bitfield",
+          "0x04": "DBSEEDSTATE \u2014 database seed (0=no seed)",
+          "0x05": "MARSSETTINGSSTATE \u2014 MARS settings",
+          "0x06": "TRACEFLAGSSTATE \u2014 active trace flags",
+          "0x07": "STATEMENTCOMPLETIONSETTINGSSTATE",
+          "0x08": "TRANSTATE \u2014 transaction state",
+          "0x09": "SETOPTIONSONSTATE \u2014 additional SET options"
+        }
+      }
+    },
+    {
+      "id": "4.17",
+      "name": "FeatureExtAck with SESSIONRECOVERY",
+      "section": "4.17",
+      "direction": "server\u2192client (in login response)",
+      "feature_id": "0x01",
+      "notes": [
+        "FEATUREEXTACK token (0xAE) contains server's acknowledgement of SESSIONRECOVERY",
+        "FeatureData contains server's SessionStateDataSet for all recoverable states",
+        "Client uses this to restore session state on reconnect"
+      ]
+    },
+    {
+      "id": "4.18",
+      "name": "Table Response with SESSIONSTATE Token",
+      "section": "4.18",
+      "direction": "server\u2192client",
+      "packet_type": "0x04",
+      "token_stream": "DONE(status=0x01) \u2192 SESSIONSTATE \u2192 DONE",
+      "sessionstate_example": {
+        "token": "0xE4",
+        "Length": "0x0000000B (11 bytes)",
+        "SeqNo": "0x00000001",
+        "Status": "0x01 (Dirty \u2014 state changed)",
+        "StateId": "0x09",
+        "StateLen": "0x0004",
+        "StateValue": "FF FF FF FF"
+      },
+      "sessionstate_structure": [
+        {
+          "field": "TokenType",
+          "value": "0xE4"
+        },
+        {
+          "field": "Length",
+          "type": "DWORD",
+          "desc": "Total byte count of all StateId+StateLen+StateValue entries"
+        },
+        {
+          "field": "SeqNo",
+          "type": "DWORD",
+          "desc": "Monotonically increasing sequence number"
+        },
+        {
+          "field": "Status",
+          "type": "BYTE",
+          "desc": "0x00=Not changed (recovery unnecessary), 0x01=Dirty (state changed), 0x02=Recovery not possible (must reconnect)"
+        },
+        {
+          "field": "SessionStateDataSet",
+          "type": "REPEAT",
+          "desc": "StateId(BYTE) + StateLen(USHORT) + StateValue(StateLen bytes)"
+        }
+      ]
+    },
+    {
+      "id": "4.19",
+      "name": "Token Data Stream Communication Examples",
+      "section": "4.19",
+      "subsections": [
+        {
+          "name": "Multi-Result SQL Batch",
+          "example_sql": "SELECT x FROM t1; UPDATE t2 SET y=1; SELECT z FROM t3",
+          "token_stream": "COLMETADATA \u2192 ROW* \u2192 DONE(MORE|COUNT) \u2192 DONE(MORE|COUNT) \u2192 COLMETADATA \u2192 ROW* \u2192 DONE(COUNT)",
+          "notes": [
+            "DONE_MORE bit (0x01) set for intermediate results",
+            "DONE_COUNT bit (0x10) set when RowCount is valid",
+            "The UPDATE produces a DONE with row count but no COLMETADATA/ROW tokens"
+          ]
+        },
+        {
+          "name": "Attention Signal (out-of-band cancel)",
+          "flow": [
+            "Client \u2192 Server: SQLBatch request",
+            "Client \u2192 Server: ATTENTION packet (0x06, 8 bytes, simultaneous)",
+            "Server \u2192 Client: Partial results (if any) + DONE with DONE_ATTN (0x20) status"
+          ],
+          "done_attn_bits": "DONE Status 0x20 = DONE_ATTN \u2014 server acknowledged attention signal"
+        }
+      ]
+    },
+    {
+      "id": "4.20",
+      "name": "FeatureExt with AZURESQLSUPPORT",
+      "section": "4.20",
+      "direction": "client\u2192server (in LOGIN7)",
+      "login7_typeflags": "0x20 (fReadOnlyIntent \u2014 optional, indicates read-only routing preferred)",
+      "feature_ext_list": [
+        {
+          "FeatureId": "0x01",
+          "name": "SESSIONRECOVERY",
+          "DataLen": "variable"
+        },
+        {
+          "FeatureId": "0x04",
+          "name": "COLUMNENCRYPTION",
+          "DataLen": "1",
+          "Data": "0x01"
+        },
+        {
+          "FeatureId": "0x05",
+          "name": "GLOBALTRANSACTIONS",
+          "DataLen": "0"
+        },
+        {
+          "FeatureId": "0x08",
+          "name": "AZURESQLSUPPORT",
+          "DataLen": "1",
+          "Data": "0x01"
+        },
+        {
+          "FeatureId": "0xFF",
+          "name": "TERMINATOR",
+          "desc": "Always last, no DataLen or Data"
+        }
+      ]
+    },
+    {
+      "id": "4.21",
+      "name": "FeatureExtAck with AZURESQLSUPPORT",
+      "section": "4.21",
+      "direction": "server\u2192client",
+      "packet_type": "0x04",
+      "token_stream": "DONEINPROC* \u2192 ENVCHANGE* \u2192 INFO* \u2192 LOGINACK \u2192 FEATUREEXTACK \u2192 DONE",
+      "loginack_example": {
+        "Interface": "0x01 (SQL)",
+        "TDSVersion": "0x74000004 (TDS 7.4)",
+        "ProgVersion": "0x000003E8"
+      },
+      "featureextack_entries": [
+        {
+          "FeatureId": "0x01",
+          "name": "SESSIONRECOVERY",
+          "DataLen": "0x77 (119 bytes)",
+          "Data": "Full SessionStateDataSet for all session state IDs"
+        },
+        {
+          "FeatureId": "0x04",
+          "name": "COLUMNENCRYPTION",
+          "Data": "0x01"
+        },
+        {
+          "FeatureId": "0x05",
+          "name": "GLOBALTRANSACTIONS",
+          "Data": "0x01"
+        },
+        {
+          "FeatureId": "0x08",
+          "name": "AZURESQLSUPPORT",
+          "Data": "0x01"
+        },
+        {
+          "FeatureId": "0xFF",
+          "name": "TERMINATOR"
+        }
+      ]
+    },
+    {
+      "id": "custom.tx.begin-batch-commit",
+      "name": "Begin Transaction -> SQL Batch -> Commit (MARS-safe)",
+      "section": "sqlserver-nio regression example",
+      "direction": "mixed",
+      "sequence": [
+        {
+          "step": 1,
+          "from": "client",
+          "to": "server",
+          "packet_type": "0x0E",
+          "summary": "TransactionManagerRequest(TM_BEGIN_XACT) with ALL_HEADERS.TransactionDescriptor = 0x0000000000000000",
+          "hex_prefix": "0E 01 .. .. .. .. .. .. 16 00 00 00 12 00 00 00 02 00 00 00 00 00 00 00 00 00 00 00 01 00 00 00 05 00"
+        },
+        {
+          "step": 2,
+          "from": "server",
+          "to": "client",
+          "packet_type": "0x04",
+          "summary": "ENVCHANGE type 8 returns transaction descriptor, e.g. 01 00 00 00 45 00 00 00, followed by DONE"
+        },
+        {
+          "step": 3,
+          "from": "client",
+          "to": "server",
+          "packet_type": "0x01",
+          "summary": "SQLBatch uses ALL_HEADERS.TransactionDescriptor = 01 00 00 00 45 00 00 00 instead of zero",
+          "hex_prefix": "01 01 .. .. .. .. .. .. 16 00 00 00 12 00 00 00 02 00 01 00 00 00 45 00 00 00 01 00 00 00"
+        },
+        {
+          "step": 4,
+          "from": "client",
+          "to": "server",
+          "packet_type": "0x0E",
+          "summary": "TransactionManagerRequest(TM_COMMIT_XACT) reuses the same descriptor in ALL_HEADERS"
+        },
+        {
+          "step": 5,
+          "from": "server",
+          "to": "client",
+          "packet_type": "0x04",
+          "summary": "ENVCHANGE type 9/10/17 clears the descriptor; subsequent SQLBatch/RPC requests return to zero descriptor"
+        }
+      ],
+      "notes": [
+        "This example documents the failure mode fixed in sqlserver-nio: raw SQL BEGIN/COMMIT is insufficient under MARS unless the client also updates the transaction descriptor carried in ALL_HEADERS.",
+        "The exact descriptor bytes vary per session; the example uses 01 00 00 00 45 00 00 00 as a representative 8-byte descriptor learned from ENVCHANGE type 8."
+      ]
+    }
+  ]
+}

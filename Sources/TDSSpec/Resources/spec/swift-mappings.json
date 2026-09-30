@@ -1,0 +1,292 @@
+{
+  "_meta": {
+    "project": "sqlserver-nio",
+    "framework": "SwiftNIO (NIOCore ByteBuffer)",
+    "note": "Swift/NIO-specific patterns for TDS protocol implementation"
+  },
+  "byte_buffer_helpers": {
+    "description": "ByteBuffer read/write methods used in sqlserver-nio",
+    "reading": {
+      "readByte": "readInteger(as: UInt8.self) \u2014 reads 1 byte",
+      "readUInt8": "readInteger(as: UInt8.self)",
+      "readUInt16LE": "readInteger(endianness: .little, as: UInt16.self)",
+      "readUInt32LE": "readInteger(endianness: .little, as: UInt32.self)",
+      "readUInt64LE": "readInteger(endianness: .little, as: UInt64.self)",
+      "readInt32LE": "readInteger(endianness: .little, as: Int32.self)",
+      "readUSVarchar": "2-byte byte-length prefix (UTF-16LE) \u2192 String \u2014 reads US_VARCHAR",
+      "readBVarchar": "1-byte char-count prefix (UTF-16LE) \u2192 String \u2014 reads B_VARCHAR",
+      "readUTF16String(length:)": "reads N UTF-16 code units (character count), consuming N * 2 bytes from the buffer",
+      "readBytes(length:)": "reads N bytes as [UInt8]",
+      "readSlice(length:)": "returns a sub-ByteBuffer"
+    },
+    "writing": {
+      "writeInteger": "writeInteger(value, endianness: .little) or .big",
+      "writeBytes": "writeBytes([UInt8])",
+      "writeUTF16String": "custom extension \u2014 writes UTF-16LE without length prefix",
+      "writeBVarchar": "writeInteger(UInt8(str.utf16.count)) then write UTF-16LE chars",
+      "writeUSVarchar": "writeInteger(UInt16(str.utf16.count * 2), endianness: .little) then write UTF-16LE chars"
+    }
+  },
+  "data_type_mappings": [
+    {
+      "tds_type": "tinyInt / intn(1)",
+      "swift_type": "UInt8",
+      "tds_value": "0x30 / 0x26",
+      "read_pattern": "buffer.readInteger(as: UInt8.self)",
+      "tds_data_init": "TDSData(tinyint: UInt8) \u2014 stores 1-byte value",
+      "notes": "Fixed-length in colmetadata; intn in RPC params",
+      "conversion_safety": "TINYINT is unsigned (0-255, UInt8). When exposing via generic FixedWidthInteger accessors like `fwi<I>() -> I`, MUST use `I(exactly: uint8)` (returns nil) or `I(clamping: uint8)` (clamps). Using `I(uint8)` traps at runtime when I=Int8 and value > 127 ('Not enough bits to represent the passed value')."
+    },
+    {
+      "tds_type": "smallInt / intn(2)",
+      "swift_type": "Int16",
+      "tds_value": "0x34 / 0x26",
+      "read_pattern": "buffer.readInteger(endianness: .little, as: Int16.self)",
+      "notes": "Little-endian"
+    },
+    {
+      "tds_type": "int / intn(4)",
+      "swift_type": "Int32",
+      "tds_value": "0x38 / 0x26",
+      "read_pattern": "buffer.readInteger(endianness: .little, as: Int32.self)"
+    },
+    {
+      "tds_type": "bigInt / intn(8)",
+      "swift_type": "Int64",
+      "tds_value": "0x7F / 0x26",
+      "read_pattern": "buffer.readInteger(endianness: .little, as: Int64.self)"
+    },
+    {
+      "tds_type": "bit / bitn",
+      "swift_type": "Bool",
+      "tds_value": "0x32 / 0x68",
+      "read_pattern": "buffer.readInteger(as: UInt8.self).map { $0 != 0 }",
+      "tds_data_init": "TDSData(bool: Bool)"
+    },
+    {
+      "tds_type": "real / fltn(4)",
+      "swift_type": "Float",
+      "tds_value": "0x3B / 0x6D",
+      "read_pattern": "buffer.readInteger(endianness: .little, as: UInt32.self).map { Float(bitPattern: $0) }"
+    },
+    {
+      "tds_type": "float / fltn(8)",
+      "swift_type": "Double",
+      "tds_value": "0x3E / 0x6D",
+      "read_pattern": "buffer.readInteger(endianness: .little, as: UInt64.self).map { Double(bitPattern: $0) }"
+    },
+    {
+      "tds_type": "decimal / numeric",
+      "swift_type": "Decimal (Foundation)",
+      "tds_value": "0x6A / 0x6C",
+      "wire_format": "ActualLen(1) + sign(1: 0x01=positive, 0x00=negative) + magnitude(little-endian bytes)",
+      "read_pattern": "Read sign byte + magnitude bytes; construct Decimal from integer magnitude / 10^scale",
+      "write_pattern_rpc": "MaxLen=0x11(17) + Precision=38 + [Scale if TDS_RPC_DEC_TYPEINFO_SCALE=1]; value: [Scale] + ActualLen + sign + magnitude",
+      "known_issue": "sqlserver-nio env vars TDS_RPC_DEC_TYPEINFO_SCALE and TDS_RPC_OUT_INT_LEN0 control protocol quirks for different server versions",
+      "max_precision": 38,
+      "max_scale": 38
+    },
+    {
+      "tds_type": "money / moneyn(8)",
+      "swift_type": "Double (for convenience)",
+      "tds_value": "0x3C / 0x6E",
+      "wire_format": "High LONG (big portion) + Low ULONG (low 32 bits). Value = (high << 32 | low) / 10000.0",
+      "read_pattern": "let high = buffer.readInt32LE(); let low = buffer.readUInt32LE(); return Double((Int64(high) << 32) | Int64(low)) / 10000.0"
+    },
+    {
+      "tds_type": "smallMoney / moneyn(4)",
+      "swift_type": "Double",
+      "tds_value": "0x7A / 0x6E",
+      "wire_format": "INT32 little-endian / 10000.0"
+    },
+    {
+      "tds_type": "varchar / char",
+      "swift_type": "String",
+      "tds_value": "0xA7 / 0xAF",
+      "wire_encoding": "Latin-1 / Windows-1252 bytes (not UTF-8 unless UTF-8 collation)",
+      "read_pattern": "bytes \u2192 String(bytes: bytes, encoding: .windowsCP1252) ?? String(bytes: bytes, encoding: .utf8)",
+      "max_length": 8000,
+      "collation_required": true,
+      "known_issue": "Prefer CP1252/Latin-1 decoding unless the column collation is UTF-8. Using UTF-16 here is incorrect and produces nil/garbled text.",
+      "rpc_write": "writeInteger(type.rawValue) + writeInteger(UInt16(min(bytes.count, 8000)), endianness: .little) + collationBytes(5) + writeInteger(UInt16(bytes.count), endianness: .little) + writeBytes(bytes)"
+    },
+    {
+      "tds_type": "nvarchar / nchar",
+      "swift_type": "String",
+      "tds_value": "0xE7 / 0xEF",
+      "wire_encoding": "UTF-16LE. MaxLen is in BYTES (nvarchar(4000) \u2192 MaxLen=8000)",
+      "read_pattern": "value.readableBytes.isMultiple(of: 2) ? value.readUTF16String(length: value.readableBytes / 2) : nil",
+      "max_chars": 4000,
+      "max_bytes": 8000,
+      "collation_required": true,
+      "known_issue": "readUTF16String(length:) expects a UTF-16 code-unit count, not a byte count. Passing readableBytes directly over-reads and returns nil.",
+      "rpc_write": "writeInteger(type.rawValue) + writeInteger(UInt16(min(bytes.count, 8000)), endianness: .little) + collationBytes(5) + writeInteger(UInt16(bytes.count), endianness: .little) + writeBytes(bytes)"
+    },
+    {
+      "tds_type": "varbinary / binary",
+      "swift_type": "[UInt8] / ByteBuffer",
+      "tds_value": "0xA5 / 0xAD",
+      "max_length": 8000,
+      "known_issue": "sqlserver-nio does NOT support varbinary(max)/PLP",
+      "rpc_write": "writeInteger(type.rawValue) + writeInteger(UInt16(min(bytes.count, 8000)), endianness: .little) + writeInteger(UInt16(bytes.count), endianness: .little) + writeBytes(bytes)"
+    },
+    {
+      "tds_type": "guid (uniqueidentifier)",
+      "swift_type": "UUID / Foundation",
+      "tds_value": "0x24",
+      "wire_format": "16 bytes. Byte order: bytes 0-3 little-endian UInt32, bytes 4-5 little-endian UInt16, bytes 6-7 little-endian UInt16, bytes 8-15 big-endian (as-is).",
+      "read_pattern": "Read 16 bytes; swap bytes 0-3 (LE int32), 4-5 (LE int16), 6-7 (LE int16); construct UUID",
+      "known_issue": "UUID wire byte order is mixed-endian; must swap first 8 bytes correctly",
+      "rpc_write": "writeInteger(TDSDataType.guid.rawValue) + writeInteger(UInt8(16)) + [16 bytes in wire order (LE portions swapped)]"
+    },
+    {
+      "tds_type": "date",
+      "swift_type": "Date / DateComponents",
+      "tds_value": "0x28",
+      "wire_format": "3 bytes little-endian unsigned integer = days since 0001-01-01",
+      "read_pattern": "let days = UInt32(b[0]) | UInt32(b[1])<<8 | UInt32(b[2])<<16; convert to Date"
+    },
+    {
+      "tds_type": "datetime",
+      "swift_type": "Date",
+      "tds_value": "0x3D",
+      "wire_format": "4-byte INT32 (days since 1900-01-01) + 4-byte UINT32 (1/300-second intervals since midnight)",
+      "read_pattern": "let days = buffer.readInt32LE(); let ticks = buffer.readUInt32LE(); convert to Date"
+    },
+    {
+      "tds_type": "datetime2",
+      "swift_type": "Date",
+      "tds_value": "0x2A",
+      "wire_format": "time_bytes(scale-dependent) + 3-byte date (days since 0001-01-01). Time = little-endian integer * 10^(-scale) seconds."
+    },
+    {
+      "tds_type": "datetimeoffset",
+      "swift_type": "Date + TimeZone",
+      "tds_value": "0x2B",
+      "wire_format": "Same as datetime2 + 2-byte INT16 (timezone offset in minutes)"
+    },
+    {
+      "tds_type": "time",
+      "swift_type": "DateComponents (timeIntervalSince midnight)",
+      "tds_value": "0x29",
+      "wire_format": "scale-dependent bytes (3-5), little-endian integer = 10^(-scale) second intervals"
+    },
+    {
+      "tds_type": "json",
+      "swift_type": "String (UTF-8 JSON text)",
+      "tds_value": "0xF4",
+      "wire_format": "PLP encoding (TotalLen 8 bytes + chunks). Content is UTF-8 JSON.",
+      "notes": [
+        "Requires JSONSUPPORT FeatureExt negotiation",
+        "sqlserver-nio has basic JSON type support but PLP reading required"
+      ]
+    },
+    {
+      "tds_type": "vector",
+      "swift_type": "[Float] (float32 elements)",
+      "tds_value": "0xF5",
+      "wire_format": "ActualLen(2) + float32 elements (4 bytes each, little-endian)",
+      "notes": [
+        "DimensionType byte in TYPE_INFO: 0=float32",
+        "Requires VECTORSUPPORT FeatureExt negotiation"
+      ]
+    },
+    {
+      "tds_type": "xml",
+      "swift_type": "String (UTF-16LE XML text)",
+      "tds_value": "0xF1",
+      "wire_format": "PLP encoding. Content is UTF-16LE XML."
+    },
+    {
+      "tds_type": "sql_variant",
+      "swift_type": "TDSData (recursive)",
+      "tds_value": "0x62",
+      "wire_format": "DataLen(4) + BaseType(1) + PropLen(1) + PropertyBytes(PropLen) + BaseValue",
+      "notes": [
+        "sqlserver-nio attempts type resolution via sqlVariantResolved()",
+        "Fallback: skip BaseType + PropLen + props, decode remaining as string (UTF-16LE then UTF-8 then CP1252)"
+      ]
+    },
+    {
+      "tds_type": "text / ntext / image",
+      "swift_type": "String / [UInt8]",
+      "tds_value": "0x23 / 0x63 / 0x22",
+      "wire_format": "In ROW token: TextPointer(B_VARBYTE) + Timestamp(8 bytes) + DataLen(INT32, -1=NULL) + data",
+      "notes": [
+        "Deprecated; avoid in new code",
+        "TextPointer and Timestamp absent if NULL (GEN_NULL)"
+      ]
+    }
+  ],
+  "null_handling": {
+    "FIXEDLENTYPE": "Cannot be null by themselves. Use nullable variant (intn, bitn, fltn, moneyn, datetimn) with ActualLen=0.",
+    "BYTELEN_TYPE": "ActualLen byte = 0 indicates NULL",
+    "USHORTLEN_TYPE": "ActualLen = 0xFFFF indicates NULL",
+    "LONGLEN_TYPE": "DataLen = -1 (0xFFFFFFFF as LONG) indicates NULL; TextPointer absent",
+    "PARTLENTYPE": "TotalLen = 0xFFFFFFFFFFFFFFFF (all 1s) indicates NULL",
+    "NBCROW": "NULL columns omitted from row data; indicated by 1-bit in null bitmap",
+    "RPC_NULL": "For intn family: send ByteLen=0. For string types: send ActualLen=0xFFFF."
+  },
+  "plp_encoding": {
+    "description": "Partially Length-Prefixed encoding for MAX types and XML/JSON/UDT",
+    "required_for": [
+      "nvarchar(max)",
+      "varchar(max)",
+      "varbinary(max)",
+      "xml",
+      "json",
+      "clrudt"
+    ],
+    "format": [
+      {
+        "field": "TotalLength",
+        "type": "ULONGLONG (8 bytes)",
+        "desc": "0xFFFFFFFFFFFFFFFE=unknown, 0xFFFFFFFFFFFFFFFF=NULL, else actual total size"
+      },
+      {
+        "field": "Chunks",
+        "type": "REPEAT until terminator",
+        "desc": "ChunkLen(ULONG, 4 bytes) + data(ChunkLen bytes). ChunkLen=0 terminates."
+      }
+    ],
+    "swift_status": "NOT implemented in sqlserver-nio. This is a known limitation. Adding PLP support would enable varchar(max), nvarchar(max), varbinary(max), xml, json columns beyond their non-MAX limits."
+  },
+  "rpc_param_encoding_summary": {
+    "description": "How each type maps to RPC parameter TYPE_INFO + value encoding",
+    "int_family": "Type=INTN(0x26) + MaxLen(1,2,4,8 based on actual type) + ActualLen(0=null, else MaxLen) + data",
+    "bit": "Type=BITN(0x68) + MaxLen=1 + ActualLen(0=null, 1=present) + byte",
+    "decimal": "Type=DECIMALN(0x6A) + MaxLen=0x11 + Precision=38 + [Scale if TDS_RPC_DEC_TYPEINFO_SCALE=1] + [Scale if not in TYPE_INFO] + ActualLen(0=null) + sign(1) + magnitude",
+    "varchar": "Type=VARCHAR(0xA7) + MaxLen(2, actual payload len capped at 8000) + Collation(5) + ActualLen(2) + data",
+    "nvarchar": "Type=NVARCHAR(0xE7) + MaxLen(2, byte count capped at 8000) + Collation(5) + ActualLen(2, byte count) + UTF-16LE data",
+    "binary": "Type=VARBINARY(0xA5) + MaxLen(2) + ActualLen(2) + data",
+    "guid": "Type=GUIDTYPE(0x24) + MaxLen=16 + 16 bytes (no ActualLen prefix for fixed)",
+    "null": "Type=INTN(0x26) + MaxLen=0 (or use nullable variant with ActualLen=0)"
+  },
+  "stream_parser_notes": {
+    "description": "Notes about TDSTokenParser (streaming) vs static parseColMetadataToken",
+    "inconsistency": "TDSTokenParser+ColumnData.swift reads userType as USHORT (2 bytes), but TDSTokenParser+ColMetadata.swift (static) reads userType as ULONG (4 bytes). The spec says ULONG for TDS 7.2+. The streaming parser may be wrong for TDS 7.2+ connections.",
+    "colmetadata_order": "In TDSTokenParser+ColumnData.swift: reads colName BEFORE tableName. In TDSTokenParser+ColMetadata.swift: reads tableName BEFORE colName. The spec says: TYPE_INFO + [TableName] + ColName. The static parser is correct."
+  },
+  "sqlserver_nio_runtime_notes": {
+    "metadata_client_lifetime": {
+      "scope_rule": "SQLServerMetadataOperations created from a SQLServerConnection is connection-scoped. Do not create it inside client.withConnection { ... } and then use it after the closure returns.",
+      "preferred_patterns": [
+        "Use SQLServerClient metadata helpers (for example client.fetchAgentStatus()) for work that should outlive a single pooled connection checkout.",
+        "If you need a reusable Agent facade across pooled connections, prefer SQLServerAgentOperations(client: client) over SQLServerAgentOperations(connection: connection)."
+      ]
+    },
+    "tdsdata_string_compatibility": {
+      "rule": "TDSData.string in sqlserver-nio intentionally bridges numerics, bits, decimals, money, GUIDs, and textual types to String for app/test compatibility.",
+      "examples": [
+        "INT -> \"1\"",
+        "BIT -> \"1\" or \"0\"",
+        "UNIQUEIDENTIFIER -> canonical GUID string"
+      ]
+    }
+  },
+  "transaction_descriptor_rules": [
+    "sqlserver-nio tracks the current descriptor on TDSConnection and injects it into SQLBatch, RPC, and TransactionManagerRequest ALL_HEADERS while an explicit transaction is active.",
+    "Transaction state is sourced from ENVCHANGE parsing: type 8 sets the descriptor, types 9/10/17 clear it.",
+    "Swift implementation touchpoints: TransactionManagerRequest.swift, Message/TDSMessage+TransactionDecriptor.swift, Token/TDSTokenOperations+EnvChange.swift, and TDSRequest.swift."
+  ]
+}

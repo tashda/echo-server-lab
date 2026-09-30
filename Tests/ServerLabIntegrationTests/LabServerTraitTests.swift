@@ -437,3 +437,30 @@ struct SQLServerAvailabilityGroupTests {
         #expect(try await rows(server, "secondary") == 4)
     }
 }
+
+// MARK: - TDS spec against real traffic
+
+/// Every message of a session that reads every column type (login encrypted, the rest plain), SQL Server 2025's
+/// json and vector included, must decode against MS-TDS with nothing unexplained.
+@Suite(.enabled(if: integrationEnabled), .server("mssql-2025-column-types", capture: true))
+struct SQLServerTrafficMatchesTheSpecTests {
+    @Test func everyMessageDecodes() async throws {
+        let server = try #require(LabServer.current)
+        let wire = try #require(LabWire.current)
+        // sqlserver-nio always encrypts the whole session, so Microsoft's sqlcmd sends the queries:
+        // with optional encryption only its login is encrypted.
+        let lab = try ServerLab.standard()
+        try await lab.runMicrosoftClient(server, sql: "SELECT * FROM dbo.AllTypes; SELECT * FROM dbo.LargeValues;", database: "LabData")
+
+        let messages = try await wire.explainedMessages()
+        #expect(messages.specProblems.isEmpty, "\(messages.specProblems.prefix(10))")
+        #expect(messages.contains { $0.kind == "PRELOGIN" })
+        #expect(messages.contains { $0.kind == "SQL batch" && $0.explanation.text.contains("AllTypes") })
+        let results = messages.filter { $0.kind == "Tabular result" }.map(\.explanation.text).joined()
+        // sqlcmd does not ask for JSONSUPPORT or VECTORSUPPORT, so the server sends json and vector
+        // columns as nvarchar(max); their own wire types need sqlserver-nio's traffic (TLS key log).
+        #expect(results.contains("NBCROW (0xD2)") || results.contains("ROW (0xD1)"))
+        #expect(results.contains("0x6A decimal") && results.contains("0x2B datetimeoffset") && results.contains("0x24 uniqueidentifier"))
+        #expect(results.contains("MAX (PLP)"))
+    }
+}

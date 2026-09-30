@@ -56,6 +56,8 @@ swift run serverlab stop <server> [--part standby]  # stop without removing (sam
 swift run serverlab start <server> [--part standby]
 swift run serverlab promote <server>                # standby becomes primary
 swift run serverlab fault <server> latency 400       # after `up <recipe> --faults`; cut, restore, clear
+swift run serverlab sqlcmd <server> "SELECT 1"      # Microsoft's client, login-only encryption
+swift run serverlab explain <server>                # captured TDS, field by field, checked against MS-TDS
 ```
 
 In a test (`ServerLabTesting`):
@@ -82,6 +84,8 @@ instead of `testlab`. The integration tests run with `SERVERLAB_INTEGRATION=1`.
 | `Sources/ServerLabCatalog` | The standard lab and the shipped recipes (`Recipes/*.json`). |
 | `Sources/ServerLabTesting` | The `.server(...)` trait. |
 | `Sources/serverlab` | The command-line tool. |
+| `Sources/TDSSpec` | MS-TDS reference (spec JSON) and a TDS decoder that explains bytes, messages and captures. |
+| `Sources/tds-mcp` | MCP server (stdio) over TDSSpec and lab captures; replaces the TypeScript tds-mcp repo. |
 | `catalog/` | Everything each engine has, what creates it, what the drivers still lack. |
 
 ## Status

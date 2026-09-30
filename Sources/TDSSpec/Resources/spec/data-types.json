@@ -1,0 +1,541 @@
+{
+  "_meta": {
+    "source": "MS-TDS v20260223 §2.2.5.4, §2.2.5.5",
+    "note": "TDS data types. TYPE_INFO = TypeByte + optional length/precision/scale/collation. TYPE_VARBYTE = TYPE_INFO + value bytes."
+  },
+  "encoding_categories": {
+    "FIXEDLENTYPE": {
+      "description": "Fixed-length types. TYPE_INFO = just the type byte. No length field. Value is always full width.",
+      "type_info_size": "1 byte",
+      "value_encoding": "Fixed byte count (see each type)"
+    },
+    "BYTELEN_TYPE": {
+      "description": "Variable-length types with 1-byte max length in TYPE_INFO, 1-byte actual length prefix on value.",
+      "type_info_size": "1 type byte + 1 MaxLen byte (+ precision/scale bytes for decimal/numeric/datetime2/time/datetimeoffset)",
+      "value_encoding": "ActualLen(BYTE) + data bytes. ActualLen=0 means NULL."
+    },
+    "USHORTLEN_TYPE": {
+      "description": "Variable-length types with 2-byte max length in TYPE_INFO, 2-byte actual length prefix on value.",
+      "type_info_size": "1 type byte + 2 MaxLen bytes (+ 5-byte collation for char/varchar/nchar/nvarchar)",
+      "value_encoding": "ActualLen(USHORT) + data bytes. ActualLen=0xFFFF means NULL (for non-PLP). For PLP types (varchar/nvarchar/varbinary MAX), use PARTLENTYPE encoding."
+    },
+    "LONGLEN_TYPE": {
+      "description": "Large object types with 4-byte max length. Deprecated in TDS 7.2+, use PARTLENTYPE instead.",
+      "type_info_size": "1 type byte + 4 MaxLen bytes (+ 5-byte collation for text/ntext)",
+      "value_encoding": "For TEXT/NTEXT/IMAGE in ROW token: TextPointer(B_VARBYTE) + Timestamp(8BYTE) + DataLen(LONG) + data. DataLen=-1 means NULL (GEN_NULL). TextPointer absent if NULL."
+    },
+    "PARTLENTYPE": {
+      "description": "Partially Length-Prefixed (PLP) streaming for MAX types and JSON/XML/UDT. Allows streaming without knowing total length.",
+      "type_info_size": "1 type byte + 2 bytes (0xFFFF for MAX length indicator) + optional collation/precision",
+      "value_encoding": "TotalLen(ULONGLONG: 0xFFFFFFFFFFFFFFFE=unknown, 0xFFFFFFFFFFFFFFFF=NULL) + chunks: ChunkLen(ULONG)+data ... terminated by ChunkLen=0"
+    }
+  },
+  "types": [
+    {
+      "name": "null",
+      "sql_type": "NULL",
+      "value": "0x1F",
+      "category": "FIXEDLENTYPE",
+      "fixed_length": 0,
+      "description": "Null type",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "tinyInt",
+      "sql_type": "TINYINT",
+      "value": "0x30",
+      "category": "FIXEDLENTYPE",
+      "fixed_length": 1,
+      "description": "1-byte unsigned integer (0-255). Wire type is UInt8. TINYINT is the ONLY unsigned integer type in SQL Server — all other integer types (SMALLINT, INT, BIGINT) are signed.",
+      "collation": false,
+      "precision": false,
+      "scale": false,
+      "conversion_safety": {
+        "issue": "Because TINYINT is unsigned (0-255, UInt8), converting to signed types narrower than 16 bits (e.g., Int8, range -128..127) will trap/crash for values > 127.",
+        "rule": "Implementations MUST use non-trapping initializers (e.g., Swift `I(exactly:)` or `I(clamping:)`) when converting TINYINT values to generic or potentially-narrower signed integer types. Never use `I(value)` where I is a generic FixedWidthInteger — it traps on overflow.",
+        "example_bug": "A generic function `fwi<I: FixedWidthInteger>() -> I` using `I(uint8Value)` crashes with 'Not enough bits to represent the passed value' when I=Int8 and value > 127.",
+        "safe_pattern": "Use `I(exactly: uint8Value)` which returns nil instead of crashing, or `I(clamping: uint8Value)` which clamps to I.max."
+      }
+    },
+    {
+      "name": "bit",
+      "sql_type": "BIT",
+      "value": "0x32",
+      "category": "FIXEDLENTYPE",
+      "fixed_length": 1,
+      "description": "1-byte bit value",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "smallInt",
+      "sql_type": "SMALLINT",
+      "value": "0x34",
+      "category": "FIXEDLENTYPE",
+      "fixed_length": 2,
+      "description": "2-byte signed integer",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "int",
+      "sql_type": "INT",
+      "value": "0x38",
+      "category": "FIXEDLENTYPE",
+      "fixed_length": 4,
+      "description": "4-byte signed integer",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "smallDateTime",
+      "sql_type": "SMALLDATETIME",
+      "value": "0x3A",
+      "category": "FIXEDLENTYPE",
+      "fixed_length": 4,
+      "description": "4-byte date+time: 2-byte days since 1900-01-01 + 2-byte minutes since midnight",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "real",
+      "sql_type": "REAL",
+      "value": "0x3B",
+      "category": "FIXEDLENTYPE",
+      "fixed_length": 4,
+      "description": "4-byte IEEE 754 float",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "money",
+      "sql_type": "MONEY",
+      "value": "0x3C",
+      "category": "FIXEDLENTYPE",
+      "fixed_length": 8,
+      "description": "8-byte fixed-point monetary value",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "datetime",
+      "sql_type": "DATETIME",
+      "value": "0x3D",
+      "category": "FIXEDLENTYPE",
+      "fixed_length": 8,
+      "description": "8-byte datetime: 4-byte days since 1900-01-01 + 4-byte 1/300-sec since midnight",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "float",
+      "sql_type": "FLOAT",
+      "value": "0x3E",
+      "category": "FIXEDLENTYPE",
+      "fixed_length": 8,
+      "description": "8-byte IEEE 754 double",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "smallMoney",
+      "sql_type": "SMALLMONEY",
+      "value": "0x7A",
+      "category": "FIXEDLENTYPE",
+      "fixed_length": 4,
+      "description": "4-byte fixed-point monetary value",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "bigInt",
+      "sql_type": "BIGINT",
+      "value": "0x7F",
+      "category": "FIXEDLENTYPE",
+      "fixed_length": 8,
+      "description": "8-byte signed integer",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "guid",
+      "sql_type": "UNIQUEIDENTIFIER",
+      "value": "0x24",
+      "category": "BYTELEN_TYPE",
+      "max_length": 16,
+      "description": "GUID/UUID. TYPE_INFO: type(1) + MaxLen(1)=16. Value: ActualLen(1, 0=NULL, 16=present) + 16 bytes little-endian.",
+      "encoding_note": "Wire byte order for GUID: bytes 0-3 are little-endian int32, bytes 4-5 are little-endian int16, bytes 6-7 are little-endian int16, bytes 8-15 big-endian.",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "intn",
+      "sql_type": "INT (nullable variant)",
+      "value": "0x26",
+      "category": "BYTELEN_TYPE",
+      "max_length_options": [1, 2, 4, 8],
+      "description": "Nullable integer. TYPE_INFO: type(1) + MaxLen(1)=[1,2,4,8]. Value: ActualLen(1, 0=NULL) + data. MaxLen 1=tinyint, 2=smallint, 4=int, 8=bigint.",
+      "collation": false,
+      "precision": false,
+      "scale": false,
+      "notes": [
+        "Use intn in RPC requests for int/smallint/tinyint/bigint nullable parameters",
+        "MaxLen=1 (tinyint): value is unsigned UInt8 (0-255). See tinyInt conversion_safety — the same unsigned-to-signed pitfall applies when converting intn(1) values to signed integer types."
+      ]
+    },
+    {
+      "name": "bitn",
+      "sql_type": "BIT (nullable variant)",
+      "value": "0x68",
+      "category": "BYTELEN_TYPE",
+      "max_length": 1,
+      "description": "Nullable bit. TYPE_INFO: type(1) + MaxLen(1)=1. Value: ActualLen(1, 0=NULL, 1=present) + 1 byte.",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "decimal",
+      "sql_type": "DECIMAL / NUMERIC",
+      "value": "0x6A",
+      "aliases": ["numeric", "decimalLegacy", "numericLegacy"],
+      "alias_values": { "numeric": "0x6C", "decimalLegacy": "0x6A", "numericLegacy": "0x6C" },
+      "category": "BYTELEN_TYPE",
+      "max_length": 17,
+      "description": "Fixed-precision decimal. TYPE_INFO: type(1) + MaxLen(1)=17 + Precision(1,0-38) + Scale(1,0-precision). Value: ActualLen(1, 0=NULL) + sign(1, 0=negative, 1=positive) + magnitude(ActualLen-1 bytes, little-endian).",
+      "collation": false,
+      "precision": true,
+      "scale": true,
+      "notes": [
+        "Precision max 38, scale <= precision",
+        "In RPC requests: Microsoft JDBC sends MaxLen=0x11(17), Precision=38(MAX). Scale may or may not appear in TYPE_INFO (use TDS_RPC_DEC_TYPEINFO_SCALE=1 env var in sqlserver-nio to include it)",
+        "Value payload: 1-byte sign + variable-length little-endian magnitude. Sign: 0x01=positive, 0x00=negative (per JDBC convention)"
+      ]
+    },
+    {
+      "name": "fltn",
+      "sql_type": "FLOAT / REAL (nullable variant)",
+      "value": "0x6D",
+      "category": "BYTELEN_TYPE",
+      "max_length_options": [4, 8],
+      "description": "Nullable float. TYPE_INFO: type(1) + MaxLen(1)=[4,8]. Value: ActualLen(1, 0=NULL) + data. MaxLen 4=real(float32), 8=float(float64).",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "moneyn",
+      "sql_type": "MONEY / SMALLMONEY (nullable variant)",
+      "value": "0x6E",
+      "category": "BYTELEN_TYPE",
+      "max_length_options": [4, 8],
+      "description": "Nullable money. MaxLen 4=smallmoney, 8=money.",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "datetimn",
+      "sql_type": "DATETIME / SMALLDATETIME (nullable variant)",
+      "value": "0x6F",
+      "category": "BYTELEN_TYPE",
+      "max_length_options": [4, 8],
+      "description": "Nullable datetime. MaxLen 4=smalldatetime, 8=datetime.",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "date",
+      "sql_type": "DATE",
+      "value": "0x28",
+      "category": "BYTELEN_TYPE",
+      "max_length": 3,
+      "description": "Date only (no time). TYPE_INFO: type(1) only (no MaxLen byte — length implicit=3). Value: ActualLen(1, 0=NULL, 3=present) + 3 bytes (days since 0001-01-01, little-endian unsigned 24-bit).",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "time",
+      "sql_type": "TIME(n)",
+      "value": "0x29",
+      "category": "BYTELEN_TYPE",
+      "description": "Time only. TYPE_INFO: type(1) + Scale(1, 0-7). Scale determines byte count: 0-2→3 bytes, 3-4→4 bytes, 5-7→5 bytes. Value: ActualLen(1, 0=NULL) + data (unsigned integer, little-endian, representing 10^(-scale) second intervals since midnight).",
+      "collation": false,
+      "precision": false,
+      "scale": true,
+      "scale_to_bytes": { "0": 3, "1": 3, "2": 3, "3": 4, "4": 4, "5": 5, "6": 5, "7": 5 }
+    },
+    {
+      "name": "datetime2",
+      "sql_type": "DATETIME2(n)",
+      "value": "0x2A",
+      "category": "BYTELEN_TYPE",
+      "description": "Datetime2. TYPE_INFO: type(1) + Scale(1, 0-7). Byte count = time_bytes + 3 (for date). Value: ActualLen(1, 0=NULL) + time_value (little-endian) + date_value (3 bytes, days since 0001-01-01).",
+      "collation": false,
+      "precision": false,
+      "scale": true,
+      "scale_to_total_bytes": { "0": 6, "1": 6, "2": 6, "3": 7, "4": 7, "5": 8, "6": 8, "7": 8 }
+    },
+    {
+      "name": "dateTimeOffset",
+      "sql_type": "DATETIMEOFFSET(n)",
+      "value": "0x2B",
+      "category": "BYTELEN_TYPE",
+      "description": "Datetime with timezone offset. TYPE_INFO: type(1) + Scale(1, 0-7). Total bytes = datetime2_bytes + 2 (for offset in minutes, signed INT16 little-endian).",
+      "collation": false,
+      "precision": false,
+      "scale": true,
+      "scale_to_total_bytes": { "0": 8, "1": 8, "2": 8, "3": 9, "4": 9, "5": 10, "6": 10, "7": 10 }
+    },
+    {
+      "name": "charLegacy",
+      "sql_type": "CHAR (pre-TDS7)",
+      "value": "0x2F",
+      "category": "BYTELEN_TYPE",
+      "description": "Legacy fixed-length char. Use BIGCHARTYPE (0xAF) for TDS 7+.",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "varcharLegacy",
+      "sql_type": "VARCHAR (pre-TDS7)",
+      "value": "0x27",
+      "category": "BYTELEN_TYPE",
+      "description": "Legacy varchar. Use BIGVARCHARTYPE (0xA7) for TDS 7+.",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "binaryLegacy",
+      "sql_type": "BINARY (pre-TDS7)",
+      "value": "0x2D",
+      "category": "BYTELEN_TYPE",
+      "description": "Legacy binary.",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "varbinaryLegacy",
+      "sql_type": "VARBINARY (pre-TDS7)",
+      "value": "0x25",
+      "category": "BYTELEN_TYPE",
+      "description": "Legacy varbinary.",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "varbinary",
+      "sql_type": "VARBINARY(n) / VARBINARY(MAX)",
+      "value": "0xA5",
+      "category": "USHORTLEN_TYPE",
+      "max_length_max": 8000,
+      "description": "Variable-length binary. TYPE_INFO: type(1) + MaxLen(2, 0-8000 or 0xFFFF for MAX). Value: ActualLen(2) + data. 0xFFFF = NULL. For VARBINARY(MAX): use PARTLENTYPE with MaxLen=0xFFFF.",
+      "collation": false,
+      "precision": false,
+      "scale": false,
+      "plp_notes": "VARBINARY(MAX) uses PLP encoding: TotalLen(8) + chunks. sqlserver-nio does NOT currently support PLP for varbinary(max)."
+    },
+    {
+      "name": "varchar",
+      "sql_type": "VARCHAR(n) / VARCHAR(MAX)",
+      "value": "0xA7",
+      "category": "USHORTLEN_TYPE",
+      "max_length_max": 8000,
+      "description": "Variable-length char. TYPE_INFO: type(1) + MaxLen(2, 0-8000 or 0xFFFF for MAX) + Collation(5 bytes). Value: ActualLen(2) + UTF-8 or Latin-1 bytes. 0xFFFF = NULL.",
+      "collation": true,
+      "collation_size": 5,
+      "precision": false,
+      "scale": false,
+      "plp_notes": "VARCHAR(MAX) uses PLP encoding. sqlserver-nio does NOT currently support PLP for varchar(max)."
+    },
+    {
+      "name": "binary",
+      "sql_type": "BINARY(n)",
+      "value": "0xAD",
+      "category": "USHORTLEN_TYPE",
+      "max_length_max": 8000,
+      "description": "Fixed-length binary padded to MaxLen. TYPE_INFO: type(1) + MaxLen(2). Value: ActualLen(2) + data.",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "char",
+      "sql_type": "CHAR(n)",
+      "value": "0xAF",
+      "category": "USHORTLEN_TYPE",
+      "max_length_max": 8000,
+      "description": "Fixed-length char padded to MaxLen. TYPE_INFO: type(1) + MaxLen(2) + Collation(5 bytes). Value: ActualLen(2) + data.",
+      "collation": true,
+      "collation_size": 5,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "nvarchar",
+      "sql_type": "NVARCHAR(n) / NVARCHAR(MAX)",
+      "value": "0xE7",
+      "category": "USHORTLEN_TYPE",
+      "max_length_max": 8000,
+      "description": "Variable-length Unicode (UTF-16LE). TYPE_INFO: type(1) + MaxLen(2, byte count: 0-8000, or 0xFFFF for MAX) + Collation(5 bytes). Value: ActualLen(2) + UTF-16LE bytes. 0xFFFF = NULL. NOTE: MaxLen is in BYTES; for nvarchar(4000) MaxLen=8000.",
+      "collation": true,
+      "collation_size": 5,
+      "precision": false,
+      "scale": false,
+      "plp_notes": "NVARCHAR(MAX) uses PLP encoding. sqlserver-nio caps at 4000 chars (8000 bytes) — no PLP support yet."
+    },
+    {
+      "name": "nchar",
+      "sql_type": "NCHAR(n)",
+      "value": "0xEF",
+      "category": "USHORTLEN_TYPE",
+      "max_length_max": 8000,
+      "description": "Fixed-length Unicode (UTF-16LE) padded to MaxLen bytes. TYPE_INFO: type(1) + MaxLen(2) + Collation(5). Value: ActualLen(2) + UTF-16LE bytes.",
+      "collation": true,
+      "collation_size": 5,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "text",
+      "sql_type": "TEXT",
+      "value": "0x23",
+      "category": "LONGLEN_TYPE",
+      "description": "Large text (legacy LOB). TYPE_INFO: type(1) + MaxLen(4) + Collation(5). In COLMETADATA: followed by TableName. In ROW: TextPointer(B_VARBYTE) + Timestamp(8) + DataLen(4) + data. DataLen=-1 means NULL.",
+      "collation": true,
+      "collation_size": 5,
+      "precision": false,
+      "scale": false,
+      "notes": ["Deprecated; use VARCHAR(MAX) instead", "Requires TextPointer + Timestamp in ROW token unless NULL"]
+    },
+    {
+      "name": "image",
+      "sql_type": "IMAGE",
+      "value": "0x22",
+      "category": "LONGLEN_TYPE",
+      "description": "Large binary (legacy LOB). Same structure as TEXT but no collation.",
+      "collation": false,
+      "precision": false,
+      "scale": false,
+      "notes": ["Deprecated; use VARBINARY(MAX) instead"]
+    },
+    {
+      "name": "nText",
+      "sql_type": "NTEXT",
+      "value": "0x63",
+      "category": "LONGLEN_TYPE",
+      "description": "Large Unicode text (legacy LOB). Like TEXT but UTF-16LE. TYPE_INFO: type(1) + MaxLen(4) + Collation(5).",
+      "collation": true,
+      "collation_size": 5,
+      "precision": false,
+      "scale": false,
+      "notes": ["Deprecated; use NVARCHAR(MAX) instead"]
+    },
+    {
+      "name": "sqlVariant",
+      "sql_type": "SQL_VARIANT",
+      "value": "0x62",
+      "category": "LONGLEN_TYPE",
+      "description": "SQL_VARIANT can hold values of most SQL types. TYPE_INFO: type(1) + MaxLen(4)=8009. Value: DataLen(4) + BaseType(1) + PropLen(1) + PropertyBytes(PropLen) + BaseValue.",
+      "collation": false,
+      "precision": false,
+      "scale": false,
+      "notes": ["Inner base type determines actual value encoding", "PropertyBytes contain type-specific metadata (collation for char types, precision/scale for decimal, etc.)"]
+    },
+    {
+      "name": "xml",
+      "sql_type": "XML",
+      "value": "0xF1",
+      "category": "PARTLENTYPE",
+      "description": "XML data. TYPE_INFO: type(1) + SchemaPresent(1, 0 or 1) + if SchemaPresent: DB(B_USVAR) + Schema(B_USVAR) + Collection(US_VARCHAR). Value: PLP encoding (TotalLen(8) + chunks).",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "clrUdt",
+      "sql_type": "UDT (CLR User-Defined Type)",
+      "value": "0xF0",
+      "category": "PARTLENTYPE",
+      "description": "CLR UDT. TYPE_INFO: type(1) + MaxLen(2) + DB(B_USVAR) + Schema(B_USVAR) + TypeName(B_USVAR) + AssemblyName(US_VARCHAR). Value: PLP encoding.",
+      "collation": false,
+      "precision": false,
+      "scale": false
+    },
+    {
+      "name": "json",
+      "sql_type": "JSON",
+      "value": "0xF4",
+      "category": "PARTLENTYPE",
+      "introduced": "TDS 7.4 (JSONSUPPORT feature)",
+      "description": "JSON data. TYPE_INFO: type(1) only (MaxLen implicit = 0xFFFF marker, no additional TYPE_INFO bytes). Value: PLP encoding with UTF-8 encoded JSON text.",
+      "collation": false,
+      "precision": false,
+      "scale": false,
+      "notes": [
+        "Only available when JSONSUPPORT FeatureExt negotiated (JSONSUPPORT_VERSION=1)",
+        "In sqlserver-nio COLMETADATA parser: length set to 0xFFFF, no additional bytes read for TYPE_INFO"
+      ]
+    },
+    {
+      "name": "vector",
+      "sql_type": "VECTOR",
+      "value": "0xF5",
+      "category": "USHORTLEN_TYPE",
+      "introduced": "TDS 7.4 (VECTORSUPPORT feature)",
+      "description": "Vector type for similarity search. TYPE_INFO: type(1) + MaxLen(2, max bytes) + DimensionType(1, 0=float32). Value: ActualLen(2) + raw bytes.",
+      "collation": false,
+      "precision": false,
+      "scale": true,
+      "scale_note": "The DimensionType byte is read in the 'scale' position",
+      "notes": [
+        "Only available when VECTORSUPPORT FeatureExt negotiated (VECTORSUPPORT_VERSION=1)",
+        "DimensionType=0 means float32 (4 bytes per element)",
+        "In sqlserver-nio COLMETADATA parser: reads USHORTLEN then reads DimensionType as a dummy byte"
+      ]
+    }
+  ],
+  "collation_structure": {
+    "description": "5-byte SQL collation info",
+    "fields": [
+      { "field": "LCID", "bits": "bits 0-19 of bytes 0-2", "desc": "Windows locale ID" },
+      { "field": "ColFlags", "bits": "bits 20-31 of bytes 2-3", "desc": "Case sensitivity, accent, etc." },
+      { "field": "Version", "bits": "bits 28-31 of byte 3", "desc": "Sort ID version" },
+      { "field": "SortId", "byte": "byte 4", "desc": "Sort order ID" }
+    ]
+  },
+  "type_info_composition": {
+    "description": "How TYPE_INFO is composed for each category",
+    "FIXEDLENTYPE": "TypeByte(1)",
+    "BYTELEN_TYPE_simple": "TypeByte(1) + MaxLen(1)",
+    "BYTELEN_TYPE_decimal": "TypeByte(1) + MaxLen(1) + Precision(1) + Scale(1)",
+    "BYTELEN_TYPE_datetime2_time_dto": "TypeByte(1) + Scale(1)",
+    "USHORTLEN_TYPE_binary": "TypeByte(1) + MaxLen(2)",
+    "USHORTLEN_TYPE_char": "TypeByte(1) + MaxLen(2) + Collation(5)",
+    "USHORTLEN_TYPE_vector": "TypeByte(1) + MaxLen(2) + DimensionType(1)",
+    "LONGLEN_TYPE_binary": "TypeByte(1) + MaxLen(4)",
+    "LONGLEN_TYPE_char": "TypeByte(1) + MaxLen(4) + Collation(5)",
+    "PARTLENTYPE_xml": "TypeByte(1) + SchemaPresent(1) + [optional schema]",
+    "PARTLENTYPE_json": "TypeByte(1)",
+    "PARTLENTYPE_udt": "TypeByte(1) + MaxLen(2) + Names..."
+  }
+}

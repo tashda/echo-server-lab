@@ -1,0 +1,443 @@
+{
+  "_meta": {
+    "source": "MS-TDS v20260223 \u00a73.1.5, \u00a73.2",
+    "note": "Protocol state machines and message sequence flows"
+  },
+  "flows": [
+    {
+      "name": "Standard Connection (TDS 7.x with encryption)",
+      "description": "Normal TDS 7.x connection flow with TLS encryption negotiated via PRELOGIN",
+      "figure": "Figure 3",
+      "steps": [
+        {
+          "step": 1,
+          "from": "client",
+          "to": "server",
+          "message": "TCP connect"
+        },
+        {
+          "step": 2,
+          "from": "server",
+          "to": "client",
+          "message": "TCP accept"
+        },
+        {
+          "step": 3,
+          "from": "client",
+          "to": "server",
+          "message": "PRELOGIN (packet 0x12)",
+          "state": "Pre-Login state"
+        },
+        {
+          "step": 4,
+          "from": "server",
+          "to": "client",
+          "message": "PRELOGIN response (packet 0x04)",
+          "desc": "Server encryption capability"
+        },
+        {
+          "step": 5,
+          "from": "client",
+          "to": "server",
+          "message": "TLS PRELOGIN Exchange 1 (packet 0x12)",
+          "desc": "TLS ClientHello inside PRELOGIN packet"
+        },
+        {
+          "step": 6,
+          "from": "server",
+          "to": "client",
+          "message": "TLS PRELOGIN response 1 (packet 0x12)"
+        },
+        {
+          "step": 7,
+          "from": "client",
+          "to": "server",
+          "message": "TLS PRELOGIN Exchange 2 (packet 0x12)"
+        },
+        {
+          "step": 8,
+          "from": "server",
+          "to": "client",
+          "message": "TLS PRELOGIN response 2 (packet 0x12)"
+        },
+        {
+          "step": 9,
+          "from": "client",
+          "to": "server",
+          "message": "LOGIN7 (packet 0x10) over TLS",
+          "state": "Login state"
+        },
+        {
+          "step": 10,
+          "from": "server",
+          "to": "client",
+          "message": "Login Response (LOGINACK + ENVCHANGE + DONE, packet 0x04)",
+          "state": "Post-Login Success state"
+        }
+      ],
+      "notes": [
+        "TLS handshake uses PRELOGIN packet type (0x12)",
+        "After TLS handshake, all data encrypted including LOGIN7"
+      ]
+    },
+    {
+      "name": "TDS 8.0 Connection",
+      "description": "TDS 8.0 establishes TLS BEFORE PRELOGIN. TLS is at the transport layer, not inside TDS packets.",
+      "figure": "Figure 4",
+      "steps": [
+        {
+          "step": 1,
+          "from": "client",
+          "to": "server",
+          "message": "TCP connect"
+        },
+        {
+          "step": 2,
+          "from": "server",
+          "to": "client",
+          "message": "TCP accept"
+        },
+        {
+          "step": 3,
+          "from": "client",
+          "to": "server",
+          "message": "TLS Exchange (at TCP level)"
+        },
+        {
+          "step": 4,
+          "from": "server",
+          "to": "client",
+          "message": "TLS Exchange Response"
+        },
+        {
+          "step": 5,
+          "from": "client",
+          "to": "server",
+          "message": "PRELOGIN (packet 0x12, now over TLS)"
+        },
+        {
+          "step": 6,
+          "from": "server",
+          "to": "client",
+          "message": "PRELOGIN response (packet 0x04)"
+        },
+        {
+          "step": 7,
+          "from": "client",
+          "to": "server",
+          "message": "LOGIN7 (packet 0x10)"
+        },
+        {
+          "step": 8,
+          "from": "server",
+          "to": "client",
+          "message": "Login Response (LOGINACK etc.)"
+        }
+      ],
+      "notes": [
+        "TDS 8.0: TLS MUST be established before PRELOGIN",
+        "ENCRYPT_CLIENT_CERT bit (0x80; 0x80/0x81/0x83 with OFF/ON/REQ) used in PRELOGIN for certificate-based auth"
+      ]
+    },
+    {
+      "name": "SPNEGO Authentication (TDS 7.x)",
+      "description": "Integrated Windows authentication using SPNEGO/Kerberos or NTLM",
+      "steps": [
+        {
+          "step": "1-8",
+          "desc": "PRELOGIN + TLS exchange (same as standard)"
+        },
+        {
+          "step": 9,
+          "from": "client",
+          "to": "server",
+          "message": "LOGIN7 with fIntSecurity=1 (SPNEGO Exchange 1 in SSPI data)"
+        },
+        {
+          "step": 10,
+          "from": "server",
+          "to": "client",
+          "message": "SSPI token (SPNEGO Exchange 1 Response, packet 0x04 with SSPI token 0xED)"
+        },
+        {
+          "step": 11,
+          "from": "client",
+          "to": "server",
+          "message": "SSPI message (packet 0x11, SPNEGO Exchange 2)"
+        },
+        {
+          "step": 12,
+          "from": "server",
+          "to": "client",
+          "message": "Login Response (LOGINACK, packet 0x04)"
+        }
+      ]
+    },
+    {
+      "name": "Federated Authentication (TDS 7.x)",
+      "description": "Azure AD / federated auth flow where client library needs server info to acquire token",
+      "figure": "Figure 5",
+      "steps": [
+        {
+          "step": "1-8",
+          "desc": "PRELOGIN + TLS exchange (same as standard)"
+        },
+        {
+          "step": 9,
+          "from": "client",
+          "to": "server",
+          "message": "LOGIN7 with FEDAUTH FeatureExt (bFedAuthLibrary requires server info)"
+        },
+        {
+          "step": 10,
+          "from": "server",
+          "to": "client",
+          "message": "FEDAUTHINFO token (STS URL, SPN)"
+        },
+        {
+          "step": 11,
+          "from": "client",
+          "to": "server",
+          "message": "Federated Auth Token message (packet 0x08)"
+        },
+        {
+          "step": 12,
+          "from": "server",
+          "to": "client",
+          "message": "Login Response (LOGINACK + FEATUREEXTACK)"
+        }
+      ]
+    },
+    {
+      "name": "SQL Query",
+      "description": "Normal SELECT query flow",
+      "figure": "Figure 7 (part 1)",
+      "steps": [
+        {
+          "step": 1,
+          "from": "client",
+          "to": "server",
+          "message": "SQLBatch (packet 0x01) with SELECT text"
+        },
+        {
+          "step": 2,
+          "from": "server",
+          "to": "client",
+          "message": "Table Response (packet 0x04): COLMETADATA + ROW* + DONE"
+        }
+      ]
+    },
+    {
+      "name": "SQL Query with Cancellation",
+      "description": "Query cancelled by client before completion",
+      "steps": [
+        {
+          "step": 1,
+          "from": "client",
+          "to": "server",
+          "message": "SQLBatch (packet 0x01)"
+        },
+        {
+          "step": 2,
+          "from": "client",
+          "to": "server",
+          "message": "Attention (packet 0x06, cancel request)"
+        },
+        {
+          "step": 3,
+          "from": "server",
+          "to": "client",
+          "message": "Table Response: partial results + DONE (DONE_ATTN set)"
+        }
+      ]
+    },
+    {
+      "name": "RPC (Stored Procedure Call)",
+      "description": "Execute a stored procedure by name",
+      "steps": [
+        {
+          "step": 1,
+          "from": "client",
+          "to": "server",
+          "message": "RPC message (packet 0x03): ALL_HEADERS + ProcName + OptionFlags + Parameters"
+        },
+        {
+          "step": 2,
+          "from": "server",
+          "to": "client",
+          "message": "Table Response (packet 0x04): [RETURNSTATUS] + [RETURNVALUE*] + [COLMETADATA + ROW*] + DONEINPROC* + DONEPROC"
+        }
+      ]
+    },
+    {
+      "name": "Transaction: Begin/Execute/Commit",
+      "description": "Explicit transaction flow",
+      "steps": [
+        {
+          "step": 1,
+          "from": "client",
+          "to": "server",
+          "message": "TransactionManagerRequest (TM_BEGIN_XACT)"
+        },
+        {
+          "step": 2,
+          "from": "server",
+          "to": "client",
+          "message": "Table Response: ENVCHANGE (type 8, transaction descriptor) + DONE"
+        },
+        {
+          "step": 3,
+          "from": "client",
+          "to": "server",
+          "message": "SQLBatch or RPC (using transaction descriptor in ALL_HEADERS)"
+        },
+        {
+          "step": 4,
+          "from": "server",
+          "to": "client",
+          "message": "Table Response: query results + DONE"
+        },
+        {
+          "step": 5,
+          "from": "client",
+          "to": "server",
+          "message": "TransactionManagerRequest (TM_COMMIT_XACT)"
+        },
+        {
+          "step": 6,
+          "from": "server",
+          "to": "client",
+          "message": "Table Response: ENVCHANGE (type 9, commit) + DONE"
+        }
+      ],
+      "notes": [
+        "Step 3 is not optional for MARS clients: SQLBatch/RPC must include the descriptor returned by ENVCHANGE type 8 in ALL_HEADERS.TransactionDescriptor.",
+        "After TM_COMMIT_XACT or TM_ROLLBACK_XACT, the client keeps using the descriptor until the matching ENVCHANGE completion token arrives and clears it.",
+        "ENVCHANGE type 17 (Transaction Ended) also clears the current descriptor and should be treated the same as commit/rollback completion for connection state."
+      ]
+    },
+    {
+      "name": "Bulk Insert",
+      "description": "Bulk data load flow",
+      "figure": "Figure 9",
+      "steps": [
+        {
+          "step": 1,
+          "from": "client",
+          "to": "server",
+          "message": "SQLBatch: INSERT BULK statement"
+        },
+        {
+          "step": 2,
+          "from": "server",
+          "to": "client",
+          "message": "Table Response (ready signal)"
+        },
+        {
+          "step": 3,
+          "from": "client",
+          "to": "server",
+          "message": "Bulk Load data (packet 0x07, binary data)"
+        },
+        {
+          "step": 4,
+          "from": "server",
+          "to": "client",
+          "message": "Table Response: DONE (rows affected)"
+        }
+      ]
+    }
+  ],
+  "client_states": {
+    "description": "TDS client state machine states (\u00a73.2.1)",
+    "states": [
+      "Initial State",
+      "Sent Initial TLS Negotiation Packet State (TDS 8.0 only)",
+      "Sent Initial PRELOGIN Packet State",
+      "Sent TLS/SSL Negotiation Packet State (TDS 7.x only)",
+      "Sent LOGIN7 Record with Complete Authentication Token State",
+      "Sent LOGIN7 Record with SPNEGO Packet State",
+      "Sent LOGIN7 Record with Federated Authentication Information Request State",
+      "Logged In State",
+      "Sent Client Request State",
+      "Sent Attention State",
+      "Routing Completed State",
+      "Final State"
+    ]
+  },
+  "client_timers": {
+    "Connection Timer": "Default 15 seconds; controls maximum time for TDS connection establishment",
+    "Client Request Timer": "Implementation-dependent default; controls maximum time waiting for server response to a query",
+    "Cancel Timer": "Implementation-dependent default; controls maximum time waiting for cancel acknowledgement after ATTENTION"
+  },
+  "token_stream_ordering": {
+    "login_response": "ENVCHANGE* \u2192 LOGINACK \u2192 [FEATUREEXTACK] \u2192 [SESSIONSTATE] \u2192 DONE",
+    "query_result": "COLMETADATA \u2192 (ROW|NBCROW)* \u2192 [DATACLASSIFICATION] \u2192 DONE",
+    "stored_proc_result": "RETURNSTATUS \u2192 RETURNVALUE* \u2192 COLMETADATA \u2192 (ROW|NBCROW)* \u2192 DONEINPROC* \u2192 DONEPROC",
+    "error_response": "ERROR \u2192 [INFO] \u2192 DONE(DONE_ERROR)",
+    "routing": "LOGINACK \u2192 ENVCHANGE(type 20 or 21) \u2192 DONE"
+  },
+  "server_states": {
+    "description": "TDS server state machine states (\u00a73.3.1)",
+    "states": [
+      {
+        "name": "Initial State",
+        "desc": "Server has accepted TCP connection; awaiting PRELOGIN (TDS 7.x) or TLS negotiation (TDS 8.0)"
+      },
+      {
+        "name": "TLS/SSL Negotiation State",
+        "tds_version": "TDS 7.x only",
+        "desc": "Server exchanging TLS handshake messages inside PRELOGIN packets (packet type 0x12)"
+      },
+      {
+        "name": "TLS Negotiation State",
+        "tds_version": "TDS 8.0 only",
+        "desc": "Server performing TLS handshake at TCP level before any TDS packets"
+      },
+      {
+        "name": "PRELOGIN Ready State",
+        "tds_version": "TDS 8.0 only",
+        "desc": "TLS established; server awaiting PRELOGIN packet"
+      },
+      {
+        "name": "Pre-Login State",
+        "tds_version": "TDS 7.x",
+        "desc": "Server has sent PRELOGIN response; awaiting LOGIN7 or TLS exchange"
+      },
+      {
+        "name": "Login Ready State",
+        "desc": "Server has completed PRELOGIN exchange; awaiting LOGIN7 packet"
+      },
+      {
+        "name": "SPNEGO Negotiation State",
+        "desc": "Server processing Windows Integrated Authentication (Kerberos/NTLM); exchanging SSPI tokens"
+      },
+      {
+        "name": "Federated Authentication Ready State",
+        "desc": "Server has sent FEDAUTHINFO token; awaiting Federated Auth Token message (packet 0x08)"
+      },
+      {
+        "name": "Logged In State",
+        "desc": "Authentication complete; server awaiting client requests (SQL, RPC, Transaction, Attention, etc.)"
+      },
+      {
+        "name": "Client Request Execution State",
+        "desc": "Server processing a client request; sending token stream response"
+      },
+      {
+        "name": "Routing Completed State",
+        "desc": "Server sent LOGINACK + ENVCHANGE(routing) + DONE; client should reconnect to routed server"
+      },
+      {
+        "name": "Final State",
+        "desc": "Connection closed"
+      }
+    ]
+  },
+  "server_timers": {
+    "description": "Server-side timers (\u00a73.3.2)",
+    "Connection Timer": "Controls maximum time for TDS connection establishment",
+    "Client Request Timer": "Controls maximum time allowed for a client request to complete",
+    "Cancel Timer": "Controls maximum time after receiving ATTENTION before sending DONE(DONE_ATTN)"
+  }
+}

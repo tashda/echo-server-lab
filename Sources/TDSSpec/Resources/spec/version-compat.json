@@ -1,0 +1,186 @@
+{
+  "_meta": {
+    "source": "MS-TDS v20260223 §6 Appendix A, §2.2.7.14",
+    "note": "TDS version numbers, SQL Server compatibility, and feature support matrix"
+  },
+  "version_numbers": {
+    "description": "TDS version numbers exchanged in PRELOGIN and LOGIN7. Client sends version to server; server sends its version back.",
+    "note": "DoneRowCount in DONE token: TDS 7.0/7.1 = always LONG (4 bytes); TDS 7.2+ = LONG or ULONGLONG (8 bytes) depending on server. Use VERSION from Pre-Login response to determine.",
+    "versions": [
+      {
+        "sql_server": "SQL Server 7.0",
+        "tds_version": "TDS 7.0",
+        "client_to_server": "0x00000070",
+        "server_to_client": "0x07000000",
+        "notes": ["fByteOrder=1 supported only by this version", "DoneRowCount is LONG (4 bytes)", "No NBCROW, no sparse columns"]
+      },
+      {
+        "sql_server": "SQL Server 2000",
+        "tds_version": "TDS 7.1",
+        "client_to_server": "0x00000071",
+        "server_to_client": "0x07010000",
+        "notes": ["DoneRowCount is LONG (4 bytes)"]
+      },
+      {
+        "sql_server": "SQL Server 2000 SP1",
+        "tds_version": "TDS 7.1 SP1",
+        "client_to_server": "0x01000071",
+        "server_to_client": "0x71000001"
+      },
+      {
+        "sql_server": "SQL Server 2005",
+        "tds_version": "TDS 7.2",
+        "client_to_server": "0x02000972",
+        "server_to_client": "0x72090002",
+        "notes": ["DoneRowCount becomes ULONGLONG (8 bytes)", "MARS introduced", "userType in COLMETADATA becomes ULONG (4 bytes)"]
+      },
+      {
+        "sql_server": "SQL Server 2008",
+        "tds_version": "TDS 7.3.A",
+        "client_to_server": "0x03000A73",
+        "server_to_client": "0x730A0003",
+        "notes": ["TDS 0x03000A73 does NOT support NBCROW and fSparseColumnSet", "datetime2, datetimeoffset, date, time types added"]
+      },
+      {
+        "sql_server": "SQL Server 2008 R2",
+        "tds_version": "TDS 7.3.B",
+        "client_to_server": "0x03000B73",
+        "server_to_client": "0x730B0003"
+      },
+      {
+        "sql_server": ["SQL Server 2012", "SQL Server 2014", "SQL Server 2016", "SQL Server 2017", "SQL Server 2019", "SQL Server 2022 (TDS 7.x flow)", "SQL Server 2025 (TDS 7.x flow)"],
+        "tds_version": "TDS 7.4",
+        "client_to_server": "0x04000074",
+        "server_to_client": "0x74000004",
+        "notes": ["LOGINACK ProgVersion 0x000003E8 observed in examples", "Supports NBCROW, sparse columns", "COLUMNENCRYPTION: 2016+ only", "DATACLASSIFICATION: 2019+", "JSONSUPPORT: 2025+", "VECTORSUPPORT: 2025+"]
+      },
+      {
+        "sql_server": ["SQL Server 2022", "SQL Server 2025"],
+        "tds_version": "TDS 8.0",
+        "client_to_server": "N/A (TLS at TCP level; PRELOGIN uses TLS-encrypted channel)",
+        "server_to_client": "N/A",
+        "notes": [
+          "TLS established BEFORE PRELOGIN (not inside TDS packets)",
+          "ENCRYPT_CLIENT_CERT (0x80 bit: 0x80/0x81/0x83) in PRELOGIN for certificate auth",
+          "FEDAUTHREQUIRED payload option used",
+          "TDS 8.0 is only available with SQL Server 2022+ on Linux and in TDS 7.x flow for SS2022/SS2025"
+        ]
+      }
+    ]
+  },
+  "done_rowcount_rules": {
+    "description": "DONE token DoneRowCount field width depends on TDS version",
+    "tds_70_71": "Always LONG (4 bytes INT32)",
+    "tds_72_plus": "LONG or ULONGLONG (8 bytes) — server determines based on negotiated TDS version",
+    "detection": "Use VERSION field in Pre-Login Response: if VERSION indicates SQL Server 7.0 or SQL Server 2000, DoneRowCount is LONG; otherwise ULONGLONG",
+    "implementation_note": "If client cannot determine server TDS version before login, DoneRowCount is ambiguous. SQL Server Native Client (SNAC) uses VERSION option in Pre-Login response."
+  },
+  "collation_version_field": {
+    "description": "Version field in COLLATION structure (5 bytes) indicates collation generation",
+    "values": {
+      "0": "SQL Server 2000 collations",
+      "1": "SQL Server 2005 collations",
+      "2": "SQL Server 2008 collations",
+      "3": "SQL Server 2017 collations"
+    }
+  },
+  "feature_support_matrix": {
+    "description": "Which FeatureExt features are supported by each SQL Server version",
+    "note": "AZURESQLSUPPORT and FEDAUTH are supported by Azure SQL Database, not by on-premises SQL Server",
+    "features": [
+      {
+        "feature": "SESSIONRECOVERY",
+        "feature_id": "0x01",
+        "supported_from": "Not supported by SQL Server (Azure SQL Database only per §6 notes)",
+        "notes": "Used for session state recovery on reconnect. StateIds 0x01-0x09."
+      },
+      {
+        "feature": "FEDAUTH",
+        "feature_id": "0x02",
+        "supported_from": "Azure SQL Database only",
+        "sql_server_support": "NOT supported by SQL Server (note <4> and <16> and <23>)"
+      },
+      {
+        "feature": "COLUMNENCRYPTION",
+        "feature_id": "0x04",
+        "supported_from": "SQL Server 2016+",
+        "not_supported": ["SQL Server 7.0", "SQL Server 2000", "SQL Server 2005", "SQL Server 2008", "SQL Server 2008 R2", "SQL Server 2012", "SQL Server 2014"],
+        "notes": "Always Available Encryption; enclave computations require SS2019+ and .NET 4.7.2+"
+      },
+      {
+        "feature": "GLOBALTRANSACTIONS",
+        "feature_id": "0x05",
+        "supported_from": "NOT supported by SQL Server"
+      },
+      {
+        "feature": "AZURESQLSUPPORT",
+        "feature_id": "0x08",
+        "supported_from": "Azure SQL Database only",
+        "sql_server_support": "NOT supported by SQL Server (notes <28>/<62>)",
+        "notes": "Introduced in .NET Framework 4.7.2; FeatureData=0x01"
+      },
+      {
+        "feature": "DATACLASSIFICATION",
+        "feature_id": "0x09",
+        "supported_from": "SQL Server 2019+",
+        "not_supported": ["SQL Server 7.0", "SQL Server 2000", "SQL Server 2005", "SQL Server 2008", "SQL Server 2008 R2", "SQL Server 2012", "SQL Server 2014", "SQL Server 2016", "SQL Server 2017"]
+      },
+      {
+        "feature": "UTF8_SUPPORT",
+        "feature_id": "0x0A",
+        "supported_from": "SQL Server 2019+",
+        "not_supported": ["SQL Server 7.0 through SQL Server 2017"]
+      },
+      {
+        "feature": "AZURESQLDNSCACHING",
+        "feature_id": "0x0B",
+        "supported_from": "NOT supported by SQL Server (Azure SQL Database only)",
+        "notes": "FeatureData value is always 0 from SQL Server"
+      },
+      {
+        "feature": "ENHANCEDROUTINGSUPPORT",
+        "feature_id": "0x0C",
+        "supported_from": "NOT supported by SQL Server"
+      },
+      {
+        "feature": "JSONSUPPORT",
+        "feature_id": "0x11",
+        "supported_from": "SQL Server 2025+",
+        "not_supported": ["SQL Server 7.0 through SQL Server 2022"],
+        "notes": "JSON native type support. Requires PLP encoding for data."
+      },
+      {
+        "feature": "VECTORSUPPORT",
+        "feature_id": "0x12",
+        "supported_from": "SQL Server 2025+",
+        "not_supported": ["SQL Server 7.0 through SQL Server 2022"],
+        "notes": "VECTOR type support. Wire format: ActualLen(2B) + float32 elements."
+      },
+      {
+        "feature": "USERAGENT",
+        "feature_id": "0x13",
+        "supported_from": "NOT supported by SQL Server",
+        "notes": "Added in v20260223 (most recent change to spec)"
+      }
+    ]
+  },
+  "prelogin_encryption_values": {
+    "0x00": "ENCRYPT_OFF — TLS not required (legacy; deprecated in TDS 8.0)",
+    "0x01": "ENCRYPT_ON — TLS required for login and data",
+    "0x02": "ENCRYPT_NOT_SUP — TLS not supported (legacy)",
+    "0x03": "ENCRYPT_REQ — TLS required",
+    "0x04": "ENCRYPT_CLIENT_CERT — TDS 8.0 certificate-based auth"
+  },
+  "altmetadata_support": {
+    "supported_by": ["SQL Server 7.0", "SQL Server 2000", "SQL Server 2005", "SQL Server 2008", "SQL Server 2008 R2"],
+    "deprecated_in": "TDS 7.4",
+    "note": "ALTMETADATA and ALTROW tokens deprecated in TDS 7.4 (SQL Server 2012+)"
+  },
+  "altrow_support": {
+    "supported_by": ["SQL Server 7.0", "SQL Server 2000", "SQL Server 2005"],
+    "note": "ALTROW supported only in SQL Server 7.0, 2000, and 2005"
+  },
+  "nbcrow_sparse_support": {
+    "note": "SQL Server 2008 TDS 0x03000A73 does NOT support NBCROW and fSparseColumnSet. NBCROW/sparse supported from TDS 7.3.B (SQL Server 2008 R2) onwards."
+  }
+}

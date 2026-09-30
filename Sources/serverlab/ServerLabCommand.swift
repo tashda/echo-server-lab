@@ -10,7 +10,7 @@ struct ServerLabCommand: AsyncParsableCommand {
         abstract: "Start disposable database servers from recipes.",
         discussion: "The host is testlab unless SERVERLAB_HOST=local.",
         subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, StopPart.self, StartPart.self, Promote.self, Fault.self,
-                      Images.self, Prune.self, Reap.self, Wire.self, Pcap.self]
+                      Images.self, Prune.self, Reap.self, Wire.self, Explain.self, Sqlcmd.self, Pcap.self]
     )
 }
 
@@ -227,6 +227,56 @@ struct Wire: AsyncParsableCommand {
             }
             print("\(messages.requests.count) requests")
         }
+    }
+}
+
+struct Explain: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Explain a captured SQL Server's traffic field by field with the lab's TDS decoder.",
+        discussion: "Ends with every byte the decoder could not match to MS-TDS; nothing there means the traffic matches the spec."
+    )
+
+    @Argument(help: "Server container name.") var name: String
+    @Option(help: "Only messages whose explanation contains this text.") var contains: String?
+    @Flag(help: "Print JSON.") var json = false
+
+    func run() async throws {
+        let lab = try ServerLab.standard()
+        let messages = try await lab.explainedWire(of: lab.server(named: name))
+            .filter { message in contains.map { message.explanation.text.localizedCaseInsensitiveContains($0) } ?? true }
+        if json {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            print(String(decoding: try encoder.encode(messages), as: UTF8.self))
+            return
+        }
+        for message in messages {
+            print(String(format: "%8.3fs %@ ", message.time, message.toServer ? "client →" : "server ←") + message.explanation.text + "\n")
+        }
+        let problems = messages.specProblems
+        print(problems.isEmpty ? "\(messages.count) messages, all match MS-TDS." : "Not in the spec:\n" + problems.joined(separator: "\n"))
+    }
+}
+
+struct Sqlcmd: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Run SQL through Microsoft's sqlcmd (ODBC Driver 18) from the server's image.",
+        discussion: "A second client to compare with ours. With --encryption optional only the login is encrypted, so a capture can be read."
+    )
+
+    @Argument(help: "Server container name.") var name: String
+    @Argument(help: "The SQL to run.") var sql: String
+    @Option(help: "Database.") var database = "master"
+    @Option(help: "optional (login only), mandatory or strict.") var encryption = "optional"
+
+    func run() async throws {
+        let lab = try ServerLab.standard()
+        let mode: MicrosoftClientEncryption = switch encryption {
+        case "mandatory": .mandatory
+        case "strict": .strict
+        default: .optional
+        }
+        print(try await lab.runMicrosoftClient(lab.server(named: name), sql: sql, database: database, encryption: mode))
     }
 }
 

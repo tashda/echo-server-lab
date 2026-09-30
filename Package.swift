@@ -10,6 +10,9 @@ let package = Package(
         .library(name: "ServerLabTesting", targets: ["ServerLabTesting"]),
         // For test targets that must not link the lab or its drivers (Echo): talks to the serverlab tool.
         .library(name: "ServerLabClient", targets: ["ServerLabClient"]),
+        // The TDS protocol reference and a decoder that explains TDS bytes (was the tds-mcp repo).
+        .library(name: "TDSSpec", targets: ["TDSSpec"]),
+        .executable(name: "tds-mcp", targets: ["tds-mcp"]),
         .executable(name: "serverlab", targets: ["serverlab"]),
     ],
     dependencies: [
@@ -28,6 +31,7 @@ let package = Package(
                 .product(name: "Logging", package: "swift-log"),
                 .product(name: "X509", package: "swift-certificates"),
                 .product(name: "CryptoExtras", package: "swift-crypto"),
+                "TDSSpec",
             ]
         ),
         // SQL Server: container settings, readiness and content packs, through SQLServerKit only.
@@ -52,6 +56,10 @@ let package = Package(
             dependencies: ["ServerLabCatalog"]
         ),
         .target(name: "ServerLabClient"),
+        .target(name: "TDSSpec", resources: [.copy("Resources/spec")]),
+        // MCP server (stdio) over TDSSpec, and over lab captures through ServerLabKit.
+        .executableTarget(name: "tds-mcp", dependencies: ["TDSSpec", "ServerLabCatalog"]),
+        .testTarget(name: "TDSSpecTests", dependencies: ["TDSSpec"]),
         .executableTarget(
             name: "serverlab",
             dependencies: ["ServerLabCatalog", .product(name: "ArgumentParser", package: "swift-argument-parser")]

@@ -133,6 +133,13 @@ public struct LabWire: Sendable {
         return try await lab.wireMessages(of: server)
     }
 
+    /// SQL Server traffic so far as whole TDS messages, explained by the lab's TDS decoder.
+    /// `specProblems` on the result lists anything it could not match to MS-TDS.
+    public func explainedMessages() async throws -> [ExplainedMessage] {
+        try await Task.sleep(for: .milliseconds(300))
+        return try await lab.explainedWire(of: server)
+    }
+
     /// True when `text` crossed the wire unencrypted (UTF-8 or UTF-16LE).
     public func containsPlaintext(_ text: String) async throws -> Bool {
         try await lab.captureContainsPlaintext(text, of: server)
