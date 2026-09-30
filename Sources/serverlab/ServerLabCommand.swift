@@ -9,7 +9,7 @@ struct ServerLabCommand: AsyncParsableCommand {
         commandName: "serverlab",
         abstract: "Start disposable database servers from recipes.",
         discussion: "The host is testlab unless SERVERLAB_HOST=local.",
-        subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, Reap.self]
+        subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, Images.self, Reap.self]
     )
 }
 
@@ -96,5 +96,15 @@ struct Reap: AsyncParsableCommand {
 
     func run() async throws {
         print("removed \(try await ServerLab.standard().reapExpired())")
+    }
+}
+
+struct Images: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "List the seeded images on the host.")
+
+    func run() async throws {
+        for image in try await ServerLab.standard().seededImages().sorted(by: { $0.recipe < $1.recipe }) {
+            print("\(image.recipe.padding(toLength: 34, withPad: " ", startingAt: 0)) \(image.size.padding(toLength: 9, withPad: " ", startingAt: 0)) \(image.created)")
+        }
     }
 }

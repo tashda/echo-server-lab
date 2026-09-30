@@ -189,12 +189,14 @@ public struct RunningServer: Sendable, Hashable {
 extension ServerLab {
     /// Seeded images on this host: one per recipe fingerprint.
     public func seededImages() async throws -> [SeededImage] {
-        let format = "{{.Repository}}:{{.Tag}}\t{{.Size}}\t{{.CreatedSince}}\t{{.Label \"\(LabLabels.recipe)\"}}"
+        // `docker images` has no label field in its format; the recipe is the name after `serverlab/`.
+        let format = "{{.Repository}}\t{{.Tag}}\t{{.Size}}\t{{.CreatedSince}}"
         let output = try await docker.run(["images", "--filter", "label=\(LabLabels.role)=\(LabLabels.Role.seeded.rawValue)", "--format", format])
         return output.split(separator: "\n").compactMap { line in
             let fields = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
-            guard fields.count == 4 else { return nil }
-            return SeededImage(tag: fields[0], size: fields[1], created: fields[2], recipe: fields[3])
+            guard fields.count == 4, fields[0].hasPrefix("serverlab/") else { return nil }
+            return SeededImage(tag: "\(fields[0]):\(fields[1])", size: fields[2], created: fields[3],
+                               recipe: String(fields[0].dropFirst("serverlab/".count)))
         }
     }
 }
