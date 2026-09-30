@@ -86,8 +86,8 @@ Engines: SQL Server 2017–2025, PostgreSQL 13–18. Packs: `database`,
 `column-types`, `programmability`, `indexes-constraints` and `security` (both engines),
 `partitioning` (both), `agent-jobs`, `temporal`, `linked-servers` (SQL Server),
 `extensions` (PostgreSQL), and `sample` (both): AdventureWorks, AdventureWorksLT,
-AdventureWorksDW, WideWorldImporters, Northwind, pubs (SQL Server; not yet built, testlab lacked
-memory); Chinook (PostgreSQL 13+) and pagila (PostgreSQL 18, pgvector image), built and checked.
+AdventureWorksDW, WideWorldImporters, Northwind, pubs (SQL Server 2017, 2022, 2025); Chinook
+(PostgreSQL 13+) and pagila (PostgreSQL 18, pgvector image). All built and checked.
 
 Sample files live on testlab in `/opt/serverlab/samples` (downloaded from their sources and
 checked against `LabSamples`), mirrored in the `samples-v1` release of this repo.

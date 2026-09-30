@@ -95,3 +95,34 @@ struct PostgresProgrammabilityServerTests {
         #expect(audit == orders)
     }
 }
+
+@Suite(.enabled(if: integrationEnabled), .server("mssql-2022-adventureworks"))
+struct AdventureWorksServerTests {
+    @Test func restoredDatabasesHaveTheirData() async throws {
+        let server = try #require(LabServer.current)
+        let client = try await SQLServerClient.connect(
+            hostname: server.host, port: server.port, database: "master",
+            authentication: .sqlPassword(username: server.username, password: server.password),
+            tlsEnabled: true, trustServerCertificate: true
+        )
+        let databases = Set(try await client.metadata.listDatabases().map(\.name))
+        let orders = try await client.metadata.tableProperties(database: "AdventureWorks", schema: "Sales", table: "SalesOrderHeader").rowCount
+        try await client.shutdownGracefully()
+        #expect(databases.isSuperset(of: ["AdventureWorks", "AdventureWorksLT", "AdventureWorksDW"]))
+        #expect(orders == 31_465)
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("pg-18-pagila"))
+struct PagilaServerTests {
+    @Test func pagilaHasItsFilmsAndRentals() async throws {
+        let server = try #require(LabServer.current)
+        let client = try await PostgresClient.connect(configuration: PostgresConfiguration(
+            host: server.host, port: server.port, database: "pagila",
+            username: server.username, password: server.password, sslMode: .disable
+        ))
+        defer { client.close() }
+        #expect(try await client.metadata.exactRowCount(schema: "public", table: "film") == 1_000)
+        #expect(try await client.metadata.exactRowCount(schema: "public", table: "rental") > 16_000)
+    }
+}
