@@ -6,7 +6,9 @@ this file; change both together.
 ## Rules
 
 - **Nothing runs always.** Start a server for the work, remove it afterwards. `swift run serverlab ps`
-  must show no containers of yours when you finish.
+  must show no containers of yours when you finish. Servers and builders are removed with their
+  volumes; on `testlab` the reaper also prunes unused volumes. Never prune on a shared Docker
+  (your Mac's OrbStack also runs other agents' fixtures, e.g. sqlserver-nio's `nio-lab-*`).
 - **Content only through our drivers' typed APIs** (sqlserver-nio, postgres-wire). No `.sql` files,
   no `sqlcmd`/`psql`. If a driver cannot create something, or creates it wrong, fix the driver first.
 - **Never print the lab password.** It comes from `SERVERLAB_PASSWORD` or

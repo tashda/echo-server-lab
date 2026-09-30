@@ -58,11 +58,11 @@ extension ServerLab {
                     .flatMap { ["--change", "LABEL \($0.key)=\($0.value)"] }
                 + [builder.id, tag]
             )
-            try await docker.run(["rm", "--force", builder.id])
+            try await docker.run(["rm", "--force", "--volumes", builder.id])
             return tag
         } catch {
             log("Build failed; last lines of the server log:\n\(await tailLog(builder.id))")
-            _ = try? await docker.runAllowingFailure(["rm", "--force", builder.id])
+            _ = try? await docker.runAllowingFailure(["rm", "--force", "--volumes", builder.id])
             throw error
         }
     }

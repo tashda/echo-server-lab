@@ -9,12 +9,15 @@ public struct LabHost: Sendable, Hashable {
     public var address: String
     /// Lab containers on this host may not reserve more memory than this together.
     public var memoryBudgetMB: Int
+    /// True when only the lab uses this host's Docker, so unused volumes may be pruned.
+    public var isDedicated: Bool
 
-    public init(name: String, dockerHost: String?, address: String, memoryBudgetMB: Int) {
+    public init(name: String, dockerHost: String?, address: String, memoryBudgetMB: Int, isDedicated: Bool) {
         self.name = name
         self.dockerHost = dockerHost
         self.address = address
         self.memoryBudgetMB = memoryBudgetMB
+        self.isDedicated = isDedicated
     }
 
     /// The Proxmox VM `testlab` (192.168.1.153), reached over SSH (`Host testlab` in ~/.ssh/config).
@@ -22,7 +25,8 @@ public struct LabHost: Sendable, Hashable {
         name: "testlab",
         dockerHost: "ssh://testlab",
         address: "192.168.1.153",
-        memoryBudgetMB: 12_288
+        memoryBudgetMB: 12_288,
+        isDedicated: true
     )
 
     /// Docker on this Mac (OrbStack, Colima or Docker Desktop).
@@ -30,7 +34,8 @@ public struct LabHost: Sendable, Hashable {
         name: "local",
         dockerHost: nil,
         address: "127.0.0.1",
-        memoryBudgetMB: 8_192
+        memoryBudgetMB: 8_192,
+        isDedicated: false
     )
 
     /// `SERVERLAB_HOST` selects `testlab` (default) or `local`.

@@ -70,12 +70,16 @@ extension ServerLab {
         }
     }
 
-    /// Removes servers and builders whose lease has passed. Returns how many were removed.
+    /// Removes servers and builders whose lease has passed. Returns how many were removed. On a
+    /// dedicated host it also removes volumes no container uses (never on a shared Docker).
     @discardableResult
     public func reapExpired(now: Date = Date()) async throws -> Int {
         let expired = try await running().filter { $0.role != LabLabels.Role.seeded.rawValue && $0.expires < now }
         for server in expired {
             _ = try await docker.runAllowingFailure(["rm", "--force", "--volumes", server.id])
+        }
+        if host.isDedicated {
+            _ = try await docker.runAllowingFailure(["volume", "prune", "--force"])
         }
         return expired.count
     }
