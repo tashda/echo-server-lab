@@ -6,6 +6,7 @@ import Testing
 public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
     public let recipeName: String
     public let leaseMinutes: Int
+    public let capture: Bool
 
     public var isRecursive: Bool { false }
 
@@ -19,9 +20,12 @@ public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
             try await function()
             return
         }
-        let server = try await ServerLabCLI.up(recipeName, owner: test.name, leaseMinutes: leaseMinutes)
+        let server = try await ServerLabCLI.up(recipeName, owner: test.name, leaseMinutes: leaseMinutes, capture: capture)
         do {
-            try await LabServer.$current.withValue(server) { try await function() }
+            let wire = capture ? LabWire(server: server) : nil
+            try await LabServer.$current.withValue(server) {
+                try await LabWire.$current.withValue(wire) { try await function() }
+            }
         } catch {
             try? await ServerLabCLI.down(server)
             throw error
@@ -31,8 +35,8 @@ public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
 }
 
 extension Trait where Self == LabServerTrait {
-    public static func server(_ recipe: String, leaseMinutes: Int = 120) -> Self {
-        LabServerTrait(recipeName: recipe, leaseMinutes: leaseMinutes)
+    public static func server(_ recipe: String, leaseMinutes: Int = 120, capture: Bool = false) -> Self {
+        LabServerTrait(recipeName: recipe, leaseMinutes: leaseMinutes, capture: capture)
     }
 }
 

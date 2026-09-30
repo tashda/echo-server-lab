@@ -9,7 +9,7 @@ struct ServerLabCommand: AsyncParsableCommand {
         commandName: "serverlab",
         abstract: "Start disposable database servers from recipes.",
         discussion: "The host is testlab unless SERVERLAB_HOST=local.",
-        subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, Images.self, Prune.self, Reap.self]
+        subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, Images.self, Prune.self, Reap.self, Wire.self, Pcap.self]
     )
 }
 
@@ -44,11 +44,13 @@ struct Up: AsyncParsableCommand {
     @Flag(help: "Print SERVERLAB_* variables for `eval`.") var env = false
     @Flag(help: "Print JSON.") var json = false
     @Option(help: "Who asked for the server (shown in `serverlab ps`).") var owner = "cli"
+    @Flag(help: "Record the server's traffic (see `serverlab wire` and `serverlab pcap`).") var capture = false
 
     func run() async throws {
         let lab = try ServerLab.standard()
         let log: LabLog = { line in FileHandle.standardError.write(Data((line + "\n").utf8)) }
         let server = try await lab.start(recipeNamed: recipe, owner: owner, lease: .seconds(lease * 60), log: log)
+        if capture { try await lab.startCapture(of: server) }
         if env {
             for (key, value) in server.environment.sorted(by: { $0.key < $1.key }) { print("export \(key)='\(value)'") }
         } else if json {
@@ -73,7 +75,7 @@ struct Down: AsyncParsableCommand {
         let lab = try ServerLab.standard()
         let targets = try await lab.running().filter { all || names.contains($0.name) }
         for server in targets {
-            try await lab.remove(containerID: server.id)
+            try await lab.remove(serverNamed: server.name)
             print("removed \(server.name)")
         }
     }
@@ -117,5 +119,43 @@ struct Prune: AsyncParsableCommand {
         let removed = try await ServerLab.standard().pruneOutdatedImages()
         for tag in removed { print("removed \(tag)") }
         print("\(removed.count) outdated images removed")
+    }
+}
+
+struct Wire: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "Show a captured server's traffic, decoded by Wireshark.")
+
+    @Argument(help: "Server container name.") var name: String
+    @Flag(help: "Print JSON.") var json = false
+
+    func run() async throws {
+        let lab = try ServerLab.standard()
+        let messages = try await lab.wireMessages(of: lab.server(named: name))
+        if json {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.sortedKeys]
+            print(String(decoding: try encoder.encode(messages), as: UTF8.self))
+        } else {
+            for message in messages {
+                let arrow = message.toServer ? "→" : "←"
+                print(String(format: "%8.3f", message.time), arrow, message.kind, message.text.map { ": \($0.prefix(120))" } ?? "")
+            }
+            print("\(messages.requests.count) requests")
+        }
+    }
+}
+
+struct Pcap: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "Save a captured server's traffic as a .pcap file (opens in Wireshark).")
+
+    @Argument(help: "Server container name.") var name: String
+    @Option(name: .shortAndLong, help: "Output file.") var output: String?
+
+    func run() async throws {
+        let lab = try ServerLab.standard()
+        let data = try await lab.captureData(of: lab.server(named: name))
+        let path = output ?? "\(name).pcap"
+        try data.write(to: URL(fileURLWithPath: path))
+        print(path)
     }
 }

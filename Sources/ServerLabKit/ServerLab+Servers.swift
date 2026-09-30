@@ -53,6 +53,14 @@ extension ServerLab {
         try await docker.run(["rm", "--force", "--volumes", containerID])
     }
 
+    /// Removes a lab server by container name, with its capture container if it has one.
+    public func remove(serverNamed name: String) async throws {
+        if name.hasPrefix("serverlab-"), !name.hasPrefix("serverlab-capture-") {
+            _ = try await docker.runAllowingFailure(["rm", "--force", "serverlab-capture-\(name.dropFirst("serverlab-".count))"])
+        }
+        try await docker.run(["rm", "--force", "--volumes", name])
+    }
+
     /// Lab containers (servers and builders) on this host.
     public func running() async throws -> [RunningServer] {
         let format = [

@@ -52,6 +52,15 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
      sets `TDS_*` (sqlserver-nio) or `POSTGRES_*` (postgres-wire). Run the tests, then
      `swift run --package-path ../echo-server-lab serverlab down "$SERVERLAB_CONTAINER"`.
    - **By hand:** `serverlab up <recipe>` prints host, port and user.
+   - **Test targets that already link the drivers (Echo's `EchoTests`):** import `ServerLabClient`
+     instead of `ServerLabTesting`. Same `.server(...)` and `LabServer.current`, through the
+     `serverlab` tool (`SERVERLAB_CLI`, else the lab checkout's release build, built once if missing).
+4. **Check what went over the wire:** `.server("recipe", capture: true)` records the server's
+   traffic; `LabWire.current.messages()` returns it decoded by Wireshark (TDS and PostgreSQL message
+   kinds, SQL text, direction), with `roundTrips(containing:)` and `containsPlaintext(_:)`. By hand:
+   `serverlab up <recipe> --capture`, then `serverlab wire <server>` or `serverlab pcap <server>`
+   (opens in Wireshark). Capture and decoding run on the lab host; nothing to install. SQL Server
+   traffic is encrypted when the client asks for TLS; connect with encryption off to read it.
 
 ## Adding a scenario
 

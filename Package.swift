@@ -55,6 +55,10 @@ let package = Package(
             dependencies: ["ServerLabKit", "ServerLabCatalog"]
         ),
         .testTarget(
+            name: "ServerLabClientTests",
+            dependencies: ["ServerLabClient", .product(name: "PostgresKit", package: "postgres-wire")]
+        ),
+        .testTarget(
             name: "ServerLabIntegrationTests",
             dependencies: [
                 "ServerLabTesting",

@@ -39,8 +39,8 @@ public enum ServerLabCLI {
     }
 
     /// Starts a fresh server from `recipe`. It is removed by `down(_:)` or when `leaseMinutes` pass.
-    public static func up(_ recipe: String, owner: String, leaseMinutes: Int = 120) async throws -> LabServer {
-        let output = try await run(executable(), ["up", recipe, "--json", "--owner", owner, "--lease", String(leaseMinutes)])
+    public static func up(_ recipe: String, owner: String, leaseMinutes: Int = 120, capture: Bool = false) async throws -> LabServer {
+        let output = try await run(executable(), ["up", recipe, "--json", "--owner", owner, "--lease", String(leaseMinutes)] + (capture ? ["--capture"] : []))
         let decoder = JSONDecoder()
         decoder.dateDecodingStrategy = .iso8601
         return try decoder.decode(LabServer.self, from: Data(output.utf8))
@@ -48,6 +48,20 @@ public enum ServerLabCLI {
 
     public static func down(_ server: LabServer) async throws {
         _ = try await run(executable(), ["down", server.containerName])
+    }
+
+    /// The server's recorded traffic, decoded by Wireshark (needs `capture: true` at `up`).
+    public static func wire(_ server: LabServer) async throws -> [WireMessage] {
+        let output = try await run(executable(), ["wire", server.containerName, "--json"])
+        return try JSONDecoder().decode([WireMessage].self, from: Data(output.utf8))
+    }
+
+    /// The server's recorded traffic as pcap bytes.
+    public static func pcap(_ server: LabServer) async throws -> Data {
+        let file = FileManager.default.temporaryDirectory.appending(path: "\(server.containerName)-\(UUID().uuidString.prefix(6)).pcap")
+        defer { try? FileManager.default.removeItem(at: file) }
+        _ = try await run(executable(), ["pcap", server.containerName, "--output", file.path])
+        return try Data(contentsOf: file)
     }
 
     static func run(_ executable: URL, _ arguments: [String]) async throws -> String {
