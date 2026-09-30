@@ -73,7 +73,10 @@ enum PostgresSession {
             database: database,
             username: server.username,
             password: server.password,
-            sslMode: .disable,
+            // The lab's own connections never check the certificate: some servers present bad ones on purpose.
+            sslMode: server.tls == nil ? .disable : .require,
+            sslCertPath: server.tls?.clientCertificatePath,
+            sslKeyPath: server.tls?.clientKeyPath,
             applicationName: "serverlab"
         ), logger: driverLogger("serverlab.postgres"))
         defer { client.close() }

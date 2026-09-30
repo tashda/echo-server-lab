@@ -1,0 +1,16 @@
+{
+  "name": "pg-17-tls-optional",
+  "summary": "PostgreSQL 17, TLS offered but not required; lab-CA certificate.",
+  "engine": "postgresql",
+  "version": "17",
+  "settings": {
+    "tls": {
+      "mode": "optional"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

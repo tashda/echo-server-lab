@@ -55,14 +55,46 @@ public struct ServerSettings: Codable, Sendable, Hashable {
     public var imageVariant: String?
     /// Several containers instead of one, e.g. `primary-standby` for PostgreSQL. Nil is one server.
     public var topology: String?
+    /// Encrypted connections: the mode and which certificate the server presents. Nil is no TLS setup
+    /// (SQL Server still encrypts the login with its own self-signed certificate).
+    public var tls: TLSSettings?
 
-    public init(agent: Bool? = nil, collation: String? = nil, memoryMB: Int? = nil, imageVariant: String? = nil, topology: String? = nil) {
+    public init(agent: Bool? = nil, collation: String? = nil, memoryMB: Int? = nil, imageVariant: String? = nil,
+                topology: String? = nil, tls: TLSSettings? = nil) {
         self.agent = agent
         self.collation = collation
         self.memoryMB = memoryMB
         self.imageVariant = imageVariant
         self.topology = topology
+        self.tls = tls
     }
+}
+
+public struct TLSSettings: Codable, Sendable, Hashable {
+    public var mode: TLSMode
+    public var certificate: LabCertificateKind
+
+    public init(mode: TLSMode, certificate: LabCertificateKind = .valid) {
+        self.mode = mode
+        self.certificate = certificate
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        mode = try container.decode(TLSMode.self, forKey: .mode)
+        certificate = try container.decodeIfPresent(LabCertificateKind.self, forKey: .certificate) ?? .valid
+    }
+}
+
+public enum TLSMode: String, Codable, Sendable, Hashable, CaseIterable {
+    /// TLS offered; the client chooses (SQL Server: `forceencryption 0`; PostgreSQL: `ssl=on`, `host` rules).
+    case optional
+    /// Every connection must use TLS (SQL Server: `forceencryption 1`; PostgreSQL: `hostssl` only).
+    case required
+    /// TLS before anything else: TDS 8 strict (SQL Server 2025, `forcestrict 1`); PostgreSQL: TLS 1.3 only.
+    case strict
+    /// PostgreSQL `cert` login: TLS plus a client certificate whose common name is the user.
+    case clientCertificate = "client-certificate"
 }
 
 /// One pack in a recipe, with its parameters.

@@ -16,13 +16,19 @@ let package = Package(
         .package(url: "https://github.com/tashda/sqlserver-nio", branch: "dev"),
         .package(url: "https://github.com/tashda/postgres-wire", branch: "dev"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),
+        .package(url: "https://github.com/apple/swift-certificates.git", from: "1.10.0"),
+        .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"5.0.0"),
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.5.0"),
     ],
     targets: [
         // Recipes, Docker, seeded images and server lifetimes. Knows no database driver.
         .target(
             name: "ServerLabKit",
-            dependencies: [.product(name: "Logging", package: "swift-log")]
+            dependencies: [
+                .product(name: "Logging", package: "swift-log"),
+                .product(name: "X509", package: "swift-certificates"),
+                .product(name: "CryptoExtras", package: "swift-crypto"),
+            ]
         ),
         // SQL Server: container settings, readiness and content packs, through SQLServerKit only.
         .target(
@@ -52,7 +58,7 @@ let package = Package(
         ),
         .testTarget(
             name: "ServerLabKitTests",
-            dependencies: ["ServerLabKit", "ServerLabCatalog"]
+            dependencies: ["ServerLabKit", "ServerLabCatalog", .product(name: "X509", package: "swift-certificates")]
         ),
         .testTarget(
             name: "ServerLabClientTests",

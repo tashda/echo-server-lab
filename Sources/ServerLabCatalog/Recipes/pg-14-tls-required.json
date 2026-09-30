@@ -1,0 +1,16 @@
+{
+  "name": "pg-14-tls-required",
+  "summary": "PostgreSQL 14, TLS required (hostssl only), lab-CA certificate naming the lab host.",
+  "engine": "postgresql",
+  "version": "14",
+  "settings": {
+    "tls": {
+      "mode": "required"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

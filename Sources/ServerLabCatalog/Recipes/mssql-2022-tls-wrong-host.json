@@ -1,0 +1,17 @@
+{
+  "name": "mssql-2022-tls-wrong-host",
+  "summary": "SQL Server 2022, encryption forced, a lab-CA certificate naming wrong-host.invalid only: for certificate-check tests.",
+  "engine": "sqlserver",
+  "version": "2022",
+  "settings": {
+    "tls": {
+      "mode": "required",
+      "certificate": "wrong-host"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

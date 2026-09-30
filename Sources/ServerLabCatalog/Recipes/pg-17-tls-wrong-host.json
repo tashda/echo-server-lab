@@ -1,0 +1,17 @@
+{
+  "name": "pg-17-tls-wrong-host",
+  "summary": "PostgreSQL 17, TLS required, a lab-CA certificate naming wrong-host.invalid only: for certificate-check tests.",
+  "engine": "postgresql",
+  "version": "17",
+  "settings": {
+    "tls": {
+      "mode": "required",
+      "certificate": "wrong-host"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

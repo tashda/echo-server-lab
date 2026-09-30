@@ -9,45 +9,65 @@ extension PostgresEngine {
     static let hbaFile = "/labconf/pg_hba.conf"
     static let standbyRole = "standby"
 
-    public func topology(for recipe: Recipe, password: String) throws -> ServerTopology {
+    public func topology(for recipe: Recipe, password: String, tls: ServerTLS?) throws -> ServerTopology {
+        let withStandby: Bool
         switch recipe.settings.topology {
-        case nil:
-            return .single
-        case Self.primaryStandby?:
-            let spec = try containerSpec(for: recipe, password: password)
-            let hba = Data("""
-                local all all trust
-                host all all all scram-sha-256
-                host replication all all scram-sha-256
-
-                """.utf8)
-            let settings = spec.command.dropFirst() + ["-c", "hba_file=\(Self.hbaFile)"]
-            // Runs as root in the base image; the `if` keeps the clone when the standby is restarted.
-            let script = """
-                set -e
-                mkdir -p /labdata/pgdata && chown postgres:postgres /labdata/pgdata && chmod 700 /labdata/pgdata
-                if [ ! -s /labdata/pgdata/PG_VERSION ]; then
-                  gosu postgres pg_basebackup -d "host=primary port=5432 user=postgres application_name=\(Self.standbyRole)" \\
-                    -D /labdata/pgdata -R -X stream -C -S \(Self.standbyRole)
-                fi
-                exec gosu postgres postgres -D /labdata/pgdata \(settings.joined(separator: " "))
-                """
-            let standby = ContainerSpec(
-                image: spec.image, internalPort: 5432,
-                environment: ["PGPASSWORD": password, "PGDATA": "/labdata/pgdata"],
-                command: ["bash", "-c", script],
-                memoryMB: spec.memoryMB,
-                files: [Self.hbaFile: hba]
-            )
-            return ServerTopology(
-                mainRole: "primary",
-                mainFiles: [Self.hbaFile: hba],
-                mainArguments: ["-c", "hba_file=\(Self.hbaFile)"],
-                parts: [ServerPartSpec(role: Self.standbyRole, container: standby)]
-            )
-        case let other?:
-            throw ServerLabError.unsupported("Topology '\(other)' on PostgreSQL (use \(Self.primaryStandby))")
+        case nil: withStandby = false
+        case Self.primaryStandby?: withStandby = true
+        case let other?: throw ServerLabError.unsupported("Topology '\(other)' on PostgreSQL (use \(Self.primaryStandby))")
         }
+        if withStandby, tls?.mode == .clientCertificate {
+            throw ServerLabError.unsupported("A standby on a client-certificate server")
+        }
+        guard withStandby || tls != nil else { return .single }
+
+        let spec = try containerSpec(for: recipe, password: password)
+        let (files, arguments) = Self.configuration(tls: tls, replication: withStandby)
+        guard withStandby else { return ServerTopology(mainRole: "server", mainFiles: files, mainArguments: arguments) }
+
+        let settings = spec.command.dropFirst() + arguments
+        let sslMode = tls == nil ? "" : " sslmode=require"
+        // Runs as root in the base image; the `if` keeps the clone when the standby is restarted.
+        let script = """
+            set -e
+            mkdir -p /labdata/pgdata && chown postgres:postgres /labdata/pgdata && chmod 700 /labdata/pgdata
+            if [ ! -s /labdata/pgdata/PG_VERSION ]; then
+              gosu postgres pg_basebackup -d "host=primary port=5432 user=postgres application_name=\(Self.standbyRole)\(sslMode)" \\
+                -D /labdata/pgdata -R -X stream -C -S \(Self.standbyRole)
+            fi
+            exec gosu postgres postgres -D /labdata/pgdata \(settings.joined(separator: " "))
+            """
+        let standby = ContainerSpec(
+            image: spec.image, internalPort: 5432,
+            environment: ["PGPASSWORD": password, "PGDATA": "/labdata/pgdata"],
+            command: ["bash", "-c", script],
+            memoryMB: spec.memoryMB,
+            files: files
+        )
+        return ServerTopology(mainRole: "primary", mainFiles: files, mainArguments: arguments,
+                              parts: [ServerPartSpec(role: Self.standbyRole, container: standby)])
+    }
+
+    /// pg_hba.conf and TLS files, and the server arguments that point at them.
+    static func configuration(tls: ServerTLS?, replication: Bool) -> (files: [String: ContainerFile], arguments: [String]) {
+        let sslOnly = tls != nil && tls?.mode != .optional
+        let type = sslOnly ? "hostssl" : "host"
+        let method = tls?.mode == .clientCertificate ? "cert" : "scram-sha-256"
+        var rules = ["local all all trust", "\(type) all all all \(method)"]
+        if replication { rules.append("\(type) replication all all \(method)") }
+        if sslOnly { rules.append("hostnossl all all all reject") }
+        var files = [hbaFile: ContainerFile(rules.joined(separator: "\n") + "\n")]
+        var arguments = ["-c", "hba_file=\(hbaFile)"]
+        if let tls {
+            // The official images run PostgreSQL as uid 999, which must own a 0600 key.
+            files["/labconf/server.crt"] = ContainerFile(tls.server.certificatePEM)
+            files["/labconf/server.key"] = ContainerFile(tls.server.keyPEM, mode: 0o600, owner: 999)
+            files["/labconf/ca.crt"] = ContainerFile(tls.caPEM)
+            arguments += ["-c", "ssl=on", "-c", "ssl_cert_file=/labconf/server.crt", "-c", "ssl_key_file=/labconf/server.key",
+                          "-c", "ssl_ca_file=/labconf/ca.crt"]
+            if tls.mode == .strict { arguments += ["-c", "ssl_min_protocol_version=TLSv1.3"] }
+        }
+        return (files, arguments)
     }
 
     public func waitUntilTopologyReady(_ server: LabServer) async throws {

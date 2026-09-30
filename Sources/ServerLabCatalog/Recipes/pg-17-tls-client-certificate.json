@@ -1,0 +1,16 @@
+{
+  "name": "pg-17-tls-client-certificate",
+  "summary": "PostgreSQL 17, login by client certificate (cert auth); the lab hands back postgres's certificate and key.",
+  "engine": "postgresql",
+  "version": "17",
+  "settings": {
+    "tls": {
+      "mode": "client-certificate"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

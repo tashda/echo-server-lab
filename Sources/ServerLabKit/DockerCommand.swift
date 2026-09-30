@@ -64,7 +64,8 @@ public struct DockerCommand: Sendable {
         public var standardError: String
     }
 
-    public func runAllowingFailure(_ arguments: [String]) async throws -> Result {
+    /// `input` is a file sent to the command's standard input.
+    public func runAllowingFailure(_ arguments: [String], input: URL? = nil) async throws -> Result {
         let process = Process()
         process.executableURL = executable
         process.arguments = (host.dockerHost.map { ["--host", $0] } ?? []) + arguments
@@ -72,7 +73,7 @@ public struct DockerCommand: Sendable {
         let errors = Pipe()
         process.standardOutput = output
         process.standardError = errors
-        process.standardInput = FileHandle.nullDevice
+        process.standardInput = try input.map { try FileHandle(forReadingFrom: $0) } ?? FileHandle.nullDevice
 
         let status = AsyncStream<Int32> { continuation in
             process.terminationHandler = { finished in

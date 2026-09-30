@@ -1,0 +1,16 @@
+{
+  "name": "mssql-2025-tls-strict",
+  "summary": "SQL Server 2025, strict encryption only (TDS 8, forcestrict 1), lab-CA certificate.",
+  "engine": "sqlserver",
+  "version": "2025",
+  "settings": {
+    "tls": {
+      "mode": "strict"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

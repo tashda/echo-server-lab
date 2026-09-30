@@ -92,7 +92,9 @@ Engines: SQL Server 2017–2025, PostgreSQL 13–18. Packs: `database`,
 AdventureWorksDW, WideWorldImporters, Northwind, pubs (SQL Server 2017, 2022, 2025); Chinook
 (PostgreSQL 13+) and pagila (PostgreSQL 18, pgvector image). All built and checked.
 Servers made of several parts: PostgreSQL 13–18 primary with a streaming standby
-(`pg-<v>-primary-standby`); stop, start and promote any part.
+(`pg-<v>-primary-standby`); stop, start and promote any part. TLS: required, optional,
+strict (TDS 8 on SQL Server 2025, TLS 1.3 on PostgreSQL), client-certificate login (PostgreSQL),
+and expired, wrong-host and self-signed certificates, all from a per-machine lab CA.
 
 Sample files live on testlab in `/opt/serverlab/samples` (downloaded from their sources and
 checked against `LabSamples`), mirrored in the `samples-v1` release of this repo.

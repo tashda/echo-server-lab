@@ -196,3 +196,100 @@ struct PostgresPrimaryStandbyTests {
         #expect(try await promoted.metadata.exactRowCount(table: "replicated") == 4)
     }
 }
+
+// MARK: - TLS
+
+func postgres(_ server: LabServer, sslMode: PostgresSSLMode, rootCertificate: String? = nil,
+              clientCertificate: String? = nil, clientKey: String? = nil, password: String? = nil) async throws -> PostgresClient {
+    try await PostgresClient.connect(configuration: PostgresConfiguration(
+        host: server.host, port: server.port, database: "postgres", username: server.username,
+        password: password ?? server.password, sslMode: sslMode, sslRootCertPath: rootCertificate,
+        sslCertPath: clientCertificate, sslKeyPath: clientKey
+    ))
+}
+
+func sqlServer(_ server: LabServer, trust: Bool, caPath: String? = nil,
+               mode: SQLServerEncryptionMode = .mandatory) async throws -> SQLServerClient {
+    try await SQLServerClient.connect(
+        hostname: server.host, port: server.port,
+        authentication: .sqlPassword(username: server.username, password: server.password),
+        tlsEnabled: true, trustServerCertificate: trust, caCertificatePath: caPath, encryptionMode: mode
+    )
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("pg-17-tls-required", capture: true))
+struct PostgresTLSRequiredTests {
+    @Test func verifiesAgainstTheLabCAAndRefusesPlaintext() async throws {
+        let server = try #require(LabServer.current)
+        let tls = try #require(server.tls)
+        #expect(tls.mode == .required)
+        await #expect(throws: (any Error).self) { try await postgres(server, sslMode: .disable).close() }
+
+        let client = try await postgres(server, sslMode: .verifyFull, rootCertificate: tls.caPath)
+        let rows = try await client.simpleQuery("SELECT 'lab_tls_marker'")
+        for try await _ in rows {}
+        client.close()
+        #expect(try await LabWire.current?.containsPlaintext("lab_tls_marker") == false)
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("pg-17-tls-client-certificate"))
+struct PostgresClientCertificateTests {
+    @Test func logsInWithTheHandedBackCertificateOnly() async throws {
+        let server = try #require(LabServer.current)
+        let tls = try #require(server.tls)
+        let certificate = try #require(tls.clientCertificatePath), key = try #require(tls.clientKeyPath)
+        let client = try await postgres(server, sslMode: .verifyFull, rootCertificate: tls.caPath,
+                                        clientCertificate: certificate, clientKey: key, password: "not-the-password")
+        #expect(try await client.metadata.listDatabases().contains("labdata"))
+        client.close()
+        await #expect(throws: (any Error).self) { try await postgres(server, sslMode: .require).close() }
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("pg-17-tls-wrong-host"))
+struct PostgresWrongHostCertificateTests {
+    @Test func fullVerificationFailsButEncryptionAlonePasses() async throws {
+        let server = try #require(LabServer.current)
+        let tls = try #require(server.tls)
+        await #expect(throws: (any Error).self) {
+            try await postgres(server, sslMode: .verifyFull, rootCertificate: tls.caPath).close()
+        }
+        try await postgres(server, sslMode: .verifyCA, rootCertificate: tls.caPath).close()
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mssql-2022-tls-required"))
+struct SQLServerTLSRequiredTests {
+    @Test func verifiesAgainstTheLabCA() async throws {
+        let server = try #require(LabServer.current)
+        let tls = try #require(server.tls)
+        let client = try await sqlServer(server, trust: false, caPath: tls.caPath)
+        #expect(try await client.metadata.listDatabases().contains { $0.name == "LabData" })
+        try await client.shutdownGracefully()
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mssql-2022-tls-wrong-host"))
+struct SQLServerWrongHostCertificateTests {
+    @Test func verificationFailsButTrustingPasses() async throws {
+        let server = try #require(LabServer.current)
+        let tls = try #require(server.tls)
+        await #expect(throws: (any Error).self) {
+            try await sqlServer(server, trust: false, caPath: tls.caPath).shutdownGracefully()
+        }
+        try await sqlServer(server, trust: true).shutdownGracefully()
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mssql-2025-tls-strict"))
+struct SQLServerStrictEncryptionTests {
+    @Test func acceptsTDS8AndRefusesTheOldHandshake() async throws {
+        let server = try #require(LabServer.current)
+        let tls = try #require(server.tls)
+        let client = try await sqlServer(server, trust: false, caPath: tls.caPath, mode: .strict)
+        #expect(try await client.metadata.listDatabases().contains { $0.name == "LabData" })
+        try await client.shutdownGracefully()
+        await #expect(throws: (any Error).self) { try await sqlServer(server, trust: true).shutdownGracefully() }
+    }
+}

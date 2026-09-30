@@ -1,0 +1,16 @@
+{
+  "name": "pg-17-tls-strict",
+  "summary": "PostgreSQL 17, TLS 1.3 only, required; lab-CA certificate.",
+  "engine": "postgresql",
+  "version": "17",
+  "settings": {
+    "tls": {
+      "mode": "strict"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

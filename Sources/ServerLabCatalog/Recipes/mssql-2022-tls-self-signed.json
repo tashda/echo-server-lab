@@ -1,0 +1,17 @@
+{
+  "name": "mssql-2022-tls-self-signed",
+  "summary": "SQL Server 2022, encryption forced, a self-signed certificate (not from the lab CA): for certificate-check tests.",
+  "engine": "sqlserver",
+  "version": "2022",
+  "settings": {
+    "tls": {
+      "mode": "required",
+      "certificate": "self-signed"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

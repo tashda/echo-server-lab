@@ -45,6 +45,38 @@ public struct SQLServerEngine: LabEngine {
         )
     }
 
+    /// TLS through mssql.conf: the lab's certificate, `forceencryption`, and `forcestrict` (2025+).
+    public func topology(for recipe: Recipe, password: String, tls: ServerTLS?) throws -> ServerTopology {
+        guard recipe.settings.topology == nil else {
+            throw ServerLabError.unsupported("Topology '\(recipe.settings.topology ?? "")' on SQL Server")
+        }
+        guard let tls else { return .single }
+        switch tls.mode {
+        case .clientCertificate:
+            throw ServerLabError.unsupported("Client-certificate login on SQL Server")
+        case .strict where recipe.version < "2025":
+            throw ServerLabError.unsupported("Strict encryption (TDS 8) on SQL Server \(recipe.version); it needs 2025")
+        case .strict where tls.certificateKind != .valid:
+            throw ServerLabError.unsupported("Strict encryption with a \(tls.certificateKind.rawValue) certificate (the lab could not log in)")
+        default:
+            break
+        }
+        var configuration = """
+            [network]
+            tlscert = /var/opt/mssql/tls/server.pem
+            tlskey = /var/opt/mssql/tls/server.key
+            forceencryption = \(tls.mode == .optional ? 0 : 1)
+
+            """
+        if tls.mode == .strict { configuration += "forcestrict = 1\n" }
+        // The images run SQL Server as uid 10001 (mssql); the seeded images have no mssql.conf of their own.
+        return ServerTopology(mainRole: "server", mainFiles: [
+            "/var/opt/mssql/mssql.conf": ContainerFile(configuration, owner: 10001),
+            "/var/opt/mssql/tls/server.pem": ContainerFile(tls.server.certificatePEM, mode: 0o400, owner: 10001),
+            "/var/opt/mssql/tls/server.key": ContainerFile(tls.server.keyPEM, mode: 0o400, owner: 10001),
+        ])
+    }
+
     public func waitUntilReady(_ server: ServerEndpoint, timeout: Duration) async throws {
         try await retryUntilReady("SQL Server at \(server.host):\(server.port)", timeout: timeout) {
             try await SQLServerSession.with(server) { client in
@@ -67,7 +99,11 @@ enum SQLServerSession {
             database: database,
             authentication: .sqlPassword(username: server.username, password: server.password),
             tlsEnabled: true,
-            trustServerCertificate: true,
+            // Strict (TDS 8) always checks the certificate; otherwise the lab trusts any, since some
+            // servers present bad ones on purpose.
+            trustServerCertificate: server.tls?.mode != .strict,
+            caCertificatePath: server.tls?.mode == .strict ? server.tls?.caPath : nil,
+            encryptionMode: server.tls?.mode == .strict ? .strict : .mandatory,
             logger: driverLogger("serverlab.sqlserver")
         )
         do {

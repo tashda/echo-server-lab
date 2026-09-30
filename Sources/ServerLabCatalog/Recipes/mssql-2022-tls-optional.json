@@ -1,0 +1,16 @@
+{
+  "name": "mssql-2022-tls-optional",
+  "summary": "SQL Server 2022 with the lab-CA certificate, encryption up to the client (forceencryption 0).",
+  "engine": "sqlserver",
+  "version": "2022",
+  "settings": {
+    "tls": {
+      "mode": "optional"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

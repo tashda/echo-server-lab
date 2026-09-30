@@ -69,6 +69,14 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    `server.start(part:)` (returns once it takes logins) and `server.promote()` in tests; by hand
    `serverlab stop|start <server> [--part standby]` and `serverlab promote <server>`. `--env` adds
    `SERVERLAB_STANDBY_PORT` etc. Restarting the main part restarts a capture (a new recording).
+6. **TLS and certificate checks:** recipes with a `tls` setting (`*-tls-required`, `-optional`,
+   `mssql-2025-tls-strict` for TDS 8, `pg-17-tls-strict` for TLS 1.3 only,
+   `pg-17-tls-client-certificate`, and `-expired-certificate`, `-wrong-host`, `-self-signed`) present
+   a certificate from this machine's lab CA (`~/.echo-testlab/ca/lab-ca.pem`, made once) naming the
+   lab host, its IP and `primary`/`standby`. `server.tls` has the mode, the certificate kind, `caPath`
+   and for client-certificate servers the admin user's certificate and key; `--env` sets
+   `SERVERLAB_TLS_*`. Verify against `caPath`; with `capture: true`, `containsPlaintext` shows the
+   traffic really is encrypted.
 
 ## Adding a scenario
 

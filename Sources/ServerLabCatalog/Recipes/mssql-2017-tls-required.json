@@ -1,0 +1,16 @@
+{
+  "name": "mssql-2017-tls-required",
+  "summary": "SQL Server 2017, encryption forced (forceencryption 1), lab-CA certificate naming the lab host.",
+  "engine": "sqlserver",
+  "version": "2017",
+  "settings": {
+    "tls": {
+      "mode": "required"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

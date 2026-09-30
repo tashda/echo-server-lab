@@ -7,13 +7,13 @@ public struct ServerTopology: Sendable {
     /// The role of the container tests connect to by default.
     public var mainRole: String
     /// Files the main container needs on top of its seeded image.
-    public var mainFiles: [String: Data]
+    public var mainFiles: [String: ContainerFile]
     /// Arguments added to the engine's command for the main container.
     public var mainArguments: [String]
     /// Containers started after the main one, in order, each once the one before is ready.
     public var parts: [ServerPartSpec]
 
-    public init(mainRole: String, mainFiles: [String: Data] = [:], mainArguments: [String] = [], parts: [ServerPartSpec] = []) {
+    public init(mainRole: String, mainFiles: [String: ContainerFile] = [:], mainArguments: [String] = [], parts: [ServerPartSpec] = []) {
         self.mainRole = mainRole
         self.mainFiles = mainFiles
         self.mainArguments = mainArguments

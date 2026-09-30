@@ -10,18 +10,21 @@ extension ServerLab {
         log: @escaping LabLog = { _ in }
     ) async throws -> LabServer {
         _ = try? await reapExpired()
-        let image = try await seededImage(for: recipe, log: log)
         let engine = try engine(for: recipe.engine)
         let password = try LabPassword.resolve()
         let spec = try engine.containerSpec(for: recipe, password: password)
-        let topology = try engine.topology(for: recipe, password: password)
-        for part in topology.parts { _ = try await baseImageID(part.container.image, log: log) }
-        try await waitForBudget(neededMB: spec.memoryMB + topology.parts.map(\.container.memoryMB).reduce(0, +), log: log)
-
         let name = "serverlab-\(recipe.name)-\(UUID().uuidString.prefix(8).lowercased())"
+        let tls = try issueTLS(for: recipe, serverName: name, adminUsername: engine.adminUsername)
+        // Before the seeded image, so a setting the engine cannot do fails without a build.
+        let topology = try engine.topology(for: recipe, password: password, tls: tls?.0)
+        let image = try await seededImage(for: recipe, log: log)
+        for part in topology.parts { _ = try await baseImageID(part.container.image, log: log) }
+        try await waitForBudget(neededMB: spec.memoryMB + topology.parts.map { $0.container.memoryMB }.reduce(0, +), log: log)
+
         let network = topology.parts.isEmpty ? nil : try await createNetwork(forServer: name)
+        let tlsLabel = tls.map { ["--label", "\(LabLabels.tls)=\($0.1.mode.rawValue)/\($0.1.certificate.rawValue)"] } ?? []
         func networkArguments(_ role: String) -> [String] {
-            network.map { ["--network", $0, "--network-alias", role] } ?? []
+            tlsLabel + (network.map { ["--network", $0, "--network-alias", role] } ?? [])
         }
 
         // The seeded image already carries the environment and command it was built with.
@@ -45,7 +48,8 @@ extension ServerLab {
             username: engine.adminUsername, password: password,
             containerID: main.id, containerName: main.name,
             expires: Date().addingTimeInterval(TimeInterval(lease.components.seconds)),
-            parts: [LabServerPart(role: topology.mainRole, containerID: main.id, containerName: main.name, port: main.port)]
+            parts: [LabServerPart(role: topology.mainRole, containerID: main.id, containerName: main.name, port: main.port)],
+            tls: tls?.1
         )
         var current = main.id
         do {
@@ -65,7 +69,7 @@ extension ServerLab {
                 }
             }
             if !topology.parts.isEmpty {
-                log("Waiting for \(server.parts.map(\.role).joined(separator: ", ")) to work together")
+                log("Waiting for \(server.parts.map { $0.role }.joined(separator: ", ")) to work together")
                 try await engine.waitUntilTopologyReady(server)
             }
         } catch {
@@ -101,6 +105,7 @@ extension ServerLab {
         let networks = try await docker.run(["network", "ls", "--quiet", "--filter", "label=\(LabLabels.server)=\(name)"])
             .split(separator: "\n").map(String.init)
         if !networks.isEmpty { _ = try await docker.runAllowingFailure(["network", "rm"] + networks) }
+        try? FileManager.default.removeItem(at: Self.localFilesDirectory(forServer: name))
     }
 
     /// Lab containers (servers and builders) on this host.
@@ -252,18 +257,17 @@ extension ServerLab {
 
     static let hostPorts = 20_000...29_999
 
-    /// Puts files into a created container (before it starts), with the directories they need.
-    func copy(_ files: [String: Data], into container: String) async throws {
+    /// Puts files into a created container (before it starts), with their owners and modes.
+    func copy(_ files: [String: ContainerFile], into container: String) async throws {
         guard !files.isEmpty else { return }
-        let root = FileManager.default.temporaryDirectory.appending(path: "serverlab-files-\(UUID().uuidString)")
-        defer { try? FileManager.default.removeItem(at: root) }
-        for (path, contents) in files {
-            let file = root.appending(path: String(path.drop { $0 == "/" }))
-            try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
-            try contents.write(to: file)
-            try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file.path)
+        let archive = FileManager.default.temporaryDirectory.appending(path: "serverlab-files-\(UUID().uuidString).tar")
+        try TarArchive.make(files).write(to: archive)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: archive.path)
+        defer { try? FileManager.default.removeItem(at: archive) }
+        let result = try await docker.runAllowingFailure(["cp", "--archive", "-", "\(container):/"], input: archive)
+        guard result.status == 0 else {
+            throw ServerLabError.dockerFailed(command: "cp into \(container)", status: result.status, output: result.standardError)
         }
-        try await docker.run(["cp", root.path + "/.", "\(container):/"])
     }
 
     /// A private network for a server's parts; each part is reachable there by its role.

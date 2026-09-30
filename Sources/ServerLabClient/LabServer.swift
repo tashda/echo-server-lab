@@ -15,6 +15,8 @@ public struct LabServer: Codable, Sendable, Hashable {
     public var expires: Date
     /// Every container of the server, the main one first.
     public var parts: [LabServerPart]
+    /// Set when the recipe asked for TLS: the mode, the certificate kind and the files a client needs.
+    public var tls: LabServerTLS?
 
     public var isSQLServer: Bool { engine == "sqlserver" }
     public var isPostgres: Bool { engine == "postgresql" }
@@ -36,6 +38,7 @@ public struct LabServer: Codable, Sendable, Hashable {
         expires = try container.decode(Date.self, forKey: .expires)
         parts = try container.decodeIfPresent([LabServerPart].self, forKey: .parts)
             ?? [LabServerPart(role: "server", containerID: containerID, containerName: containerName, port: port)]
+        tls = try container.decodeIfPresent(LabServerTLS.self, forKey: .tls)
     }
 }
 
@@ -45,6 +48,18 @@ public struct LabServerPart: Codable, Sendable, Hashable {
     public var containerID: String
     public var containerName: String
     public var port: Int
+}
+
+/// How a TLS lab server must be reached.
+public struct LabServerTLS: Codable, Sendable, Hashable {
+    /// `optional`, `required`, `strict` (TDS 8 / TLS 1.3 only) or `client-certificate`.
+    public var mode: String
+    /// `valid`, `expired`, `wrong-host` or `self-signed`.
+    public var certificate: String
+    /// The lab CA (PEM): pass it as the driver's CA file to verify the server.
+    public var caPath: String
+    public var clientCertificatePath: String?
+    public var clientKeyPath: String?
 }
 
 /// Starts and stops lab servers through the `serverlab` tool, so a test target needs no database

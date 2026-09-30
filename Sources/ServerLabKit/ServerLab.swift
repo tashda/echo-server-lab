@@ -49,9 +49,12 @@ public struct LabServer: Sendable, Hashable, Codable {
     public var expires: Date
     /// Every container of the server, the main one first. One part for most recipes.
     public var parts: [LabServerPart]
+    /// Set when the recipe asked for TLS: the mode, the certificate kind and the files a client needs.
+    public var tls: EndpointTLS?
 
     public init(recipe: String, engine: EngineKind, version: String, host: String, port: Int, username: String,
-                password: String, containerID: String, containerName: String, expires: Date, parts: [LabServerPart] = []) {
+                password: String, containerID: String, containerName: String, expires: Date, parts: [LabServerPart] = [],
+                tls: EndpointTLS? = nil) {
         self.recipe = recipe
         self.engine = engine
         self.version = version
@@ -65,10 +68,11 @@ public struct LabServer: Sendable, Hashable, Codable {
         self.parts = parts.isEmpty
             ? [LabServerPart(role: "server", containerID: containerID, containerName: containerName, port: port)]
             : parts
+        self.tls = tls
     }
 
     public var endpoint: ServerEndpoint {
-        ServerEndpoint(host: host, port: port, username: username, password: password)
+        ServerEndpoint(host: host, port: port, username: username, password: password, tls: tls)
     }
 
     public func part(_ role: String) throws -> LabServerPart {
@@ -80,7 +84,7 @@ public struct LabServer: Sendable, Hashable, Codable {
 
     /// Where one part answers, e.g. `endpoint(of: "standby")`.
     public func endpoint(of role: String) throws -> ServerEndpoint {
-        ServerEndpoint(host: host, port: try part(role).port, username: username, password: password)
+        ServerEndpoint(host: host, port: try part(role).port, username: username, password: password, tls: tls)
     }
 
     /// `SERVERLAB_*` variables for scripts, plus the variables the engine's driver test suite reads
@@ -102,6 +106,13 @@ public struct LabServer: Sendable, Hashable, Codable {
             let key = part.role.uppercased().map { $0.isLetter || $0.isNumber ? String($0) : "_" }.joined()
             variables["SERVERLAB_\(key)_PORT"] = String(part.port)
             variables["SERVERLAB_\(key)_CONTAINER"] = part.containerName
+        }
+        if let tls {
+            variables["SERVERLAB_TLS_MODE"] = tls.mode.rawValue
+            variables["SERVERLAB_TLS_CERTIFICATE"] = tls.certificate.rawValue
+            variables["SERVERLAB_TLS_CA"] = tls.caPath
+            variables["SERVERLAB_TLS_CLIENT_CERT"] = tls.clientCertificatePath
+            variables["SERVERLAB_TLS_CLIENT_KEY"] = tls.clientKeyPath
         }
         switch engine {
         case .sqlServer:

@@ -1,0 +1,17 @@
+{
+  "name": "mssql-2022-tls-expired-certificate",
+  "summary": "SQL Server 2022, encryption forced, a lab-CA certificate that expired yesterday: for certificate-check tests.",
+  "engine": "sqlserver",
+  "version": "2022",
+  "settings": {
+    "tls": {
+      "mode": "required",
+      "certificate": "expired"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

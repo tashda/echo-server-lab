@@ -1,0 +1,17 @@
+{
+  "name": "pg-17-tls-self-signed",
+  "summary": "PostgreSQL 17, TLS required, a self-signed certificate (not from the lab CA): for certificate-check tests.",
+  "engine": "postgresql",
+  "version": "17",
+  "settings": {
+    "tls": {
+      "mode": "required",
+      "certificate": "self-signed"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

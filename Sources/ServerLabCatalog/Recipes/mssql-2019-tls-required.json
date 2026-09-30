@@ -1,0 +1,16 @@
+{
+  "name": "mssql-2019-tls-required",
+  "summary": "SQL Server 2019, encryption forced (forceencryption 1), lab-CA certificate naming the lab host.",
+  "engine": "sqlserver",
+  "version": "2019",
+  "settings": {
+    "tls": {
+      "mode": "required"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

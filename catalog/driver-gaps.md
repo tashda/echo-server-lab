@@ -60,6 +60,15 @@ Still open, found while building:
 - **sqlserver-nio:** `SQLServerAgentJobBuilder.commit()` is not atomic when Agent refuses a later step; its rollback (`deleteJob`) is refused too, leaving a half-created job. Seen on SQL Server 2017 while Agent starts.
 - **sqlserver-nio:** `metadata.fetchAgentStatus()` reports Agent as running on SQL Server 2017 before it accepts job changes.
 
+## Found while adding TLS servers (2026-09-30)
+
+| Driver | Owner | What |
+|---|---|---|
+| postgres-wire | driver agent | Connecting with `sslCertPath`/`sslKeyPath` (client-certificate login) logs a PostgresNIO warning, "Trying to lease connection from `PostgresClient`, but `PostgresClient.run()` hasn't been called yet". Login works; the warning suggests an unused PostgresNIO client on that path. Repro: `pg-17-tls-client-certificate`, `PostgresClientCertificateTests`. |
+| sqlserver-nio | core | A failed certificate check is thrown **and** logged twice at error level ("TDS pipeline error", "Uncaught error: NIOSSLExtraError.failedToValidateHostname"). Repro: `mssql-2022-tls-wrong-host`, `SQLServerWrongHostCertificateTests`. |
+| sqlserver-nio | core | TLS key logging (`SSLKEYLOGFILE`, NIOSSL `keyLogCallback`) so the lab's captures of encrypted TDS can be decrypted in Wireshark. |
+| postgres-wire | lab | The same key logging for PostgreSQL. |
+
 ## Ranking across drivers
 
 | Rank | Gap | Driver · namespace | Items unblocked |

@@ -1,0 +1,17 @@
+{
+  "name": "pg-17-primary-standby-tls-required",
+  "summary": "PostgreSQL 17 primary with a streaming standby, TLS required on both (replication too).",
+  "engine": "postgresql",
+  "version": "17",
+  "settings": {
+    "topology": "primary-standby",
+    "tls": {
+      "mode": "required"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

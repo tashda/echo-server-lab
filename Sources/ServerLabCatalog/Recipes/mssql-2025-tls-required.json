@@ -1,0 +1,16 @@
+{
+  "name": "mssql-2025-tls-required",
+  "summary": "SQL Server 2025, encryption forced (forceencryption 1), lab-CA certificate naming the lab host.",
+  "engine": "sqlserver",
+  "version": "2025",
+  "settings": {
+    "tls": {
+      "mode": "required"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

@@ -17,6 +17,8 @@ public enum LabLabels {
     public static let server = "dev.echodb.lab.server"
     /// The part a container plays in its server: `server`, `primary`, `standby`, ….
     public static let part = "dev.echodb.lab.part"
+    /// `<mode>/<certificate>` on servers started with TLS, so tools that did not start them can connect.
+    public static let tls = "dev.echodb.lab.tls"
 
     enum Role: String {
         case builder, server, seeded

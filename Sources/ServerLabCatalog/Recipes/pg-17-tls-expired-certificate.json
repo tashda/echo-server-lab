@@ -1,0 +1,17 @@
+{
+  "name": "pg-17-tls-expired-certificate",
+  "summary": "PostgreSQL 17, TLS required, a lab-CA certificate that expired yesterday: for certificate-check tests.",
+  "engine": "postgresql",
+  "version": "17",
+  "settings": {
+    "tls": {
+      "mode": "required",
+      "certificate": "expired"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}
