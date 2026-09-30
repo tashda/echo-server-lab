@@ -36,6 +36,9 @@ Fixed in sqlserver-nio `dev`:
 | `d25c627` | `security.createMasterKey`, `createCertificate`, `dropCertificate` (certificate logins had no way to get a certificate). |
 | `7744c74` | **Bug:** `addMask` with `.partial` or `.datetime` sent `FUNCTION = 'partial(2, 'XXX', 1)'` (broken quoting); Echo's New Mask sheet hit this. |
 
+| `94f7dda` | Linked servers default to `MSOLEDBSQL` (`SQLNCLI` does not exist on Linux or SQL Server 2022). Echo's New Linked Server sheet still defaults to `SQLNCLI`: an Echo change, to go through Echo Labs. |
+| `db19f0f` | **Bug:** `tableProperties` returned nothing for partitioned tables (inner join to `sys.filegroups`). |
+
 Fixed in postgres-wire `dev` (`0718e6b`): grants and policies take `schema:`, column-level grants (`columns:`); **bug:** `grantRole` ignored `inherit:`/`set:`; **bug:** `PUBLIC`/`CURRENT_USER` grantees were quoted as role names.
 
 Fixed in postgres-wire `dev` (`5e30efe`): `createIndex`/`createAdvancedIndex` and primary/foreign/unique/check constraints take `schema:`; `PostgresIndexColumn(expression:)`, `operatorClass`, `include:` (covering indexes) and `PostgresIndexType.spgist`.

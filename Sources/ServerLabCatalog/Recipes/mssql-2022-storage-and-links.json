@@ -1,0 +1,20 @@
+{
+  "name": "mssql-2022-storage-and-links",
+  "summary": "SQL Server 2022: partitioned table, temporal table with history, and linked servers (loopback and unreachable).",
+  "engine": "sqlserver",
+  "version": "2022",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "partitioning"
+    },
+    {
+      "pack": "temporal"
+    },
+    {
+      "pack": "linked-servers"
+    }
+  ]
+}

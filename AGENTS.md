@@ -43,7 +43,15 @@ Pick the smallest change that works:
    - `verify` reads back through the driver and throws `ServerLabError.packCheckFailed` with counts.
    - Gate by version where a feature is newer (see `SQLServerTypeSample.since`).
    - Register it in the engine's `packs` list and add recipes for every supported version.
-4. **The driver is missing an API or has a bug:** fix it in the driver repo on `dev`, with a test,
+4. **The driver is missing an API or has a bug:** in sqlserver-nio, lab agents own the typed feature
+   APIs (`admin`, `security`, `metadata`, `agent`, `routines`, `types`, `constraints`, masking, …).
+   The core belongs to the driver agent: `Sources/SQLServerTDS`, connection open and routing, pool
+   and session reset, cancellation and deadlines, errors, streaming, value formatting
+   (`SQLServerRow`, `SQLServerCellFormatter`, `SQLServerExactFormat`), `Tests/Fixtures` and
+   `.github/workflows`. Never edit those; add the need to `catalog/driver-gaps.md` marked **core**.
+   Read the driver's own `AGENTS.md`. Transport and security test servers (TLS, Strict, Toxiproxy,
+   availability groups, Kerberos) stay in sqlserver-nio's `Tests/Fixtures`, not here.
+   Otherwise fix it in the driver repo on `dev`, with a test,
    run against a lab server (`serverlab up … --env`). Commit, then `git fetch && git rebase
    origin/dev`, then push; never stash staged changes before committing. Then
    `swift package update <driver>` here. Record it in `catalog/driver-gaps.md` under "Found and

@@ -1,0 +1,20 @@
+{
+  "name": "mssql-2019-storage-and-links",
+  "summary": "SQL Server 2019: partitioned table, temporal table with history, and linked servers (loopback and unreachable).",
+  "engine": "sqlserver",
+  "version": "2019",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "partitioning"
+    },
+    {
+      "pack": "temporal"
+    },
+    {
+      "pack": "linked-servers"
+    }
+  ]
+}

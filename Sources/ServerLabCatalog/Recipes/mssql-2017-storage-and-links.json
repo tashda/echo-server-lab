@@ -1,0 +1,20 @@
+{
+  "name": "mssql-2017-storage-and-links",
+  "summary": "SQL Server 2017: partitioned table, temporal table with history, and linked servers (loopback and unreachable).",
+  "engine": "sqlserver",
+  "version": "2017",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "partitioning"
+    },
+    {
+      "pack": "temporal"
+    },
+    {
+      "pack": "linked-servers"
+    }
+  ]
+}

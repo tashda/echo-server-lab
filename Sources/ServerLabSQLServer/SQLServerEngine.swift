@@ -14,6 +14,9 @@ public struct SQLServerEngine: LabEngine {
         SQLServerProgrammabilityPack(),
         SQLServerIndexesPack(),
         SQLServerSecurityPack(),
+        SQLServerPartitioningPack(),
+        SQLServerTemporalPack(),
+        SQLServerLinkedServersPack(),
     ]
 
     public init() {}
