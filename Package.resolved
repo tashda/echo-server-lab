@@ -2,21 +2,12 @@
   "originHash" : "d74ba943403fec85e978858b14d26345c8e514a35f7ef2af557b36087cc4007f",
   "pins" : [
     {
-      "identity" : "postgres-nio",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/vapor/postgres-nio.git",
-      "state" : {
-        "revision" : "39ce38a93408937bcd27f521f3cdf88266136b80",
-        "version" : "1.33.1"
-      }
-    },
-    {
       "identity" : "postgres-wire",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tashda/postgres-wire",
       "state" : {
         "branch" : "dev",
-        "revision" : "d631da127c8583ea5be59bddfd4646eeea611487"
+        "revision" : "5e30efeb4054491a9b7b046448b611dc18f119af"
       }
     },
     {
@@ -25,7 +16,7 @@
       "location" : "https://github.com/tashda/sqlserver-nio",
       "state" : {
         "branch" : "dev",
-        "revision" : "fa2228d414a1f7e7104ca524abc120ae46bce8bf"
+        "revision" : "bbc8a37067c11eca7a8973fd4872fbdd5030b114"
       }
     },
     {

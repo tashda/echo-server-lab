@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2025-indexes-constraints",
+  "summary": "SQL Server 2025 with LabData: every index and constraint kind in the shop schema.",
+  "engine": "sqlserver",
+  "version": "2025",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "indexes-constraints"
+    }
+  ]
+}

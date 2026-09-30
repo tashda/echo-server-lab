@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2019-indexes-constraints",
+  "summary": "SQL Server 2019 with LabData: every index and constraint kind in the shop schema.",
+  "engine": "sqlserver",
+  "version": "2019",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "indexes-constraints"
+    }
+  ]
+}

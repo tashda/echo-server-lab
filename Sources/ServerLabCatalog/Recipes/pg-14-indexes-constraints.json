@@ -1,0 +1,14 @@
+{
+  "name": "pg-14-indexes-constraints",
+  "summary": "PostgreSQL 14 with labdata: every index method and constraint kind in the shop schema.",
+  "engine": "postgresql",
+  "version": "14",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "indexes-constraints"
+    }
+  ]
+}

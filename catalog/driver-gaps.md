@@ -31,6 +31,10 @@ Fixed in sqlserver-nio `dev`:
 | `12e317c` | **Bug:** `tableProperties.rowCount` counted each row once per allocation unit, up to 3× for tables with LOB columns. |
 | `fa2228d` | **GS-09, GS-10, GS-11 done**, plus inline TVFs: `admin.createSequence`/`dropSequence`, `admin.createSynonym`/`dropSynonym` (`SQLServerObjectName`), `types.createAliasType`, `routines.createInlineTableValuedFunction`. |
 
+| `e8d0893` + `bbc8a37` | **Bug:** `addForeignKey`/`addCheckConstraint` put `WITH NOCHECK` after the constraint (a syntax error); `ForeignKeyOptions.isNotTrusted` emitted `NOT FOR REPLICATION`. Now `WITH NOCHECK` precedes `ADD`, `isNotTrusted` creates the key untrusted, and `notForReplication` is its own option. |
+
+Fixed in postgres-wire `dev` (`5e30efe`): `createIndex`/`createAdvancedIndex` and primary/foreign/unique/check constraints take `schema:`; `PostgresIndexColumn(expression:)`, `operatorClass`, `include:` (covering indexes) and `PostgresIndexType.spgist`.
+
 Fixed in postgres-wire `dev` (`d631da1`):
 
 - **GP-01 mostly done:** `createTable`, `createView`, `createMaterializedView`, `createFunction`, `createTrigger` (table), `createSequence`, `createEnum` and `bulk.insert` take `schema:`. Still without: `createIndex`, `createAdvancedIndex`, `createTableAs`, grants, `addForeignKey`, `createPolicy`, update/delete.

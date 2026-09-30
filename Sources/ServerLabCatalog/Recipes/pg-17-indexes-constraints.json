@@ -1,0 +1,14 @@
+{
+  "name": "pg-17-indexes-constraints",
+  "summary": "PostgreSQL 17 with labdata: every index method and constraint kind in the shop schema.",
+  "engine": "postgresql",
+  "version": "17",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "indexes-constraints"
+    }
+  ]
+}
