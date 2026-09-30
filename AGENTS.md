@@ -15,6 +15,32 @@ this file; change both together.
   `~/.echo-testlab/credentials.env`.
 - **Data is deterministic.** No random values in packs; the same recipe must give the same server.
 
+## Capacity: look before you start
+
+`testlab` has 14 GB of RAM and 4 vCPUs. The lab lets its servers use at most **12 GB together**,
+and that budget also counts what every other container on the host uses (sqlserver-nio's
+`nio-lab-*` fixtures share `testlab`).
+
+| Server | Memory each | At most at once on an otherwise empty host |
+|---|---|---|
+| SQL Server (any version) | 3 GB (`mssql-*-wideworldimporters`: 4 GB) | 4 |
+| PostgreSQL | 1 GB | 12 |
+| Mixed | add them up | e.g. 2 SQL Server + 6 PostgreSQL |
+
+A builder (making a seeded image) counts like a server while it runs.
+
+**Before you start servers**, run `swift run serverlab ps`. Its last line says how much of the
+budget is taken (`Reserved 9031 of 12288 MB on testlab`). If what you need does not fit:
+
+- Wait, or use fewer servers at once (one suite at a time instead of many in parallel).
+- Never remove containers that are not yours to make room. Lab containers are named
+  `serverlab-*`; anything else belongs to another agent or to the owner.
+- If the host stays full, tell the owner; do not switch to `SERVERLAB_HOST=local` on your own.
+
+When a server does not fit, `serverlab up` and the `.server(...)` trait wait up to 15 minutes for
+room, then fail with "Waited too long for … MB". Anything else that runs containers on `testlab`
+must give them a memory limit (`--memory`), or the budget cannot protect the host.
+
 ## I need a server for a test
 
 1. `swift run serverlab recipes`: pick one that has what you need. `catalog/` lists every item per
