@@ -1,0 +1,10 @@
+{
+  "name": "pg-16-primary-standby",
+  "summary": "PostgreSQL 16 primary with a hot standby streaming through a replication slot; parts primary and standby, for failover, promote and read-replica tests.",
+  "engine": "postgresql",
+  "version": "16",
+  "settings": { "topology": "primary-standby" },
+  "packs": [
+    { "pack": "database" }
+  ]
+}

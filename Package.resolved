@@ -1,5 +1,5 @@
 {
-  "originHash" : "d74ba943403fec85e978858b14d26345c8e514a35f7ef2af557b36087cc4007f",
+  "originHash" : "f781e03ad05be02844cd09ad22192091a10d57b92c5667b4a0de83c87a306971",
   "pins" : [
     {
       "identity" : "postgres-wire",
@@ -7,7 +7,7 @@
       "location" : "https://github.com/tashda/postgres-wire",
       "state" : {
         "branch" : "dev",
-        "revision" : "aed166240d442421b5d3feccbbb8730bd4252722"
+        "revision" : "39a16ffcbdee90d9c7bacec06f00556d4864658d"
       }
     },
     {

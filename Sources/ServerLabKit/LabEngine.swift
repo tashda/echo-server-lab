@@ -32,6 +32,30 @@ public protocol LabEngine: Sendable {
 
     /// Returns once the server accepts logins through the driver.
     func waitUntilReady(_ server: ServerEndpoint, timeout: Duration) async throws
+
+    /// The containers the recipe's `topology` setting asks for. One container unless overridden.
+    func topology(for recipe: Recipe, password: String) throws -> ServerTopology
+
+    /// Returns once the parts work together (a standby streams from its primary, …).
+    func waitUntilTopologyReady(_ server: LabServer) async throws
+
+    /// Turns a standby or secondary into a primary, through the driver.
+    func promote(_ part: ServerEndpoint) async throws
+}
+
+extension LabEngine {
+    public func topology(for recipe: Recipe, password: String) throws -> ServerTopology {
+        guard recipe.settings.topology == nil else {
+            throw ServerLabError.unsupported("Topology '\(recipe.settings.topology ?? "")' on \(kind.rawValue)")
+        }
+        return .single
+    }
+
+    public func waitUntilTopologyReady(_ server: LabServer) async throws {}
+
+    public func promote(_ part: ServerEndpoint) async throws {
+        throw ServerLabError.unsupported("Promoting a \(kind.rawValue) server")
+    }
 }
 
 extension ContentPack {
@@ -64,13 +88,17 @@ public struct ContainerSpec: Sendable, Hashable {
     public var environment: [String: String]
     public var command: [String]
     public var memoryMB: Int
+    /// Files put into the container before it starts, by absolute path (configuration, certificates).
+    public var files: [String: Data]
 
-    public init(image: String, internalPort: Int, environment: [String: String], command: [String] = [], memoryMB: Int) {
+    public init(image: String, internalPort: Int, environment: [String: String], command: [String] = [], memoryMB: Int,
+                files: [String: Data] = [:]) {
         self.image = image
         self.internalPort = internalPort
         self.environment = environment
         self.command = command
         self.memoryMB = memoryMB
+        self.files = files
     }
 }
 

@@ -14,25 +14,62 @@ extension ServerLab {
         let engine = try engine(for: recipe.engine)
         let password = try LabPassword.resolve()
         let spec = try engine.containerSpec(for: recipe, password: password)
-        try await waitForBudget(neededMB: spec.memoryMB, log: log)
+        let topology = try engine.topology(for: recipe, password: password)
+        for part in topology.parts { _ = try await baseImageID(part.container.image, log: log) }
+        try await waitForBudget(neededMB: spec.memoryMB + topology.parts.map(\.container.memoryMB).reduce(0, +), log: log)
+
+        let name = "serverlab-\(recipe.name)-\(UUID().uuidString.prefix(8).lowercased())"
+        let network = topology.parts.isEmpty ? nil : try await createNetwork(forServer: name)
+        func networkArguments(_ role: String) -> [String] {
+            network.map { ["--network", $0, "--network-alias", role] } ?? []
+        }
 
         // The seeded image already carries the environment and command it was built with.
-        let started = try await startContainer(
-            image: image, spec: spec, role: .server, recipe: recipe, owner: owner, lease: lease,
-            fingerprint: nil, environment: [:], command: []
-        )
-        let server = LabServer(
-            recipe: recipe.name, engine: recipe.engine, version: recipe.version,
-            host: host.address, port: started.port,
-            username: engine.adminUsername, password: password,
-            containerID: started.id, containerName: started.name,
-            expires: Date().addingTimeInterval(TimeInterval(lease.components.seconds))
-        )
+        var mainSpec = spec
+        mainSpec.files = topology.mainFiles
+        let main: StartedContainer
         do {
-            log("Waiting for \(started.name) on \(host.address):\(started.port)")
-            try await engine.waitUntilReady(server.endpoint, timeout: .seconds(180))
+            main = try await startContainer(
+                image: image, spec: mainSpec, role: .server, recipe: recipe, owner: owner, lease: lease,
+                fingerprint: nil, environment: [:],
+                command: topology.mainArguments.isEmpty ? [] : spec.command + topology.mainArguments,
+                name: name, server: name, part: topology.mainRole, extraArguments: networkArguments(topology.mainRole)
+            )
         } catch {
-            log("Start failed; last lines of the server log:\n\(await tailLog(started.id))")
+            try? await remove(serverNamed: name)
+            throw error
+        }
+        var server = LabServer(
+            recipe: recipe.name, engine: recipe.engine, version: recipe.version,
+            host: host.address, port: main.port,
+            username: engine.adminUsername, password: password,
+            containerID: main.id, containerName: main.name,
+            expires: Date().addingTimeInterval(TimeInterval(lease.components.seconds)),
+            parts: [LabServerPart(role: topology.mainRole, containerID: main.id, containerName: main.name, port: main.port)]
+        )
+        var current = main.id
+        do {
+            log("Waiting for \(main.name) on \(host.address):\(main.port)")
+            try await engine.waitUntilReady(server.endpoint, timeout: .seconds(180))
+            for part in topology.parts {
+                let started = try await startContainer(
+                    image: part.container.image, spec: part.container, role: .server, recipe: recipe, owner: owner, lease: lease,
+                    fingerprint: nil, environment: part.container.environment, command: part.container.command,
+                    name: "\(name)-\(part.role)", server: name, part: part.role, extraArguments: networkArguments(part.role)
+                )
+                current = started.id
+                server.parts.append(LabServerPart(role: part.role, containerID: started.id, containerName: started.name, port: started.port))
+                if part.acceptsLogins {
+                    log("Waiting for \(part.role) \(started.name) on \(host.address):\(started.port)")
+                    try await engine.waitUntilReady(try server.endpoint(of: part.role), timeout: .seconds(300))
+                }
+            }
+            if !topology.parts.isEmpty {
+                log("Waiting for \(server.parts.map(\.role).joined(separator: ", ")) to work together")
+                try await engine.waitUntilTopologyReady(server)
+            }
+        } catch {
+            log("Start failed; last lines of the log:\n\(await tailLog(current))")
             try? await stop(server)
             throw error
         }
@@ -43,9 +80,9 @@ extension ServerLab {
         try await start(recipes.recipe(named: name), owner: owner, lease: lease, log: log)
     }
 
+    /// Removes the server: every part, its network and its capture.
     public func stop(_ server: LabServer) async throws {
-        try await stopCapture(of: server)
-        try await remove(containerID: server.containerID)
+        try await remove(serverNamed: server.containerName)
     }
 
     /// Removes a lab container and its anonymous volumes.
@@ -53,12 +90,17 @@ extension ServerLab {
         try await docker.run(["rm", "--force", "--volumes", containerID])
     }
 
-    /// Removes a lab server by container name, with its capture container if it has one.
+    /// Removes a lab server by its main container's name: every part, its network and its capture.
     public func remove(serverNamed name: String) async throws {
         if name.hasPrefix("serverlab-"), !name.hasPrefix("serverlab-capture-") {
             _ = try await docker.runAllowingFailure(["rm", "--force", "serverlab-capture-\(name.dropFirst("serverlab-".count))"])
         }
-        try await docker.run(["rm", "--force", "--volumes", name])
+        let parts = try await docker.run(["ps", "--all", "--format", "{{.Names}}", "--filter", "label=\(LabLabels.server)=\(name)"])
+            .split(separator: "\n").map(String.init)
+        try await docker.run(["rm", "--force", "--volumes"] + Set(parts + [name]).sorted())
+        let networks = try await docker.run(["network", "ls", "--quiet", "--filter", "label=\(LabLabels.server)=\(name)"])
+            .split(separator: "\n").map(String.init)
+        if !networks.isEmpty { _ = try await docker.runAllowingFailure(["network", "rm"] + networks) }
     }
 
     /// Lab containers (servers and builders) on this host.
@@ -67,14 +109,16 @@ extension ServerLab {
             "{{.ID}}", "{{.Names}}", "{{.Status}}",
             "{{.Label \"\(LabLabels.role)\"}}", "{{.Label \"\(LabLabels.recipe)\"}}",
             "{{.Label \"\(LabLabels.owner)\"}}", "{{.Label \"\(LabLabels.expires)\"}}",
+            "{{.Label \"\(LabLabels.server)\"}}", "{{.Label \"\(LabLabels.part)\"}}",
         ].joined(separator: "\t")
         let output = try await docker.run(["ps", "--all", "--filter", "label=\(LabLabels.managed)=true", "--format", format])
         return output.split(separator: "\n").compactMap { line in
             let fields = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
-            guard fields.count == 7 else { return nil }
+            guard fields.count == 9 else { return nil }
             return RunningServer(
                 id: fields[0], name: fields[1], status: fields[2], role: fields[3], recipe: fields[4], owner: fields[5],
-                expires: Date(timeIntervalSince1970: TimeInterval(fields[6]) ?? 0)
+                expires: Date(timeIntervalSince1970: TimeInterval(fields[6]) ?? 0),
+                server: fields[7].isEmpty ? fields[1] : fields[7], part: fields[8]
             )
         }
     }
@@ -87,6 +131,8 @@ extension ServerLab {
         for server in expired {
             _ = try await docker.runAllowingFailure(["rm", "--force", "--volumes", server.id])
         }
+        // Only lab networks, and only those no container uses any more.
+        _ = try await docker.runAllowingFailure(["network", "prune", "--force", "--filter", "label=\(LabLabels.managed)=true"])
         if host.isDedicated {
             _ = try await docker.runAllowingFailure(["volume", "prune", "--force"])
             try? await pruneCaptures()
@@ -149,9 +195,12 @@ extension ServerLab {
         fingerprint: String?,
         environment: [String: String],
         command: [String],
+        name: String? = nil,
+        server: String? = nil,
+        part: String? = nil,
         extraArguments: [String] = []
     ) async throws -> StartedContainer {
-        let name = "serverlab-\(recipe.name)-\(UUID().uuidString.prefix(8).lowercased())"
+        let name = name ?? "serverlab-\(recipe.name)-\(UUID().uuidString.prefix(8).lowercased())"
         var labels = [
             LabLabels.managed: "true",
             LabLabels.role: role.rawValue,
@@ -162,6 +211,8 @@ extension ServerLab {
             LabLabels.expires: String(Int(Date().timeIntervalSince1970) + Int(lease.components.seconds)),
         ]
         if let fingerprint { labels[LabLabels.fingerprint] = fingerprint }
+        if let server { labels[LabLabels.server] = server }
+        if let part { labels[LabLabels.part] = part }
 
         // Secrets go through an env file (read by the local docker tool), not the command line.
         let envFile = FileManager.default.temporaryDirectory.appending(path: "serverlab-\(UUID().uuidString).env")
@@ -170,19 +221,56 @@ extension ServerLab {
         try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: envFile.path)
         defer { try? FileManager.default.removeItem(at: envFile) }
 
-        let id = try await docker.run(
-            ["run", "--detach", "--name", name, "--env-file", envFile.path,
-             "--publish", String(spec.internalPort),
-             "--memory", "\(spec.memoryMB)m", "--memory-swap", "\(spec.memoryMB)m"]
-            + LabLabels.arguments(labels)
-            + extraArguments
-            + [image] + command
-        )
-        let mapping = try await docker.run(["port", id, "\(spec.internalPort)/tcp"])
-        guard let port = mapping.split(separator: "\n").compactMap({ $0.split(separator: ":").last.flatMap { Int($0) } }).first else {
-            throw ServerLabError.noPublishedPort(container: name)
+        // A fixed host port (not an ephemeral one), so the address survives stopping and starting
+        // the container. The range is below Linux's and Docker's ephemeral ports; a taken port is retried.
+        for _ in 1...10 {
+            let port = Int.random(in: Self.hostPorts)
+            let id = try await docker.run(
+                ["create", "--name", name, "--env-file", envFile.path,
+                 "--publish", "\(port):\(spec.internalPort)",
+                 "--memory", "\(spec.memoryMB)m", "--memory-swap", "\(spec.memoryMB)m"]
+                + LabLabels.arguments(labels)
+                + extraArguments
+                + [image] + command
+            )
+            do {
+                try await copy(spec.files, into: id)
+            } catch {
+                _ = try? await docker.runAllowingFailure(["rm", "--force", "--volumes", id])
+                throw error
+            }
+            let started = try await docker.runAllowingFailure(["start", id])
+            if started.status == 0 { return StartedContainer(id: id, name: name, port: port) }
+            _ = try await docker.runAllowingFailure(["rm", "--force", "--volumes", id])
+            let message = started.standardError
+            guard message.contains("already allocated") || message.contains("address already in use") else {
+                throw ServerLabError.dockerFailed(command: "start \(name)", status: started.status, output: message)
+            }
         }
-        return StartedContainer(id: id, name: name, port: port)
+        throw ServerLabError.noPublishedPort(container: name)
+    }
+
+    static let hostPorts = 20_000...29_999
+
+    /// Puts files into a created container (before it starts), with the directories they need.
+    func copy(_ files: [String: Data], into container: String) async throws {
+        guard !files.isEmpty else { return }
+        let root = FileManager.default.temporaryDirectory.appending(path: "serverlab-files-\(UUID().uuidString)")
+        defer { try? FileManager.default.removeItem(at: root) }
+        for (path, contents) in files {
+            let file = root.appending(path: String(path.drop { $0 == "/" }))
+            try FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try contents.write(to: file)
+            try FileManager.default.setAttributes([.posixPermissions: 0o644], ofItemAtPath: file.path)
+        }
+        try await docker.run(["cp", root.path + "/.", "\(container):/"])
+    }
+
+    /// A private network for a server's parts; each part is reachable there by its role.
+    func createNetwork(forServer server: String) async throws -> String {
+        let network = "serverlab-net-\(server.suffix(8))"
+        try await docker.run(["network", "create", "--label", "\(LabLabels.managed)=true", "--label", "\(LabLabels.server)=\(server)", network])
+        return network
     }
 }
 
@@ -194,6 +282,10 @@ public struct RunningServer: Sendable, Hashable {
     public var recipe: String
     public var owner: String
     public var expires: Date
+    /// The main container's name of the server this container belongs to (its own name for older containers).
+    public var server: String
+    /// `server`, `primary`, `standby`, …; empty for builders and captures.
+    public var part: String
 }
 
 extension ServerLab {

@@ -13,6 +13,10 @@ public enum LabLabels {
     public static let expires = "dev.echodb.lab.expires"
     /// Who asked for the server (a suite name, `cli`, `echo-labs`).
     public static let owner = "dev.echodb.lab.owner"
+    /// The main container's name, on every container of a server (and its network).
+    public static let server = "dev.echodb.lab.server"
+    /// The part a container plays in its server: `server`, `primary`, `standby`, ….
+    public static let part = "dev.echodb.lab.part"
 
     enum Role: String {
         case builder, server, seeded

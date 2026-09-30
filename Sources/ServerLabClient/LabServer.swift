@@ -13,9 +13,38 @@ public struct LabServer: Codable, Sendable, Hashable {
     public var containerID: String
     public var containerName: String
     public var expires: Date
+    /// Every container of the server, the main one first.
+    public var parts: [LabServerPart]
 
     public var isSQLServer: Bool { engine == "sqlserver" }
     public var isPostgres: Bool { engine == "postgresql" }
+
+    /// The host port of a part, e.g. `port(of: "standby")`.
+    public func port(of role: String) -> Int? { parts.first { $0.role == role }?.port }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        recipe = try container.decode(String.self, forKey: .recipe)
+        engine = try container.decode(String.self, forKey: .engine)
+        version = try container.decode(String.self, forKey: .version)
+        host = try container.decode(String.self, forKey: .host)
+        port = try container.decode(Int.self, forKey: .port)
+        username = try container.decode(String.self, forKey: .username)
+        password = try container.decode(String.self, forKey: .password)
+        containerID = try container.decode(String.self, forKey: .containerID)
+        containerName = try container.decode(String.self, forKey: .containerName)
+        expires = try container.decode(Date.self, forKey: .expires)
+        parts = try container.decodeIfPresent([LabServerPart].self, forKey: .parts)
+            ?? [LabServerPart(role: "server", containerID: containerID, containerName: containerName, port: port)]
+    }
+}
+
+/// One container of a lab server. Its port stays the same when it is stopped and started.
+public struct LabServerPart: Codable, Sendable, Hashable {
+    public var role: String
+    public var containerID: String
+    public var containerName: String
+    public var port: Int
 }
 
 /// Starts and stops lab servers through the `serverlab` tool, so a test target needs no database
@@ -48,6 +77,21 @@ public enum ServerLabCLI {
 
     public static func down(_ server: LabServer) async throws {
         _ = try await run(executable(), ["down", server.containerName])
+    }
+
+    /// Stops a server, or one part of it (`primary`, `standby`, …), without removing it.
+    public static func stop(_ server: LabServer, part: String? = nil) async throws {
+        _ = try await run(executable(), ["stop", server.containerName] + (part.map { ["--part", $0] } ?? []))
+    }
+
+    /// Starts a stopped server or part again on the same port; returns once it takes logins.
+    public static func start(_ server: LabServer, part: String? = nil) async throws {
+        _ = try await run(executable(), ["start", server.containerName] + (part.map { ["--part", $0] } ?? []))
+    }
+
+    /// Promotes a standby (or secondary) to primary.
+    public static func promote(_ server: LabServer, part: String = "standby") async throws {
+        _ = try await run(executable(), ["promote", server.containerName, "--part", part])
     }
 
     /// The server's recorded traffic, decoded by Wireshark (needs `capture: true` at `up`).

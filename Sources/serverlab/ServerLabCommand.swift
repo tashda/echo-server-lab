@@ -9,7 +9,8 @@ struct ServerLabCommand: AsyncParsableCommand {
         commandName: "serverlab",
         abstract: "Start disposable database servers from recipes.",
         discussion: "The host is testlab unless SERVERLAB_HOST=local.",
-        subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, Images.self, Prune.self, Reap.self, Wire.self, Pcap.self]
+        subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, StopPart.self, StartPart.self, Promote.self,
+                      Images.self, Prune.self, Reap.self, Wire.self, Pcap.self]
     )
 }
 
@@ -60,6 +61,7 @@ struct Up: AsyncParsableCommand {
             print(String(decoding: try encoder.encode(server), as: UTF8.self))
         } else {
             print("\(server.containerName)  \(server.engine.rawValue) \(server.version)  \(server.host):\(server.port)  user \(server.username)")
+            for part in server.parts.dropFirst() { print("  \(part.role)  \(server.host):\(part.port)  \(part.containerName)") }
             print("Password: SERVERLAB_PASSWORD / ~/.echo-testlab/credentials.env. Removed after \(lease) minutes or `serverlab down \(server.containerName)`.")
         }
     }
@@ -73,10 +75,10 @@ struct Down: AsyncParsableCommand {
 
     func run() async throws {
         let lab = try ServerLab.standard()
-        let targets = try await lab.running().filter { all || names.contains($0.name) }
-        for server in targets {
-            try await lab.remove(serverNamed: server.name)
-            print("removed \(server.name)")
+        let containers = try await lab.running().filter { all || names.contains($0.name) || names.contains($0.server) }
+        for server in Set(containers.map(\.server)).sorted() {
+            try await lab.remove(serverNamed: server)
+            print("removed \(server)")
         }
     }
 }
@@ -88,9 +90,50 @@ struct List: AsyncParsableCommand {
         let lab = try ServerLab.standard()
         let formatter = RelativeDateTimeFormatter()
         for server in try await lab.running() {
-            print("\(server.name)  \(server.role)  \(server.recipe)  owner \(server.owner)  \(server.status)  expires \(formatter.localizedString(for: server.expires, relativeTo: Date()))")
+            let role = server.part.isEmpty || server.part == "server" ? server.role : "\(server.role) (\(server.part))"
+            print("\(server.name)  \(role)  \(server.recipe)  owner \(server.owner)  \(server.status)  expires \(formatter.localizedString(for: server.expires, relativeTo: Date()))")
         }
         print("Reserved \(try await lab.reservedMemoryMB()) of \(lab.host.memoryBudgetMB) MB on \(lab.host.name)")
+    }
+}
+
+struct StopPart: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "stop", abstract: "Stop a server (or one part of it) without removing it.")
+
+    @Argument(help: "Server container name.") var name: String
+    @Option(help: "The part: primary, standby, …; the main one when omitted.") var part: String?
+
+    func run() async throws {
+        let lab = try ServerLab.standard()
+        try await lab.stop(part: part, of: lab.server(named: name))
+        print("stopped \(part ?? "main part of") \(name)")
+    }
+}
+
+struct StartPart: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(commandName: "start", abstract: "Start a stopped server (or part) again, on the same port.")
+
+    @Argument(help: "Server container name.") var name: String
+    @Option(help: "The part: primary, standby, …; the main one when omitted.") var part: String?
+
+    func run() async throws {
+        let lab = try ServerLab.standard()
+        let log: LabLog = { line in FileHandle.standardError.write(Data((line + "\n").utf8)) }
+        try await lab.start(part: part, of: lab.server(named: name), log: log)
+        print("started \(part ?? "main part of") \(name)")
+    }
+}
+
+struct Promote: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(abstract: "Promote a standby (or secondary) to primary.")
+
+    @Argument(help: "Server container name.") var name: String
+    @Option(help: "The part to promote.") var part = "standby"
+
+    func run() async throws {
+        let lab = try ServerLab.standard()
+        try await lab.promote(part: part, of: lab.server(named: name))
+        print("promoted \(part) of \(name)")
     }
 }
 

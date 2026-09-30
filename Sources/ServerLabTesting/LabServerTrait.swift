@@ -67,6 +67,21 @@ extension Trait where Self == LabServerTrait {
 extension LabServer {
     /// The server the enclosing `.server(...)` trait started.
     @TaskLocal public static var current: LabServer?
+
+    /// Stops the server, or one part of it (`primary`, `standby`, …), without removing it.
+    public func stop(part: String? = nil) async throws {
+        try await ServerLab.standard().stop(part: part, of: self)
+    }
+
+    /// Starts a stopped server or part again on the same port; returns once it takes logins.
+    public func start(part: String? = nil) async throws {
+        try await ServerLab.standard().start(part: part, of: self)
+    }
+
+    /// Promotes a standby (or secondary) to primary through the driver.
+    public func promote(part: String = "standby") async throws {
+        try await ServerLab.standard().promote(part: part, of: self)
+    }
 }
 
 /// The recorded traffic of the enclosing `.server(..., capture: true)` server, decoded by Wireshark.

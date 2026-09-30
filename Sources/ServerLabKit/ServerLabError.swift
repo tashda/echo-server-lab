@@ -14,6 +14,8 @@ public enum ServerLabError: Error, CustomStringConvertible, Sendable {
     case packCheckFailed(pack: String, reason: String)
     case packRequirement(pack: String, reason: String)
     case budgetTimeout(neededMB: Int, budgetMB: Int)
+    case unknownPart(String, server: String, parts: [String])
+    case unsupported(String)
 
     public var description: String {
         switch self {
@@ -43,6 +45,10 @@ public enum ServerLabError: Error, CustomStringConvertible, Sendable {
             "Pack '\(pack)' cannot run: \(reason)"
         case .budgetTimeout(let needed, let budget):
             "Waited too long for \(needed) MB within the host's \(budget) MB budget."
+        case .unknownPart(let part, let server, let parts):
+            "\(server) has no part '\(part)'. Parts: \(parts.joined(separator: ", "))."
+        case .unsupported(let what):
+            "\(what) is not supported."
         }
     }
 }

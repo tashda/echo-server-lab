@@ -147,3 +147,52 @@ struct PostgresWireCaptureTests {
         #expect(try await wire.containsPlaintext(server.password) == false)
     }
 }
+
+@Suite(.enabled(if: integrationEnabled), .server("pg-17-primary-standby"))
+struct PostgresPrimaryStandbyTests {
+    func connect(_ server: LabServer, part: String) async throws -> PostgresClient {
+        let endpoint = try server.endpoint(of: part)
+        return try await PostgresClient.connect(configuration: PostgresConfiguration(
+            host: endpoint.host, port: endpoint.port, database: "labdata",
+            username: endpoint.username, password: endpoint.password, sslMode: .disable
+        ))
+    }
+
+    func rowCount(_ server: LabServer, part: String) async throws -> Int64 {
+        let client = try await connect(server, part: part)
+        defer { client.close() }
+        return try await client.metadata.exactRowCount(table: "replicated")
+    }
+
+    @Test func standbyFollowsSurvivesARestartAndCanBePromoted() async throws {
+        let server = try #require(LabServer.current)
+        #expect(server.parts.map(\.role) == ["primary", "standby"])
+
+        let primary = try await connect(server, part: "primary")
+        try await primary.admin.createTable(name: "replicated", columns: [
+            PostgresColumnDefinition(name: "id", dataType: "integer", nullable: false),
+            PostgresColumnDefinition(name: "label", dataType: "text"),
+        ])
+        try await primary.bulk.insert(into: "replicated", columns: ["id", "label"],
+                                      values: (1...3).map { [PostgresInsertValue($0), PostgresInsertValue("row \($0)")] })
+        #expect(try await primary.metadata.isInRecovery() == false)
+        #expect(try await primary.metadata.listStandbys().map(\.applicationName) == ["standby"])
+        primary.close()
+
+        try await retryUntilReady("rows on the standby", timeout: .seconds(30), every: .milliseconds(250)) {
+            guard try await rowCount(server, part: "standby") == 3 else { throw CancellationError() }
+        }
+
+        try await server.stop(part: "standby")
+        await #expect(throws: (any Error).self) { _ = try await rowCount(server, part: "standby") }
+        try await server.start(part: "standby")
+        #expect(try await rowCount(server, part: "standby") == 3)
+
+        try await server.promote()
+        let promoted = try await connect(server, part: "standby")
+        defer { promoted.close() }
+        #expect(try await promoted.metadata.isInRecovery() == false)
+        try await promoted.bulk.insert(into: "replicated", columns: ["id", "label"], values: [[PostgresInsertValue(4), PostgresInsertValue("after promote")]])
+        #expect(try await promoted.metadata.exactRowCount(table: "replicated") == 4)
+    }
+}

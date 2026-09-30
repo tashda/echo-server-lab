@@ -153,21 +153,3 @@ public enum WireDecoding {
 extension Array {
     subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }
-
-extension ServerLab {
-    /// A running lab server by container name, for tools that did not start it (CLI, Echo Labs).
-    public func server(named name: String) async throws -> LabServer {
-        let format = "{{.Id}}|{{index .Config.Labels \"\(LabLabels.recipe)\"}}|{{index .Config.Labels \"\(LabLabels.engine)\"}}|{{index .Config.Labels \"\(LabLabels.version)\"}}|{{index .Config.Labels \"\(LabLabels.expires)\"}}"
-        let fields = try await docker.run(["inspect", "--format", format, name]).split(separator: "|", omittingEmptySubsequences: false).map(String.init)
-        guard fields.count == 5, let engine = EngineKind(rawValue: fields[2]) else {
-            throw ServerLabError.invalidParameter("server \(name)", expected: "a running lab server")
-        }
-        let mapping = try await docker.run(["port", name, "\(engine.internalPort)/tcp"])
-        let port = mapping.split(separator: "\n").compactMap { $0.split(separator: ":").last.flatMap { Int($0) } }.first ?? 0
-        let password = try LabPassword.resolve()
-        return LabServer(recipe: fields[1], engine: engine, version: fields[3], host: host.address, port: port,
-                         username: try self.engine(for: engine).adminUsername, password: password,
-                         containerID: fields[0], containerName: name,
-                         expires: Date(timeIntervalSince1970: TimeInterval(fields[4]) ?? 0))
-    }
-}

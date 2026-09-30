@@ -61,6 +61,14 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    `serverlab up <recipe> --capture`, then `serverlab wire <server>` or `serverlab pcap <server>`
    (opens in Wireshark). Capture and decoding run on the lab host; nothing to install. SQL Server
    traffic is encrypted when the client asks for TLS; connect with encryption off to read it.
+5. **Restarts, failover and replicas:** every server keeps a fixed host port for its life, so it
+   can be stopped and started without the address changing. Recipes with a `topology` setting are
+   several containers ("parts") on a private network, each with its own port: `pg-<v>-primary-standby`
+   has `primary` and `standby` (a hot standby streaming through a replication slot).
+   `LabServer.parts`, `server.endpoint(of: "standby")`, and `server.stop(part:)`,
+   `server.start(part:)` (returns once it takes logins) and `server.promote()` in tests; by hand
+   `serverlab stop|start <server> [--part standby]` and `serverlab promote <server>`. `--env` adds
+   `SERVERLAB_STANDBY_PORT` etc. Restarting the main part restarts a capture (a new recording).
 
 ## Adding a scenario
 

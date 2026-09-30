@@ -53,12 +53,15 @@ public struct ServerSettings: Codable, Sendable, Hashable {
     /// An image built on the engine's official one with extras, e.g. `pgvector` or `postgis` for
     /// PostgreSQL. Nil uses the official image.
     public var imageVariant: String?
+    /// Several containers instead of one, e.g. `primary-standby` for PostgreSQL. Nil is one server.
+    public var topology: String?
 
-    public init(agent: Bool? = nil, collation: String? = nil, memoryMB: Int? = nil, imageVariant: String? = nil) {
+    public init(agent: Bool? = nil, collation: String? = nil, memoryMB: Int? = nil, imageVariant: String? = nil, topology: String? = nil) {
         self.agent = agent
         self.collation = collation
         self.memoryMB = memoryMB
         self.imageVariant = imageVariant
+        self.topology = topology
     }
 }
 
