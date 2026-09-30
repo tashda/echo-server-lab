@@ -1,0 +1,17 @@
+{
+  "name": "pg-15-storage-and-extensions",
+  "summary": "PostgreSQL 15: range/list/hash partitioning, contrib extensions in use, postgres_fdw loopback foreign table.",
+  "engine": "postgresql",
+  "version": "15",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "partitioning"
+    },
+    {
+      "pack": "extensions"
+    }
+  ]
+}

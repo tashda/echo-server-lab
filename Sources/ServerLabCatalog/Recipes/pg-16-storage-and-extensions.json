@@ -1,0 +1,17 @@
+{
+  "name": "pg-16-storage-and-extensions",
+  "summary": "PostgreSQL 16: range/list/hash partitioning, contrib extensions in use, postgres_fdw loopback foreign table.",
+  "engine": "postgresql",
+  "version": "16",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "partitioning"
+    },
+    {
+      "pack": "extensions"
+    }
+  ]
+}

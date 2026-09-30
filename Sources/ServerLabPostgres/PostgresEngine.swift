@@ -13,6 +13,8 @@ public struct PostgresEngine: LabEngine {
         PostgresProgrammabilityPack(),
         PostgresIndexesPack(),
         PostgresSecurityPack(),
+        PostgresPartitioningPack(),
+        PostgresExtensionsPack(),
     ]
 
     public init() {}
