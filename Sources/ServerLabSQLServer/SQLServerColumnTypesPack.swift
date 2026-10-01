@@ -26,7 +26,8 @@ struct SQLServerColumnTypesPack: ContentPack {
             try await admin.createTable(
                 name: Self.typesTable,
                 columns: [Self.identityColumn] + columns.map { sample in
-                    SQLServerColumnDefinition(name: sample.column, definition: .standard(.init(dataType: sample.type, isNullable: true)))
+                    SQLServerColumnDefinition(name: sample.column, definition: .standard(.init(
+                        dataType: sample.type, isNullable: true, collation: Self.legacyCollation(for: sample.type, server: recipe.settings.collation))))
                 }
             )
             var rows: [[SQLServerLiteralValue]] = [
@@ -89,6 +90,18 @@ struct SQLServerColumnTypesPack: ContentPack {
 
     static let typesTable = "AllTypes"
     static let largeTable = "LargeValues"
+
+    /// text and ntext do not take UTF-8 (or supplementary-character) collations; on a server with
+    /// one they get the same collation without those parts, as a real database would need.
+    static func legacyCollation(for type: SQLDataType, server collation: String?) -> String? {
+        guard let collation, collation.uppercased().hasSuffix("_UTF8") else { return nil }
+        switch type {
+        case .text, .ntext:
+            return collation.replacingOccurrences(of: "_UTF8", with: "", options: .caseInsensitive)
+                .replacingOccurrences(of: "_SC", with: "", options: .caseInsensitive)
+        default: return nil
+        }
+    }
 
     static let identityColumn = SQLServerColumnDefinition(
         name: "Id",
