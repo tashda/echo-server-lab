@@ -660,3 +660,28 @@ struct MariaDBTrafficMatchesTheProtocolTests {
         try await mysqlTrafficDecodes(try #require(LabServer.current), try #require(LabWire.current))
     }
 }
+
+@Suite(.enabled(if: integrationEnabled), .server("pg-17-publisher-subscriber"))
+struct PostgresLogicalReplicationTests {
+    @Test func changesFlowToTheSubscriber() async throws {
+        let server = try #require(LabServer.current)
+        #expect(server.parts.map(\.role) == ["publisher", "subscriber"])
+        func connect(_ role: String) async throws -> PostgresClient {
+            let endpoint = try server.endpoint(of: role)
+            return try await PostgresClient.connect(configuration: PostgresConfiguration(
+                host: endpoint.host, port: endpoint.port, database: "labdata",
+                username: endpoint.username, password: endpoint.password, sslMode: .disable))
+        }
+        let publisher = try await connect("publisher")
+        try await publisher.bulk.insert(into: "replicated_items", columns: ["id", "label"],
+                                        values: [[PostgresInsertValue(11), PostgresInsertValue("new")]])
+        #expect(try await publisher.metadata.listPublications().map(\.name) == ["lab_publication"])
+        publisher.close()
+        let subscriber = try await connect("subscriber")
+        defer { subscriber.close() }
+        #expect(try await subscriber.metadata.listSubscriptions().first?.enabled == true)
+        try await retryUntilReady("row 11 on the subscriber", timeout: .seconds(30), every: .milliseconds(250)) {
+            guard try await subscriber.metadata.exactRowCount(table: "replicated_items") == 11 else { throw CancellationError() }
+        }
+    }
+}

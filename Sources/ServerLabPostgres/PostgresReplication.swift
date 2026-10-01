@@ -15,7 +15,9 @@ extension PostgresEngine {
         switch recipe.settings.topology {
         case nil: withStandby = false
         case Self.primaryStandby?: withStandby = true
-        case let other?: throw ServerLabError.unsupported("Topology '\(other)' on PostgreSQL (use \(Self.primaryStandby))")
+        case Self.publisherSubscriber?: return try logicalTopology(for: recipe, setup: setup)
+        case let other?:
+            throw ServerLabError.unsupported("Topology '\(other)' on PostgreSQL (use \(Self.primaryStandby) or \(Self.publisherSubscriber))")
         }
         if withStandby, tls?.mode == .clientCertificate {
             throw ServerLabError.unsupported("A standby on a client-certificate server")
@@ -96,6 +98,10 @@ extension PostgresEngine {
     }
 
     public func waitUntilTopologyReady(_ server: LabServer, files: any ServerPartFiles) async throws {
+        if server.parts.contains(where: { $0.role == Self.subscriberRole }) {
+            try await connectSubscriber(of: server)
+            return
+        }
         guard server.parts.contains(where: { $0.role == Self.standbyRole }) else { return }
         try await retryUntilReady("standby streaming from \(server.containerName)", timeout: .seconds(120)) {
             let standbys = try await PostgresSession.with(server.endpoint) { try await $0.metadata.listStandbys() }

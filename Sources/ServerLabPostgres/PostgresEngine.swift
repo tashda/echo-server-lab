@@ -32,11 +32,13 @@ public struct PostgresEngine: LabEngine {
         if let collation = recipe.settings.collation {
             environment["POSTGRES_INITDB_ARGS"] = "--lc-collate=\(collation) --lc-ctype=\(collation)"
         }
+        var command = ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=200"]
+        if recipe.settings.topology == Self.publisherSubscriber { command += ["-c", "wal_level=logical"] }
         return ContainerSpec(
             image: try Self.image(version: recipe.version, variant: recipe.settings.imageVariant),
             internalPort: 5432,
             environment: environment,
-            command: ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=200"],
+            command: command,
             memoryMB: recipe.settings.memoryMB ?? 1_024
         )
     }

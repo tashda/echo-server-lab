@@ -66,7 +66,9 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
 5. **Restarts, failover and replicas:** every server keeps a fixed host port for its life, so it
    can be stopped and started without the address changing. Recipes with a `topology` setting are
    several containers ("parts") on a private network, each with its own port: `pg-<v>-primary-standby`
-   has `primary` and `standby` (a hot standby streaming through a replication slot).
+   has `primary` and `standby` (a hot standby streaming through a replication slot);
+   `pg-<v>-publisher-subscriber` is logical replication of `labdata.replicated_items`; MySQL/MariaDB
+   `*-source-replica` have `primary` and a GTID `replica`.
    `LabServer.parts`, `server.endpoint(of: "standby")`, and `server.stop(part:)`,
    `server.start(part:)` (returns once it takes logins) and `server.promote()` in tests; by hand
    `serverlab stop|start <server> [--part standby]` and `serverlab promote <server>`. `--env` adds

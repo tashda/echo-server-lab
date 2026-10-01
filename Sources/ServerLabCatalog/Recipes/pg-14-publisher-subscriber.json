@@ -1,0 +1,14 @@
+{
+  "name": "pg-14-publisher-subscriber",
+  "summary": "PostgreSQL 14 logical replication: the publisher publishes labdata.replicated_items, a subscriber copies it and follows every change.",
+  "engine": "postgresql",
+  "version": "14",
+  "settings": {
+    "topology": "publisher-subscriber"
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}
