@@ -28,3 +28,14 @@ import Testing
         #expect(messages.roundTrips(containing: "SELECT $1") == 1)
     }
 }
+
+@Suite struct MySQLWireDecodingTests {
+    @Test func commandsAndResponses() {
+        // time, dstport, 7 TDS/PostgreSQL fields left empty, mysql.command, mysql.query, mysql.response_code
+        let output = "0.007\t3306\t\t\t\t\t\t\t\t3\tSELECT 42\t\n0.008\t51234\t\t\t\t\t\t\t\t\t\t0"
+        let messages = WireDecoding.messages(fromTSharkFields: output, serverPort: 3306)
+        #expect(messages.map(\.kind) == ["COM_QUERY", "OK"])
+        #expect(messages.first?.text == "SELECT 42")
+        #expect(messages.requests.count == 1)
+    }
+}

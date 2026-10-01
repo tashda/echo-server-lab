@@ -5,7 +5,7 @@ public struct WireMessage: Codable, Sendable, Hashable {
     /// Seconds since the capture started.
     public var time: Double
     public var toServer: Bool
-    /// `tds` or `pgsql`.
+    /// `tds`, `pgsql` or `mysql`.
     public var protocolName: String
     /// Wireshark's name for the message: "SQL batch", "Remote Procedure Call", "Attention", "Parse", "Sync", ….
     public var kind: String
@@ -16,9 +16,9 @@ public struct WireMessage: Codable, Sendable, Hashable {
 }
 
 extension Array where Element == WireMessage {
-    /// Requests the client sent: TDS messages ending in EOM, PostgreSQL Sync or simple Query.
+    /// Requests the client sent: TDS messages ending in EOM, PostgreSQL Sync or simple Query, MySQL commands.
     public var requests: [WireMessage] {
-        filter { $0.toServer && $0.endsMessage && ($0.protocolName == "tds" || ["Sync", "Simple query"].contains($0.kind)) }
+        filter { $0.toServer && $0.endsMessage && ($0.protocolName != "pgsql" || ["Sync", "Simple query"].contains($0.kind)) }
     }
 
     /// How many requests were sent while `text` (or a message containing it) was being run.
@@ -83,10 +83,10 @@ extension ServerLab {
     /// The server's traffic so far, decoded by Wireshark (tshark). Works while the capture runs.
     public func wireMessages(of server: LabServer) async throws -> [WireMessage] {
         let fields = ["frame.time_relative", "tcp.dstport", "tds.type", "tds.status", "tds.query", "tds.rpc.name",
-                      "tds.rpc.proc_id", "pgsql.type", "pgsql.query"]
+                      "tds.rpc.proc_id", "pgsql.type", "pgsql.query", "mysql.command", "mysql.query", "mysql.response_code"]
         let output = try await docker.run(
             ["run", "--rm", "--volume", "\(capturesDirectory):/captures:ro", Self.captureImage,
-             "tshark", "-r", "/captures/\(server.containerName).pcap", "-Y", "tds || pgsql", "-T", "fields",
+             "tshark", "-r", "/captures/\(server.containerName).pcap", "-Y", "tds || pgsql || mysql", "-T", "fields",
              "-E", "separator=\t", "-E", "occurrence=a", "-E", "aggregator=\u{1F}"]
             + fields.flatMap { ["-e", $0] }
         )
@@ -120,6 +120,9 @@ public enum WireDecoding {
                            6: "Attention", 7: "Bulk load", 8: "Federated authentication token", 14: "Transaction manager request",
                            16: "TDS7 login", 17: "SSPI", 18: "Pre-login"]
 
+    static let mysqlCommands = [0x01: "COM_QUIT", 0x02: "COM_INIT_DB", 0x03: "COM_QUERY", 0x0E: "COM_PING", 0x16: "COM_STMT_PREPARE",
+                                0x17: "COM_STMT_EXECUTE", 0x19: "COM_STMT_CLOSE", 0x1F: "COM_RESET_CONNECTION"]
+
     public static func messages(fromTSharkFields output: String, serverPort: Int) -> [WireMessage] {
         var messages: [WireMessage] = []
         for line in output.split(separator: "\n") {
@@ -145,6 +148,17 @@ public enum WireDecoding {
                 let carriesText = toServer && (kind == "Parse" || kind == "Simple query")
                 let text = carriesText ? queries.popFirst() : nil
                 messages.append(WireMessage(time: time, toServer: toServer, protocolName: "pgsql", kind: kind, text: text, endsMessage: true))
+            }
+            if fields.count >= 12 {
+                // MySQL: commands from the client, OK/ERR/EOF from the server.
+                let sqlText = values[10].first { !$0.isEmpty }
+                if let command = values[9].first(where: { !$0.isEmpty }).flatMap({ Int($0) ?? Int($0.dropFirst(2), radix: 16) }), toServer {
+                    messages.append(WireMessage(time: time, toServer: true, protocolName: "mysql",
+                                                kind: Self.mysqlCommands[command] ?? "command \(command)", text: sqlText, endsMessage: true))
+                } else if let code = values[11].first(where: { !$0.isEmpty }).flatMap({ Int($0) ?? Int($0.dropFirst(2), radix: 16) }), !toServer {
+                    messages.append(WireMessage(time: time, toServer: false, protocolName: "mysql",
+                                                kind: [0x00: "OK", 0xFF: "ERR", 0xFE: "EOF"][code] ?? "response", text: nil, endsMessage: true))
+                }
             }
         }
         return messages
