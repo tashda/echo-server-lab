@@ -48,9 +48,16 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
 2. Nothing fits? Follow "Adding a scenario" below; do not create ad-hoc containers.
 3. Use it:
    - **Swift Testing:** `@Suite(.server("recipe-name"))`, then `try #require(LabServer.current)`.
-   - **Driver test suites:** `eval "$(swift run --package-path ../echo-server-lab serverlab up <recipe> --env)"`
-     sets `TDS_*` (sqlserver-nio) or `POSTGRES_*` (postgres-wire). Run the tests, then
-     `swift run --package-path ../echo-server-lab serverlab down "$SERVERLAB_CONTAINER"`.
+   - **Driver test suites:** `swift run --package-path ../echo-server-lab serverlab run --recipe <recipe> -- swift test`
+     starts the server, runs the command with its variables set, and removes the server even when
+     the command fails (exit status passes through; `--recipe` repeats for several servers). The
+     drivers read one URL variable per setup, the same one a `docker run` or a CI service
+     container sets: `SQLSERVER_TEST_URL`, `POSTGRES_TEST_URL`, `MYSQL_TEST_URL`, and
+     `<ENGINE>_TEST_TLS_URL`, `<ENGINE>_TEST_KERBEROS_URL`, `POSTGRES_TEST_STANDBY_URL`,
+     `MYSQL_TEST_REPLICA_URL`, `SQLSERVER_TEST_AG_URLS`, `<ENGINE>_TEST_PROXY_URL` and
+     `_TEST_PROXY_CONTROL` (`LabServer+TestURLs.swift` has the URL forms). `serverlab up <recipe>
+     --env` prints the same variables (plus the older `TDS_*` and `POSTGRES_*` ones); remove that
+     server with `serverlab down "$SERVERLAB_CONTAINER"`.
    - **By hand:** `serverlab up <recipe>` prints host, port and user. Remove yours with `serverlab down
      <server>` or `serverlab down --all` (only `--owner cli`'s, the default); never `--everyone` while
      other agents work.

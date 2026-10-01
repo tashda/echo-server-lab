@@ -10,7 +10,7 @@ struct ServerLabCommand: AsyncParsableCommand {
         commandName: "serverlab",
         abstract: "Start disposable database servers from recipes.",
         discussion: "The host is testlab unless SERVERLAB_HOST=local.",
-        subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, StopPart.self, StartPart.self, Promote.self, Fault.self, Workload.self,
+        subcommands: [Recipes.self, Build.self, Up.self, Run.self, Down.self, List.self, StopPart.self, StartPart.self, Promote.self, Fault.self, Workload.self,
                       Images.self, Prune.self, Reap.self, Wire.self, Explain.self, Sqlcmd.self, MySQLCommand.self, SQLite.self, Pcap.self]
     )
 }
@@ -72,6 +72,62 @@ struct Up: AsyncParsableCommand {
             for part in server.parts.dropFirst() { print("  \(part.role)  \(server.host):\(part.port)  \(part.containerName)") }
             print("Password: SERVERLAB_PASSWORD / ~/.echo-testlab/credentials.env. Removed after \(lease) minutes or `serverlab down \(server.containerName)`.")
         }
+    }
+}
+
+struct Run: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Start fresh servers, run a command with their variables, then remove the servers.",
+        discussion: """
+            The command gets every server's variables: SERVERLAB_* and the drivers' test URLs
+            (SQLSERVER_TEST_URL, POSTGRES_TEST_TLS_URL, …). The servers go when the command ends,
+            also when it fails or is interrupted. Exits with the command's status.
+
+              serverlab run --recipe pg-17-empty -- swift test
+              serverlab run --recipe mssql-2022-empty --recipe mssql-2022-tls-required -- swift test --filter TLS
+            """
+    )
+
+    @Option(name: .customLong("recipe"), help: "A recipe to start; repeat for several servers.") var recipes: [String]
+    @Option(help: "Minutes before the servers are removed if this process dies.") var lease = 120
+    @Option(help: "Who asked for the servers (shown in `serverlab ps`).") var owner = "serverlab-run"
+    @Argument(parsing: .postTerminator, help: "The command, after --.") var command: [String]
+
+    func run() async throws {
+        guard !recipes.isEmpty, !command.isEmpty else { throw ValidationError("Give --recipe and a command after --") }
+        let lab = try ServerLab.standard()
+        let log: LabLog = { line in FileHandle.standardError.write(Data((line + "\n").utf8)) }
+        var servers: [LabServer] = []
+        let status: Int32
+        do {
+            var environment = ProcessInfo.processInfo.environment
+            for recipe in recipes {
+                let server = try await lab.start(recipeNamed: recipe, owner: owner, lease: .seconds(lease * 60), log: log)
+                servers.append(server)
+                environment.merge(server.environment) { _, new in new }
+                log("\(server.containerName) (\(recipe)) at \(server.host):\(server.port)")
+            }
+            status = try Self.runCommand(command, environment: environment)
+        } catch {
+            for server in servers { try? await lab.stop(server) }
+            throw error
+        }
+        for server in servers { try? await lab.stop(server) }
+        if status != 0 { throw ExitCode(status) }
+    }
+
+    /// Runs the command in the foreground: Ctrl-C reaches it, and this process carries on to
+    /// remove the servers once it ends.
+    static func runCommand(_ command: [String], environment: [String: String]) throws -> Int32 {
+        signal(SIGINT, SIG_IGN)
+        defer { signal(SIGINT, SIG_DFL) }
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/env")
+        process.arguments = command
+        process.environment = environment
+        try process.run()
+        process.waitUntilExit()
+        return process.terminationStatus
     }
 }
 

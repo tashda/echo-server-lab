@@ -134,6 +134,7 @@ public struct LabServer: Sendable, Hashable, Codable {
             variables.merge(["MYSQL_HOST": host, "MYSQL_PORT": String(port), "MYSQL_USERNAME": username,
                              "MYSQL_PASSWORD": password, "MYSQL_DATABASE": "labdata"]) { current, _ in current }
         }
+        variables.merge(testURLVariables) { current, _ in current }
         return variables
     }
 }
