@@ -189,3 +189,23 @@ Then:
 
 See the Layout table in `README.md`. Hosts: `testlab` (default, 192.168.1.153, `ssh testlab`,
 Docker context `testlab`) or `SERVERLAB_HOST=local`.
+
+## End of Test Run (Disk Cleanup)
+
+Test runs fill the disk: every `xcodebuild test` / `test_sim` / `test_macos` run can leave a cloned simulator behind in `~/Library/Developer/XCTestDevices` (about 11 GB each; a day of agent runs once left 437 GB), plus per-session build workspaces in `~/Library/Developer/XcodeBuildMCP/workspaces` and scratchpad build output in `/private/tmp/claude-*`. **At the end of every test run (and before you finish a task that ran tests), clean up what your run left behind:**
+
+```bash
+# Test-device clones older than an hour (age-based, so other agents' live runs are untouched)
+find ~/Library/Developer/XCTestDevices -maxdepth 1 -mindepth 1 -type d -mmin +60 -exec rm -rf {} +
+# Old XcodeBuildMCP result bundles, test products and logs
+for w in ~/Library/Developer/XcodeBuildMCP/workspaces/*/; do
+  for d in logs result-bundles test-products; do
+    find "$w$d" -mindepth 1 -maxdepth 1 -mmin +60 -exec rm -rf {} + 2>/dev/null
+  done
+done
+```
+
+- Delete your own session's build output in the scratchpad (`DerivedData`, copied `.build` folders) when the task is done.
+- Never delete clones or folders younger than an hour: another agent's test may be running in them.
+- Prefer `-parallel-testing-enabled NO` (or a test plan with parallelisation off) so a run does not clone one simulator per worker.
+- If `df -h /System/Volumes/Data` shows less than 100 GB free, stop and tell the user before starting more test runs.
