@@ -1,0 +1,17 @@
+{
+  "name": "mssql-2022-operations",
+  "summary": "SQL Server 2022: backup history of every kind (BackedUp), Service Broker with waiting messages (BrokerLab), Query Store with a forced plan (QueryStoreLab).",
+  "engine": "sqlserver",
+  "version": "2022",
+  "packs": [
+    {
+      "pack": "backups"
+    },
+    {
+      "pack": "service-broker"
+    },
+    {
+      "pack": "query-store"
+    }
+  ]
+}

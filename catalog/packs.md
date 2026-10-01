@@ -69,7 +69,7 @@ Conventions for every pack:
 | `mssql.security.encryption` | master key, certificates, keys, TDE, Always Encrypted keys + column | `tde: true` | `mssql.security.database` | 2017 | `security.listCertificates/listAsymmetricKeys`, `alwaysEncrypted.listColumnMasterKeys`, encryption state | 1/6 — GS-03, GS-16 |
 | `mssql.security.ad` | Windows logins and users from the lab domain | `domain: "LAB.ECHODB.DEV"` | `settings.mssql.kerberos` | 2017 | login types | ready once AD sidecar exists |
 | `mssql.lowpriv` | a set of low-privilege logins with their mapped users | `profiles: [connectOnly, readerOnly, noViewDefinition, agentReader]` | `mssql.schema.core`, `mssql.agent` | 2017 | effective permissions (`security.listEffectivePermissions`) per login | ready |
-| `mssql.broker` | broker-enabled database, message types, contracts, queues with activation, services, routes, bindings, queued messages | `messages: 10_000` | `mssql.security.encryption` for bindings | 2017 | `serviceBroker.list*` | 1/4 — GS-19, GS-40 |
+| `mssql.broker` | broker-enabled database, message types, contracts, queues with activation, services, routes, bindings, queued messages | `messages: 10_000` | `mssql.security.encryption` for bindings | 2017 | `serviceBroker.list*` | **built** as `service-broker` (waiting messages via `serviceBroker.send`); remote bindings and priorities not yet |
 | `mssql.cdc-ct` | Change Tracking and CDC on tables, with changes | `tables: 3` | `settings.mssql.agent`, `mssql.schema.core` | 2017 | `changeTracking.listCDCTables/listChangeTrackingTables` | ready |
 | `mssql.fulltext` | catalogs, full-text indexes (populated), stoplists | `languages: [1033, 1031, 1041]` | `base.*-fts` | 2017 | `fullText.listCatalogs/listIndexes` | 1/2 — GS-21 |
 | `mssql.replication` | distributor, publication, articles, subscription on a peer | `type: transactional` | second container, Agent | 2019 (check 2017 CU18) | `replication.listPublications/listSubscriptions/agentStatus` | ready |
@@ -79,13 +79,13 @@ Conventions for every pack:
 | `mssql.xevents-trace` | XE sessions (running/stopped, targets), server-side trace | — | — | 2017 | `extendedEvents.listSessions` | ready |
 | `mssql.resource-governor` | pools, groups, classifier, reconfigured | — | Developer/Enterprise PID | 2017 | `resourceGovernor.fetchConfiguration` | ready |
 | `mssql.policy` | conditions and policies | — | — | 2017 | `policy.listPolicies/listConditions` | 0/1 — GS-23 |
-| `mssql.querystore` | Query Store on, captured queries, forced plan, plan guide, hints | `queries: 50` | `mssql.schema.core` | 2017 (hints 2022) | `queryStore.topQueries`, forced plan present | 1/3 — GS-32, GS-39 |
+| `mssql.querystore` | Query Store on, captured queries, forced plan, plan guide, hints | `queries: 50` | `mssql.schema.core` | 2017 (hints 2022) | `queryStore.topQueries`, forced plan present | **built** as `query-store` (captured queries, forced plan, flushed); plan guides and hints not yet |
 | `mssql.config.server` | `sp_configure` values, default paths, trace flags | `options: {…}` | — | 2017 | `serverConfig.listConfigurations` | 2/3 — GS-27 |
 | `mssql.config.database` | databases at every compat level and recovery model, RCSI/SI/ADR, scoped configs, containment | `compatLevels: all` | — | 2017 | `admin.fetchDatabaseProperties` | 5/6 — GS-36 |
 | `mssql.config.collations` | databases and columns in CS, BIN2, UTF-8, Japanese, Turkish collations | — | — | 2017 (UTF-8 2019) | collation names | ready |
 | `mssql.states` | offline, read-only, single-user (held), restricted, emergency, restoring, standby, auto-closed, snapshot, detached/attached, disabled index | `states: all` | `mssql.backups` | 2017 | `admin.getDatabaseProperties` per database | **built** as `database-states` (recipes `mssql-<v>-database-states`); snapshot, held single-user and disabled index not yet |
 | `mssql.states.damaged` | suspect / recovery-pending database | — | harness step | 2017 | state name | harness |
-| `mssql.backups` | backup history of every kind, backup devices | — | — | 2017 | `backupRestore.getBackupHistory` | 1/2 — GS-26 |
+| `mssql.backups` | backup history of every kind, backup devices | — | — | 2017 | `backupRestore.getBackupHistory` | **built** as `backups` (recipes `mssql-<v>-operations`); backup devices not yet (GS-26) |
 | `mssql.edge.names` | the same small schema under hostile names at every level | `sets: [unicode, spaces, brackets, quotes, reserved, maxLength, caseOnly]` | — | 2017 | names round-trip exactly | ready (check escaping per API) |
 | `mssql.edge.scale` | 1,024-column table, 30,000 sparse columns, 5,000 tables, 200 databases, 10 MB values, 1 M rows | `tables: 5000`, `rows: 1_000_000` | — | 2017 | counts, sizes | 4/6 — GS-08, GS-29 |
 | `mssql.edge.nulls` | NULL-heavy tables in every type | `nullRatio: 0.9` | `mssql.types.all` | 2017 | NULL counts | ready |

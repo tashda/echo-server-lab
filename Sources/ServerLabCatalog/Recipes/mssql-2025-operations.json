@@ -1,0 +1,17 @@
+{
+  "name": "mssql-2025-operations",
+  "summary": "SQL Server 2025: backup history of every kind (BackedUp), Service Broker with waiting messages (BrokerLab), Query Store with a forced plan (QueryStoreLab).",
+  "engine": "sqlserver",
+  "version": "2025",
+  "packs": [
+    {
+      "pack": "backups"
+    },
+    {
+      "pack": "service-broker"
+    },
+    {
+      "pack": "query-store"
+    }
+  ]
+}
