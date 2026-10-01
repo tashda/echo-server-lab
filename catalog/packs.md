@@ -156,13 +156,13 @@ Conventions for every pack:
 | `pg.ext.contrib` | every contrib extension that `CREATE EXTENSION` accepts, in its own schema where sensible, with sample data | `extensions: all` | `settings.pg.preload` for pg_stat_statements | 13 | `metadata` extension list + versions | ready |
 | `pg.ext.postgis` | PostGIS extensions, geometry/geography/raster tables, spatial indexes | `srids: [4326, 3857]` | `base.pg-<v>-postgis` | 13 | geometry columns | ready |
 | `pg.ext.pgvector` | vector/halfvec/sparsevec columns, hnsw/ivfflat indexes | `dims: 1536` | `base.pg-<v>-vector` | 13 | column types; index methods | 2/3 — GP-05 |
-| `pg.ext.thirdparty` | TimescaleDB hypertables, pg_partman sets, etc. (opt-in list) | `extensions: []` | image layer | per extension | extension present | ready per extension |
+| `pg.ext.thirdparty` | TimescaleDB hypertables, pg_partman sets, etc. (opt-in list) | `extensions: []` | image layer | per extension | extension present | **built** as `third-party-extensions` on `imageVariant: extensions` (30 extensions; recipes `pg-16/17/18-third-party-extensions`) |
 | `pg.fts` | text search configurations, dictionaries, tsvector columns, GIN indexes | — | — | 13 | configurations listed | 1/2 — GP-19 |
 | `pg.fdw` | postgres_fdw to a peer (or loopback), file_fdw, user mappings, foreign tables, imported schema | `peer: "peer"` | second container optional | 13 | foreign servers/tables | 2/3 — GP-21 |
 | `pg.replication` | publications of every shape, slots, subscription on a peer | — | `settings.pg.logical`, second container | 13 (row filters 15) | `pg_publication*`, `pg_subscription` via replication introspection | 1/4 — GP-10 |
 | `pg.replica` | hot-standby replica (harness `pg_basebackup`) | — | second container | 13 | `pg_stat_replication` row | harness |
-| `pg.cron` | pg_cron jobs, run history | `jobs: 10` | `base.pg-<v>-cron`, `settings.pg.preload` | 13 | `cron.job` rows | 0/1 — GP-11 |
-| `pg.pgagent` | pgAgent jobs, steps, schedules | `jobs: 10` | `base.pg-<v>-pgagent` | 13 | `pgagent.pga_job` rows | 0/1 — GP-12 |
+| `pg.cron` | pg_cron jobs, run history | `jobs: 10` | `base.pg-<v>-cron`, `settings.pg.preload` | 13 | `cron.job` rows | **built** inside `third-party-extensions` (four jobs, one paused, one in another database; `client.cron` added to postgres-wire) |
+| `pg.pgagent` | pgAgent jobs, steps, schedules | `jobs: 10` | `base.pg-<v>-pgagent` | 13 | `pgagent.pga_job` rows | extension installed by `third-party-extensions`; jobs not yet (GP-12) |
 | `pg.security` | login/group roles with every attribute, memberships, grants at every level, default privileges, RLS policies, ownership spread | `roles: 10` | `pg.schema.core` | 13 | role attributes, ACLs, policies | 7/11 — GP-01, GP-20, GP-25 |
 | `pg.security.labels` | security labels | — | label-provider image | 13 | labels | 0/1 — GP-08 |
 | `pg.lowpriv` | connect-only, read-only, no-USAGE, `pg_read_all_data` logins | — | `pg.schema.core` | 13 | effective privileges per login | ready |

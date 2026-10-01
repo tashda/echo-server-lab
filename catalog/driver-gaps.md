@@ -580,7 +580,7 @@ func grantRole(_ role: String, to member: String, admin: Bool = false, inherit: 
 
 ### extension schedulers
 
-- **GP-11 · pg_cron — 1 item** (PG-PR-12): new `client.cron`: `schedule(name: String, cron: String, command: String, database: String? = nil) async throws -> Int64`, `unschedule(name:)`, `alterJob(id:active:)`.
+- **GP-11 · pg_cron — closed** (postgres-wire 490976c: `client.cron.schedule/unschedule/setActive/listJobs/listRuns`). Was (PG-PR-12): new `client.cron`: `schedule(name: String, cron: String, command: String, database: String? = nil) async throws -> Int64`, `unschedule(name:)`, `alterJob(id:active:)`.
 - **GP-12 · pgAgent — 1 item** (PG-PR-13): new `client.pgAgent`: `createJob(_ job: PgAgentJobDefinition)` (steps with kind SQL/batch, database, on-error; schedules as minute/hour/weekday/monthday/month masks with start/end; exceptions).
 
 ---
