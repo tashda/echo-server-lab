@@ -1,0 +1,16 @@
+{
+  "name": "mariadb-10.11-tls-required",
+  "summary": "MariaDB 10.11, TLS required (require_secure_transport) with a lab-CA certificate naming the lab host.",
+  "engine": "mariadb",
+  "version": "10.11",
+  "settings": {
+    "tls": {
+      "mode": "required"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

@@ -75,7 +75,8 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    a certificate from this machine's lab CA (`~/.echo-testlab/ca/lab-ca.pem`, made once) naming the
    lab host, its IP and `primary`/`standby`. `server.tls` has the mode, the certificate kind, `caPath`
    and for client-certificate servers the admin user's certificate and key; `--env` sets
-   `SERVERLAB_TLS_*`. Verify against `caPath`; with `capture: true`, `containsPlaintext` shows the
+   `SERVERLAB_TLS_*`. MySQL/MariaDB: `mysql-*-tls-required`, `-tls-optional`, `-tls-strict` (TLS 1.3)
+   and the bad-certificate variants on 8.4. Verify against `caPath`; with `capture: true`, `containsPlaintext` shows the
    traffic really is encrypted.
 7. **Network faults:** `.server("recipe", faults: true)` (or `serverlab up <recipe> --faults`) puts
    a Toxiproxy part `proxy` in front of any server. Connect to `server.endpoint(of: "proxy")`, then

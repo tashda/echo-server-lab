@@ -1,0 +1,16 @@
+{
+  "name": "mariadb-11.4-tls-strict",
+  "summary": "MariaDB 11.4, TLS 1.3 only and required.",
+  "engine": "mariadb",
+  "version": "11.4",
+  "settings": {
+    "tls": {
+      "mode": "strict"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "mysql-8.4-tls-self-signed",
+  "summary": "MySQL 8.4, TLS required, a self-signed certificate: for certificate-check tests.",
+  "engine": "mysql",
+  "version": "8.4",
+  "settings": {
+    "tls": {
+      "mode": "required",
+      "certificate": "self-signed"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

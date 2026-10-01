@@ -90,6 +90,7 @@ let package = Package(
             dependencies: [
                 "ServerLabTesting",
                 .product(name: "MySQLKit", package: "mysql-wire"),
+                .product(name: "MySQLWire", package: "mysql-wire"),
                 .product(name: "SQLServerKit", package: "sqlserver-nio"),
                 .product(name: "PostgresKit", package: "postgres-wire"),
             ]

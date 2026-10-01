@@ -70,6 +70,8 @@ Still open, found while building:
 | sqlserver-nio | core | A `serverSPN` connection option (like SqlClient/JDBC `ServerSPN`) so clients can reach a server by IP or alias and still ask for `MSSQLSvc/<name>:<port>`. |
 | sqlserver-nio | core | TLS key logging (`SSLKEYLOGFILE`, NIOSSL `keyLogCallback`) so the lab's captures of encrypted TDS can be decrypted in Wireshark. |
 | postgres-wire | lab | The same key logging for PostgreSQL. |
+| mysql-wire | lab | Client certificates (MySQL `REQUIRE X509` / `REQUIRE SUBJECT` accounts, MariaDB the same): `MySQLWireConfiguration` cannot present one, so the lab has no `client-certificate` MySQL recipe yet. |
+| mysql-wire | lab | Fixed while building the MySQL engine: TLS by IP (SNI), `--ssl-mode` semantics (`MySQLWireTLSMode`), empty metadata on MySQL 8+ (upper-case labels), `CREATE USER … IDENTIFIED BY`, roles and grants without a host (MariaDB). Echo still passes `useTLS:` (verify identity); its "require" mode should map to `.required`. |
 
 ## Ranking across drivers
 

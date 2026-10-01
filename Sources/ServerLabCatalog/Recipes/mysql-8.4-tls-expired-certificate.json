@@ -1,0 +1,17 @@
+{
+  "name": "mysql-8.4-tls-expired-certificate",
+  "summary": "MySQL 8.4, TLS required, a lab-CA certificate that expired yesterday: for certificate-check tests.",
+  "engine": "mysql",
+  "version": "8.4",
+  "settings": {
+    "tls": {
+      "mode": "required",
+      "certificate": "expired"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

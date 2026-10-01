@@ -1,0 +1,16 @@
+{
+  "name": "mysql-8.4-tls-strict",
+  "summary": "MySQL 8.4, TLS 1.3 only and required.",
+  "engine": "mysql",
+  "version": "8.4",
+  "settings": {
+    "tls": {
+      "mode": "strict"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

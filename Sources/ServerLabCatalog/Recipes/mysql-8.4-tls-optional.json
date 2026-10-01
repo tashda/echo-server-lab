@@ -1,0 +1,16 @@
+{
+  "name": "mysql-8.4-tls-optional",
+  "summary": "MySQL 8.4 with the lab-CA certificate; TLS up to the client.",
+  "engine": "mysql",
+  "version": "8.4",
+  "settings": {
+    "tls": {
+      "mode": "optional"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

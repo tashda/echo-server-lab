@@ -1,6 +1,7 @@
 import Foundation
 import Logging
 import MySQLKit
+import MySQLWire
 import PostgresKit
 import ServerLabKit
 import ServerLabTesting
@@ -533,5 +534,50 @@ struct MariaDBColumnTypesServerTests {
         let (columns, rows) = try await mysqlTypes(try #require(LabServer.current))
         #expect(rows == 203)
         #expect(columns.contains("inet6_col") && columns.contains("uuid_col") && columns.contains("vector_col"))
+    }
+}
+
+func mysqlClient(_ server: LabServer, _ mode: MySQLWireTLSMode) -> MySQLClient {
+    MySQLClient(configuration: MySQLConfiguration(host: server.host, port: server.port, username: server.username,
+                                                  password: server.password, database: "labdata", tlsMode: mode))
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mysql-8.4-tls-required"))
+struct MySQLTLSRequiredTests {
+    @Test func verifiesAgainstTheLabCAAndRefusesPlaintext() async throws {
+        let server = try #require(LabServer.current)
+        let tls = try #require(server.tls)
+        let verified = mysqlClient(server, .verifyIdentity(caCertificatePath: tls.caPath))
+        #expect(try await verified.metadata.listDatabases().contains("labdata"))
+        await verified.close()
+        let plain = mysqlClient(server, .disabled)
+        await #expect(throws: (any Error).self) { _ = try await plain.metadata.listDatabases() }
+        await plain.close()
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mysql-8.4-tls-wrong-host"))
+struct MySQLWrongHostCertificateTests {
+    @Test func identityCheckFailsButCAAndEncryptionPass() async throws {
+        let server = try #require(LabServer.current)
+        let tls = try #require(server.tls)
+        let identity = mysqlClient(server, .verifyIdentity(caCertificatePath: tls.caPath))
+        await #expect(throws: (any Error).self) { _ = try await identity.metadata.listDatabases() }
+        await identity.close()
+        for mode in [MySQLWireTLSMode.verifyCA(caCertificatePath: tls.caPath), .required] {
+            let client = mysqlClient(server, mode)
+            #expect(try await client.metadata.listDatabases().contains("labdata"))
+            await client.close()
+        }
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mariadb-11.4-tls-strict"))
+struct MariaDBStrictTLSTests {
+    @Test func tls13Works() async throws {
+        let server = try #require(LabServer.current)
+        let client = mysqlClient(server, .verifyIdentity(caCertificatePath: try #require(server.tls).caPath))
+        #expect(try await client.metadata.listDatabases().contains("labdata"))
+        await client.close()
     }
 }

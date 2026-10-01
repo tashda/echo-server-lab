@@ -1,0 +1,17 @@
+{
+  "name": "mysql-8.4-tls-wrong-host",
+  "summary": "MySQL 8.4, TLS required, a lab-CA certificate naming wrong-host.invalid only: for certificate-check tests.",
+  "engine": "mysql",
+  "version": "8.4",
+  "settings": {
+    "tls": {
+      "mode": "required",
+      "certificate": "wrong-host"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "name": "mysql-8.0-tls-required",
+  "summary": "MySQL 8.0, TLS required (require_secure_transport) with a lab-CA certificate naming the lab host.",
+  "engine": "mysql",
+  "version": "8.0",
+  "settings": {
+    "tls": {
+      "mode": "required"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}
