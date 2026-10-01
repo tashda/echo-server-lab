@@ -103,7 +103,7 @@ Chinook) built locally through sqlite-nio. Packs: `database`,
 `partitioning` (both), `agent-jobs`, `temporal`, `linked-servers`, `change-tracking` (CT + CDC),
 `extended-properties`, `extended-events`, `resource-governor`, `central-management`, `low-privilege`,
 `edge-cases` (SQL Server),
-`extensions` (PostgreSQL), and `sample` (both): AdventureWorks, AdventureWorksLT,
+`extensions`, `low-privilege`, `edge-cases` (PostgreSQL), and `sample` (both): AdventureWorks, AdventureWorksLT,
 AdventureWorksDW, WideWorldImporters, Northwind, pubs (SQL Server 2017, 2022, 2025); Chinook
 (PostgreSQL 13+) and pagila (PostgreSQL 18, pgvector image). All built and checked.
 Servers made of several parts: PostgreSQL 13–18 primary with a streaming standby

@@ -1,0 +1,17 @@
+{
+  "name": "pg-15-server-features",
+  "summary": "PostgreSQL 15: low-privilege roles (connect only, read only, no CONNECT, no schema USAGE, expired, one connection) and edge cases (hostile names, NULL-heavy and empty tables, a 20-view chain, LATIN1/EUC_JP/SQL_ASCII/ICU databases).",
+  "engine": "postgresql",
+  "version": "15",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "low-privilege"
+    },
+    {
+      "pack": "edge-cases"
+    }
+  ]
+}

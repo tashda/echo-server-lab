@@ -16,6 +16,8 @@ public struct PostgresEngine: LabEngine {
         PostgresPartitioningPack(),
         PostgresExtensionsPack(),
         PostgresSamplePack(),
+        PostgresLowPrivilegePack(),
+        PostgresEdgeCasesPack(),
     ]
 
     public init() {}
