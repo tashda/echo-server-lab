@@ -31,17 +31,27 @@ func expectLogins(_ server: LabServer, works: [(String, MySQLWireTLSMode)], gaps
     }
 }
 
+/// What must fail by design: `caching_sha2_password` and `sha256_password` full authentication
+/// without TLS would send the password RSA-encrypted with a key fetched in plaintext, which the
+/// driver refuses (decision D18).
+func expectRefusedLogins(_ server: LabServer, _ logins: [(String, MySQLWireTLSMode)]) async {
+    for (account, mode) in logins {
+        let result = await mysqlLogin(server, account: account, mode)
+        #expect(throws: (any Error).self, "\(account) over \(mode)") { _ = try result.get() }
+    }
+}
+
 @Suite(.enabled(if: integrationEnabled), .server("mysql-8.4-auth-plugins"))
 struct MySQLAuthenticationServerTests {
     @Test func everyPluginLogsIn() async throws {
         let server = try #require(LabServer.current)
+        // Before any TLS login: once one succeeds, the server caches the account and plaintext
+        // logins take the fast path.
+        await expectRefusedLogins(server, [("lab_auth_caching_sha2", .disabled), ("lab_auth_sha256", .disabled)])
         await expectLogins(server, works: [
-            ("lab_auth_caching_sha2", .required), ("lab_auth_mysql_native", .required), ("lab_auth_mysql_native", .disabled),
-        ], gaps: [
-            ("lab_auth_caching_sha2", .disabled, "caching_sha2_password without TLS"),
-            ("lab_auth_sha256", .required, "sha256_password"),
-            ("lab_auth_sha256", .disabled, "sha256_password"),
-        ])
+            ("lab_auth_caching_sha2", .required), ("lab_auth_sha256", .required),
+            ("lab_auth_mysql_native", .required), ("lab_auth_mysql_native", .disabled),
+        ], gaps: [])
     }
 }
 
@@ -51,10 +61,9 @@ struct MariaDBAuthenticationServerTests {
         let server = try #require(LabServer.current)
         await expectLogins(server, works: [
             ("lab_auth_mysql_native", .required), ("lab_auth_mysql_native", .disabled),
-        ], gaps: [
-            ("lab_auth_ed25519", .required, "client_ed25519"),
-            ("lab_auth_parsec", .required, "parsec"),
-        ])
+            ("lab_auth_ed25519", .required), ("lab_auth_ed25519", .disabled),
+            ("lab_auth_parsec", .required), ("lab_auth_parsec", .disabled),
+        ], gaps: [])
     }
 }
 
