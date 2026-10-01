@@ -1,0 +1,11 @@
+{
+  "name": "pg-17-database-states",
+  "summary": "PostgreSQL 17: databases that take no connections, have a limit of 0, are templates, are read-only by default, sit on their own tablespace or use LATIN1 / SQL_ASCII / EUC_JP; an empty tablespace; an unpopulated materialized view, a sequence at its maximum, a NOT VALID constraint and a disabled trigger.",
+  "engine": "postgresql",
+  "version": "17",
+  "packs": [
+    {
+      "pack": "database-states"
+    }
+  ]
+}

@@ -58,4 +58,13 @@ import X509
         #expect(Int(field(148, 6), radix: 8) == blank.reduce(0) { $0 + Int($1) })
         #expect(String(decoding: archive[512..<518], as: UTF8.self) == "secret")
     }
+
+    @Test func directoryIsAnEntryWithNoContents() {
+        let archive = TarArchive.make(["/labdata/tablespaces/fast": .directory(owner: 999)])
+        #expect(archive.count == 512 + 1024)
+        let header = [UInt8](archive.prefix(512))
+        #expect(String(decoding: header[0..<100].prefix { $0 != 0 }, as: UTF8.self) == "labdata/tablespaces/fast/")
+        #expect(String(decoding: header[100..<107], as: UTF8.self) == "0000700")
+        #expect(header[156] == UInt8(ascii: "5"))
+    }
 }

@@ -18,6 +18,7 @@ public struct PostgresEngine: LabEngine {
         PostgresSamplePack(),
         PostgresLowPrivilegePack(),
         PostgresEdgeCasesPack(),
+        PostgresDatabaseStatesPack(),
     ]
 
     public init() {}
@@ -41,9 +42,14 @@ public struct PostgresEngine: LabEngine {
             internalPort: 5432,
             environment: environment,
             command: command,
-            memoryMB: recipe.settings.memoryMB ?? 1_024
+            memoryMB: recipe.settings.memoryMB ?? 1_024,
+            // Empty locations for tablespaces, owned by the server's user (uid 999 in the images).
+            files: Dictionary(uniqueKeysWithValues: Self.tablespaceLocations.map { ($0, .directory(owner: 999)) })
         )
     }
+
+    /// Inside /labdata so the seeded image keeps them (the images' volumes are skipped by commit).
+    public static let tablespaceLocations = ["/labdata/tablespaces/fast", "/labdata/tablespaces/archive"]
 
     /// The official image, or one built on it by the extension's own project.
     static func image(version: String, variant: String?) throws -> String {

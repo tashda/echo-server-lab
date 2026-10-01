@@ -58,7 +58,7 @@ extension ServerLab {
 
         // The seeded image already carries the environment and command it was built with.
         var mainSpec = spec
-        mainSpec.files = topology.mainFiles
+        mainSpec.files.merge(topology.mainFiles) { $1 }
         let main: StartedContainer
         do {
             main = try await startContainer(

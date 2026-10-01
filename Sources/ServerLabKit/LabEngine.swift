@@ -163,11 +163,20 @@ public struct ContainerFile: Sendable, Hashable {
     public var contents: Data
     public var mode: Int
     public var owner: Int
+    /// An empty directory rather than a file (only for directories the image does not have).
+    public var isDirectory = false
 
     public init(_ contents: Data, mode: Int = 0o644, owner: Int = 0) {
         self.contents = contents
         self.mode = mode
         self.owner = owner
+    }
+
+    /// An empty directory with its owner and mode, e.g. a tablespace location.
+    public static func directory(mode: Int = 0o700, owner: Int = 0) -> ContainerFile {
+        var file = ContainerFile(Data(), mode: mode, owner: owner)
+        file.isDirectory = true
+        return file
     }
 
     public init(_ text: String, mode: Int = 0o644, owner: Int = 0) {

@@ -166,12 +166,12 @@ Conventions for every pack:
 | `pg.security` | login/group roles with every attribute, memberships, grants at every level, default privileges, RLS policies, ownership spread | `roles: 10` | `pg.schema.core` | 13 | role attributes, ACLs, policies | 7/11 — GP-01, GP-20, GP-25 |
 | `pg.security.labels` | security labels | — | label-provider image | 13 | labels | 0/1 — GP-08 |
 | `pg.lowpriv` | connect-only, read-only, no-USAGE, `pg_read_all_data` logins | — | `pg.schema.core` | 13 | effective privileges per login | ready |
-| `pg.tablespaces` | extra tablespaces with objects | `count: 2` | harness mkdir | 13 | tablespace list | ready |
+| `pg.tablespaces` | extra tablespaces with objects | `count: 2` | harness mkdir | 13 | tablespace list | **built** inside `database-states` (`ts_fast` holding a database, `ts_archive` empty) |
 | `pg.config.collations` | libc/ICU/builtin/non-deterministic collations and columns using them | — | — | 13 (builtin 17) | collations | 2/3 — GP-02 |
-| `pg.config.encodings` | databases in UTF8, LATIN1, SQL_ASCII, EUC_JP | — | — | 13 | `pg_database.encoding` | ready |
+| `pg.config.encodings` | databases in UTF8, LATIN1, SQL_ASCII, EUC_JP | — | — | 13 | `pg_database.encoding` | **built** inside `database-states` (LATIN1, SQL_ASCII, EUC_JP) |
 | `pg.config.session` | per-database/per-role `DateStyle`, `IntervalStyle`, `TimeZone`, `bytea_output` | — | — | 13 | `pg_db_role_setting` | ready |
 | `pg.config.server` | `ALTER SYSTEM` values, pending-restart parameter | — | — | 13 | `pg_settings` | 0/1 — GP-16 |
-| `pg.states` | no-connection, limit-0, template, read-only-default databases; invalid index; unpopulated MV; sequence at max | — | `pg.schema.core` | 13 | per state | 4/5 — GP-05 |
+| `pg.states` | no-connection, limit-0, template, read-only-default databases; invalid index; unpopulated MV; sequence at max | — | `pg.schema.core` | 13 | per state | **built** as `database-states` (recipes `pg-<v>-database-states`, with tablespaces and encodings); invalid index not yet (GP-05) |
 | `pg.states.damaged` | invalid database | — | harness | 15.4 | `datconnlimit = -2` | harness |
 | `pg.edge.names` | hostile names at every level, dropped-column tables | `sets: all` | — | 13 | names round-trip | ready |
 | `pg.edge.scale` | 1,600-column table, 10,000 tables, 1,000 partitions, 10 MB values, 1 M rows | `tables: 10000`, `rows: 1_000_000` | — | 13 | counts | 2/3 — GP-13 |

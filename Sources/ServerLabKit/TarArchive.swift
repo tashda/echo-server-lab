@@ -6,9 +6,14 @@ import Foundation
 enum TarArchive {
     static func make(_ files: [String: ContainerFile]) -> Data {
         var archive = Data()
-        // No directory entries: Docker creates missing parents (root, 0755) and leaves existing
-        // ones alone, where an entry would change the owner of e.g. /var/opt/mssql.
+        // No entries for parents: Docker creates missing ones (root, 0755) and leaves existing
+        // ones alone, where an entry would change the owner of e.g. /var/opt/mssql. Directories
+        // asked for explicitly are new ones, so they get an entry with their owner.
         for (path, file) in files.sorted(by: { $0.key < $1.key }) {
+            if file.isDirectory {
+                archive += header(name: relative(path) + "/", size: 0, mode: file.mode, owner: file.owner, type: "5")
+                continue
+            }
             archive += header(name: relative(path), size: file.contents.count, mode: file.mode, owner: file.owner, type: "0")
             archive += file.contents
             archive += Data(count: (512 - file.contents.count % 512) % 512)
