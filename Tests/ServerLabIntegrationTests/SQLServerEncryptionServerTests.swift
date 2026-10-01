@@ -22,5 +22,7 @@ struct SQLServerEncryptionServerTests {
         defer { Task { try? await inDatabase.shutdownGracefully() } }
         #expect(try await inDatabase.security.listSymmetricKeys().map(\.name).contains("PayrollKey"))
         #expect(Set(try await inDatabase.security.listCertificates().map(\.name)).isSuperset(of: ["PayrollCertificate", "ExpiredCertificate"]))
+        let encrypted = try await inDatabase.alwaysEncrypted.listEncryptedColumns()
+        #expect(Set(encrypted.map(\.column)) == ["SSN", "Salary"])
     }
 }

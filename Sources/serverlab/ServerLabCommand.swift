@@ -18,10 +18,15 @@ struct ServerLabCommand: AsyncParsableCommand {
 struct Recipes: AsyncParsableCommand {
     static let configuration = CommandConfiguration(abstract: "List the recipes.")
 
+    @Flag(help: "Only the names, one per line (for scripts).") var names = false
+
     func run() async throws {
         let lab = try ServerLab.standard()
-        for recipe in lab.recipes.recipes {
-            print("\(recipe.name.padding(toLength: 34, withPad: " ", startingAt: 0)) \(recipe.summary)")
+        let recipes = lab.recipes.recipes
+        // Pad to the longest name: a fixed width cut long names short.
+        let width = recipes.map(\.name.count).max() ?? 0
+        for recipe in recipes {
+            print(names ? recipe.name : "\(recipe.name.padding(toLength: width, withPad: " ", startingAt: 0))  \(recipe.summary)")
         }
     }
 }
