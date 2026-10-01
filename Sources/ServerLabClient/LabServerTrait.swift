@@ -22,7 +22,7 @@ public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
             try await function()
             return
         }
-        let server = try await ServerLabCLI.up(recipeName, owner: labOwner(forSuite: test.name), leaseMinutes: leaseMinutes, capture: capture, faults: faults)
+        let server = try await ServerLabCLI.up(recipeName, owner: ServerLabCLI.owner(forSuite: test.name), leaseMinutes: leaseMinutes, capture: capture, faults: faults)
         do {
             let wire = capture ? LabWire(server: server) : nil
             try await LabServer.$current.withValue(server) {
@@ -45,12 +45,4 @@ extension Trait where Self == LabServerTrait {
 extension LabServer {
     /// The server the enclosing `.server(...)` trait started.
     @TaskLocal public static var current: LabServer?
-}
-
-/// The owner label for a suite's servers: its name, after `SERVERLAB_OWNER_PREFIX/` when that is
-/// set (CI sets it per run, so `serverlab down --all --owner-prefix <prefix>` removes exactly that
-/// run's servers, including ones a crash left behind).
-func labOwner(forSuite name: String, environment: [String: String] = ProcessInfo.processInfo.environment) -> String {
-    guard let prefix = environment["SERVERLAB_OWNER_PREFIX"], !prefix.isEmpty else { return name }
-    return "\(prefix)/\(name)"
 }

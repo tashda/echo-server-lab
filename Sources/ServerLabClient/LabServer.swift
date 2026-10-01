@@ -86,6 +86,14 @@ public enum ServerLabCLI {
         return binary
     }
 
+    /// The owner label for a suite's servers: its name, after `SERVERLAB_OWNER_PREFIX/` when that is
+    /// set (CI sets it per run, so `serverlab down --all --owner-prefix <prefix>` removes exactly that
+    /// run's servers, including ones a crash left behind).
+    public static func owner(forSuite name: String, environment: [String: String] = ProcessInfo.processInfo.environment) -> String {
+        guard let prefix = environment["SERVERLAB_OWNER_PREFIX"], !prefix.isEmpty else { return name }
+        return "\(prefix)/\(name)"
+    }
+
     /// Starts a fresh server from `recipe`. It is removed by `down(_:)` or when `leaseMinutes` pass.
     public static func up(_ recipe: String, owner: String, leaseMinutes: Int = 120, capture: Bool = false, faults: Bool = false) async throws -> LabServer {
         let output = try await run(executable(), ["up", recipe, "--json", "--owner", owner, "--lease", String(leaseMinutes)]
