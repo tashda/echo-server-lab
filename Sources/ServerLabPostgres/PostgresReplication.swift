@@ -90,7 +90,7 @@ extension PostgresEngine {
     }
 
     /// A login role for the domain user, through the driver.
-    public func configure(_ server: LabServer) async throws {
+    public func configure(_ server: LabServer, recipe: Recipe) async throws {
         guard server.kerberos != nil else { return }
         try await PostgresSession.with(server.endpoint) { client in
             _ = try await client.security.createRole(name: LabDomain.user, login: true)

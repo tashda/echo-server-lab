@@ -109,7 +109,7 @@ extension ServerLab {
                 log("Waiting for \(server.parts.map { $0.role }.joined(separator: ", ")) to work together")
                 try await engine.waitUntilTopologyReady(server, files: PartFileCopier(lab: self, server: server))
             }
-            try await engine.configure(server)
+            try await engine.configure(server, recipe: recipe)
         } catch {
             log("Start failed; last lines of the log:\n\(await tailLog(current))")
             if ProcessInfo.processInfo.environment["SERVERLAB_KEEP_FAILED"] == "1" {

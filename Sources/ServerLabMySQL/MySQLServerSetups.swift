@@ -54,7 +54,7 @@ extension MySQLEngine {
     }
 
     /// `client-certificate`: root may only log in with a certificate the lab CA signed.
-    public func configure(_ server: LabServer) async throws {
+    public func configure(_ server: LabServer, recipe: Recipe) async throws {
         guard server.tls?.mode == .clientCertificate else { return }
         try await MySQLSession.with(server.endpoint) { client in
             try await client.security.alterUserTLS(username: adminUsername, host: "%", tls: .x509)

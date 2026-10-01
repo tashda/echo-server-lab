@@ -164,16 +164,33 @@ public struct SQLServerEngine: LabEngine {
     }
 
     /// A Windows login for the domain user, through the driver.
-    public func configure(_ server: LabServer) async throws {
-        // With Agent on, the server is ready once Agent runs: until then starting a job fails
-        // with "SQLServerAgent is starting".
-        try await retryUntilReady("SQL Server Agent of \(server.containerName)", timeout: .seconds(120)) {
-            let (status, starting) = try await SQLServerSession.with(server.endpoint) { client in
+    public func configure(_ server: LabServer, recipe: Recipe) async throws {
+        // With Agent on, the server is ready once Agent runs: until then creating a job or an
+        // alert fails with "SQLServerAgent is starting". A seeded image remembers Agent as enabled
+        // and running before Agent has even launched, and Agent's sessions connect a moment before
+        // its two-second starting phase, so a recipe with Agent waits for Agent's own sessions
+        // ("SQLAgent - …") and then for three ready checks in a row, two seconds apart.
+        let agentOn = recipe.settings.agent == true
+        @Sendable func agentReady() async throws -> Bool {
+            let (status, starting, agentConnected) = try await SQLServerSession.with(server.endpoint) { client in
                 let status = try await client.metadata.fetchAgentStatus()
-                return (status, status.isSqlAgentEnabled ? try await client.agent.isStarting() : false)
+                let starting = status.isSqlAgentEnabled ? try await client.agent.isStarting() : false
+                let agentConnected = agentOn
+                    ? try await client.activity.snapshot(options: .init(includeSqlText: false)).processes
+                        .contains { $0.programName?.hasPrefix("SQLAgent") == true }
+                    : false
+                return (status, starting, agentConnected)
             }
-            guard !status.isSqlAgentEnabled || (status.isSqlAgentRunning && !starting) else {
-                throw ServerLabError.packCheckFailed(pack: "agent", reason: "SQL Server Agent is still starting")
+            return agentOn
+                ? agentConnected && status.isSqlAgentRunning && !starting
+                : !status.isSqlAgentEnabled || (status.isSqlAgentRunning && !starting)
+        }
+        try await retryUntilReady("SQL Server Agent of \(server.containerName)", timeout: .seconds(120)) {
+            for check in 0..<(agentOn ? 3 : 1) {
+                if check > 0 { try await Task.sleep(for: .seconds(2)) }
+                guard try await agentReady() else {
+                    throw ServerLabError.packCheckFailed(pack: "agent", reason: "SQL Server Agent is still starting")
+                }
             }
         }
         guard server.kerberos != nil else { return }

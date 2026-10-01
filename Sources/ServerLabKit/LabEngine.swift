@@ -64,8 +64,9 @@ public protocol LabEngine: Sendable {
     /// `hostPort`. `serverID` makes host and account names unique in the shared domain.
     func kerberosService(for recipe: Recipe, serverID: String, hostPort: Int) throws -> KerberosService
 
-    /// Runs once every part is up, through the driver: logins for the domain user, ….
-    func configure(_ server: LabServer) async throws
+    /// Runs once every part is up, through the driver: logins for the domain user, …, and waits
+    /// for what the recipe turned on (SQL Server Agent) to be ready.
+    func configure(_ server: LabServer, recipe: Recipe) async throws
 
     /// Sets the parts up to work together and returns once they do (a standby streams from its
     /// primary, an availability group's databases are synchronized, …). `files` copies files the
@@ -90,7 +91,7 @@ extension LabEngine {
         throw ServerLabError.unsupported("Kerberos on \(kind.rawValue)")
     }
 
-    public func configure(_ server: LabServer) async throws {}
+    public func configure(_ server: LabServer, recipe: Recipe) async throws {}
 
     public func waitUntilTopologyReady(_ server: LabServer, files: any ServerPartFiles) async throws {}
 
