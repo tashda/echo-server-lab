@@ -1,0 +1,16 @@
+{
+  "name": "mariadb-11.4-tls-client-certificate",
+  "summary": "MariaDB 11.4, TLS required and root REQUIRE X509: logins need a client certificate the lab CA signed (the server's clientCertificatePath/clientKeyPath).",
+  "engine": "mariadb",
+  "version": "11.4",
+  "settings": {
+    "tls": {
+      "mode": "client-certificate"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

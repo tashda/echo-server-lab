@@ -2,8 +2,9 @@ import Foundation
 import MySQLKit
 import ServerLabKit
 
-/// TLS for MySQL and MariaDB: the lab's certificate, `require_secure_transport` for `required` and
-/// `strict`, and TLS 1.3 only for `strict`.
+/// TLS for MySQL and MariaDB: the lab's certificate, `require_secure_transport` for `required`,
+/// `strict` and `client-certificate`, TLS 1.3 only for `strict`, and for `client-certificate` the
+/// admin account altered to `REQUIRE X509` once the server runs (`configure`).
 extension MySQLEngine {
     public func topology(for recipe: Recipe, setup: ServerSetup) throws -> ServerTopology {
         let withReplica: Bool
@@ -19,10 +20,6 @@ extension MySQLEngine {
         var files: [String: ContainerFile] = [:]
         var arguments: [String] = []
         if let tls = setup.tls {
-            if tls.mode == .clientCertificate {
-                // mysql-wire cannot present a client certificate yet (catalog/driver-gaps.md).
-                throw ServerLabError.unsupported("Client-certificate login on \(kind.displayName)")
-            }
             arguments = ["--ssl-ca=/labconf/ca.pem", "--ssl-cert=/labconf/server.pem", "--ssl-key=/labconf/server.key"]
             if tls.mode != .optional { arguments.append("--require-secure-transport=ON") }
             if tls.mode == .strict { arguments.append("--tls-version=TLSv1.3") }
@@ -54,6 +51,14 @@ extension MySQLEngine {
         kind == .mysql
             ? ["--server-id=\(serverID)", "--log-bin=binlog", "--gtid-mode=ON", "--enforce-gtid-consistency=ON"]
             : ["--server-id=\(serverID)", "--log-bin=binlog", "--log-slave-updates=ON"]
+    }
+
+    /// `client-certificate`: root may only log in with a certificate the lab CA signed.
+    public func configure(_ server: LabServer) async throws {
+        guard server.tls?.mode == .clientCertificate else { return }
+        try await MySQLSession.with(server.endpoint) { client in
+            try await client.security.alterUserTLS(username: adminUsername, host: "%", tls: .x509)
+        }
     }
 
     public func waitUntilTopologyReady(_ server: LabServer, files: any ServerPartFiles) async throws {

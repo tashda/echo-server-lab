@@ -1,0 +1,16 @@
+{
+  "name": "mysql-8.4-tls-client-certificate",
+  "summary": "MySQL 8.4, TLS required and root REQUIRE X509: logins need a client certificate the lab CA signed (the server's clientCertificatePath/clientKeyPath).",
+  "engine": "mysql",
+  "version": "8.4",
+  "settings": {
+    "tls": {
+      "mode": "client-certificate"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    }
+  ]
+}

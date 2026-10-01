@@ -65,7 +65,8 @@ enum MySQLSession {
                                   _ body: (MySQLClient) async throws -> T) async throws -> T {
         let client = MySQLClient(configuration: MySQLConfiguration(
             host: server.host, port: server.port, username: server.username, password: server.password,
-            database: database, tlsMode: .required, connectTimeoutSeconds: 10
+            database: database, tlsMode: .required, connectTimeoutSeconds: 10,
+            clientCertificatePath: server.tls?.clientCertificatePath, clientKeyPath: server.tls?.clientKeyPath
         ), logger: driverLogger("serverlab.mysql"))
         do {
             let result = try await body(client)

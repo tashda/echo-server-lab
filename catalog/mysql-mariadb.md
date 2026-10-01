@@ -27,9 +27,9 @@ features (audit log, firewall, data masking, thread pool, TDE with Oracle keyrin
 > composite DESC, prefix, FULLTEXT, SPATIAL, invisible; FK, CHECK, unique), `security` (roles, users,
 > grants, locked account), `sample` (Sakila, world, Chinook), `partitioning` (RANGE, RANGE COLUMNS,
 > LIST, HASH, KEY), `temporal` (MariaDB: system-versioned table with history, sequences), `auth-plugins` (an account per
-> login plugin). Server options (`serverOptions`): logs to tables, loose and ANSI `sql_mode`, odd time zone. Setups: TLS (required/optional/strict and
+> login plugin). Server options (`serverOptions`): logs to tables, loose and ANSI `sql_mode`, odd time zone. Setups: TLS (required/optional/strict/client-certificate and
 > bad certificates), `source-replica` (GTID), fault proxy, explained captures. Not yet: LIST COLUMNS,
-> LINEAR HASH and subpartitions, application-time periods, client-certificate accounts, Galera/Group
+> LINEAR HASH and subpartitions, application-time periods, Galera/Group
 > Replication.
 
 ## 1. Data types

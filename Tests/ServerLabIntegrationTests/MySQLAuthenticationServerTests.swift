@@ -58,3 +58,27 @@ struct MariaDBAuthenticationServerTests {
         ])
     }
 }
+
+/// `client-certificate`: root logs in only with the lab-signed certificate.
+func expectClientCertificateLogin(_ server: LabServer) async throws {
+    let tls = try #require(server.tls)
+    let withCertificate = MySQLClient(configuration: MySQLConfiguration(
+        host: server.host, port: server.port, username: server.username, password: server.password,
+        tlsMode: .verifyCA(caCertificatePath: tls.caPath),
+        clientCertificatePath: tls.clientCertificatePath, clientKeyPath: tls.clientKeyPath))
+    #expect(try await withCertificate.metadata.listDatabases().contains("labdata"))
+    await withCertificate.close()
+    let withoutCertificate = mysqlClient(server, .verifyCA(caCertificatePath: tls.caPath))
+    await #expect(throws: (any Error).self) { _ = try await withoutCertificate.metadata.listDatabases() }
+    await withoutCertificate.close()
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mysql-8.4-tls-client-certificate"))
+struct MySQLClientCertificateTests {
+    @Test func onlyACertificateLogsIn() async throws { try await expectClientCertificateLogin(try #require(LabServer.current)) }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mariadb-11.4-tls-client-certificate"))
+struct MariaDBClientCertificateTests {
+    @Test func onlyACertificateLogsIn() async throws { try await expectClientCertificateLogin(try #require(LabServer.current)) }
+}
