@@ -94,6 +94,25 @@ public enum ServerLabCLI {
         return "\(prefix)/\(name)"
     }
 
+    /// The owner label for servers this process starts: `<name>@<machine>:<pid>` (after the run
+    /// prefix, as `owner(forSuite:)`). A test process that is killed (a test over its time limit)
+    /// cannot remove its servers; with this label the next one can (`removeAbandoned()`).
+    public static func processOwner(_ name: String, environment: [String: String] = ProcessInfo.processInfo.environment) -> String {
+        owner(forSuite: "\(name)@\(machineName):\(getpid())", environment: environment)
+    }
+
+    /// Removes the servers whose owning process on this machine has ended (`serverlab down --abandoned`).
+    public static func removeAbandoned() async throws {
+        _ = try await run(executable(), ["down", "--abandoned"])
+    }
+
+    /// This machine's host name (`gethostname`, no DNS lookup).
+    public static var machineName: String {
+        var buffer = [CChar](repeating: 0, count: 256)
+        gethostname(&buffer, buffer.count - 1)
+        return String(cString: buffer)
+    }
+
     /// Starts a fresh server from `recipe`. It is removed by `down(_:)` or when `leaseMinutes` pass.
     public static func up(_ recipe: String, owner: String, leaseMinutes: Int = 120, capture: Bool = false, faults: Bool = false) async throws -> LabServer {
         let output = try await run(executable(), ["up", recipe, "--json", "--owner", owner, "--lease", String(leaseMinutes)]

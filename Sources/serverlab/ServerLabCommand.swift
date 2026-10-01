@@ -140,6 +140,8 @@ struct Down: AsyncParsableCommand {
     @Flag(help: "With --all: every owner's servers, other agents' included. Look at `serverlab ps` first.") var everyone = false
     @Option(help: "With --all: the servers of every owner under this prefix (SERVERLAB_OWNER_PREFIX of a test run).")
     var ownerPrefix: String?
+    @Flag(help: "The servers whose owner is a process on this machine that has ended (owners `<name>@<machine>:<pid>`).")
+    var abandoned = false
 
     func run() async throws {
         let lab = try ServerLab.standard()
@@ -151,11 +153,23 @@ struct Down: AsyncParsableCommand {
         let containers = running.filter { container in
             names.contains(container.name) || names.contains(container.server)
                 || (all && (everyone || owned(container.owner) || running.contains { $0.name == container.server && owned($0.owner) }))
+                || (abandoned && Self.ownerProcessEnded(container.owner))
         }
         for server in Set(containers.map(\.server)).sorted() {
             try await lab.remove(serverNamed: server)
             print("removed \(server)")
         }
+    }
+
+    /// True for an owner `…@<this machine>:<pid>` whose process is gone.
+    static func ownerProcessEnded(_ owner: String) -> Bool {
+        guard let at = owner.lastIndex(of: "@") else { return false }
+        let parts = owner[owner.index(after: at)...].split(separator: ":")
+        guard parts.count == 2, let pid = Int32(parts[1]) else { return false }
+        var buffer = [CChar](repeating: 0, count: 256)
+        gethostname(&buffer, buffer.count - 1)
+        guard String(parts[0]) == String(cString: buffer) else { return false }
+        return kill(pid, 0) != 0 && errno == ESRCH
     }
 }
 

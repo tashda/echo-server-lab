@@ -22,7 +22,7 @@ public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
             try await function()
             return
         }
-        let server = try await ServerLabCLI.up(recipeName, owner: ServerLabCLI.owner(forSuite: test.name), leaseMinutes: leaseMinutes, capture: capture, faults: faults)
+        let server = try await ServerLabCLI.up(recipeName, owner: ServerLabCLI.processOwner(test.name), leaseMinutes: leaseMinutes, capture: capture, faults: faults)
         do {
             let wire = capture ? LabWire(server: server) : nil
             try await LabServer.$current.withValue(server) {
