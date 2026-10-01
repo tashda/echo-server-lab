@@ -35,7 +35,9 @@ extension ServerLab {
             role: .builder,
             recipe: recipe,
             owner: "builder",
-            lease: .seconds(2 * 3600),
+            // A builder outlives a crashed build only this long before the reaper removes it;
+            // the slowest build (a large sample restore) takes about twenty minutes.
+            lease: .seconds(45 * 60),
             fingerprint: fingerprint,
             environment: spec.environment,
             command: spec.command,
