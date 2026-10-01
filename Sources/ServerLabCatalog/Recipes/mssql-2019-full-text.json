@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2019-full-text",
+  "summary": "SQL Server 2019 with full-text search installed: two catalogs and populated full-text indexes over articles in several languages (FullTextLab).",
+  "engine": "sqlserver",
+  "version": "2019",
+  "settings": {
+    "imageVariant": "fulltext"
+  },
+  "packs": [
+    {
+      "pack": "full-text"
+    }
+  ]
+}

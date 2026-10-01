@@ -1,0 +1,17 @@
+{
+  "name": "pg-17-third-party-extensions",
+  "summary": "PostgreSQL 17 with 30 third-party extensions installed and created: pg_cron, pgaudit, TimescaleDB, pg_partman, pg_repack, hypopg, pg_hint_plan, plpgsql_check, orafce, PostGIS, pgRouting, AGE, h3, rum, pgvector and more; pgAgent in postgres.",
+  "engine": "postgresql",
+  "version": "17",
+  "settings": {
+    "imageVariant": "extensions"
+  },
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "third-party-extensions"
+    }
+  ]
+}

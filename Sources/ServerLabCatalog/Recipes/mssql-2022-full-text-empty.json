@@ -1,0 +1,9 @@
+{
+  "name": "mssql-2022-full-text-empty",
+  "summary": "SQL Server 2022 with full-text search installed and nothing else, for driver full-text tests.",
+  "engine": "sqlserver",
+  "version": "2022",
+  "settings": {
+    "imageVariant": "fulltext"
+  }
+}

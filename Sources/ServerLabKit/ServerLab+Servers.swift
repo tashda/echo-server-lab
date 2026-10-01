@@ -24,7 +24,7 @@ extension ServerLab {
         let serverID = String(name.suffix(8))
         if kerberos { _ = try engine.kerberosService(for: recipe, serverID: serverID, hostPort: mainPort) }
         let image = try await seededImage(for: recipe, log: log)
-        for part in topology.parts { _ = try await baseImageID(part.container.image, log: log) }
+        for part in topology.parts { _ = try await baseImageID(part.container, log: log) }
         try await waitForBudget(neededMB: spec.memoryMB + topology.parts.map { $0.container.memoryMB }.reduce(0, +), log: log)
 
         // Kerberos servers join the lab domain's network; servers with several parts get their own.

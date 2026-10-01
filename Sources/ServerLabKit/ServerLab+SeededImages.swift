@@ -9,7 +9,7 @@ extension ServerLab {
         let password = try LabPassword.resolve()
         let spec = try engine.containerSpec(for: recipe, password: password)
 
-        let baseImageID = try await baseImageID(spec.image, log: log)
+        let baseImageID = try await baseImageID(spec, log: log)
         let packs = try recipe.packs.map { use in
             guard let pack = engine.pack(named: use.pack) else { throw ServerLabError.unknownPack(use.pack, engine: recipe.engine) }
             return (use: use, pack: pack)
@@ -104,11 +104,35 @@ extension ServerLab {
 
     /// The local image ID of `reference`, pulled first when the host does not have it.
     func baseImageID(_ reference: String, log: LabLog) async throws -> String {
+        try await baseImageID(ContainerSpec(image: reference, internalPort: 0, environment: [:], memoryMB: 0), log: log)
+    }
+
+    /// The local image ID of the spec's image: pulled, or built from its Dockerfile, the first time.
+    func baseImageID(_ spec: ContainerSpec, log: LabLog) async throws -> String {
+        let reference = spec.image
         if try await !imageExists(reference) {
-            log("Pulling \(reference)")
-            try await docker.run(["pull", "--quiet", reference])
+            if let dockerfile = spec.dockerfile {
+                log("Building base image \(reference) (once per host)")
+                try await buildImage(reference, dockerfile: dockerfile)
+            } else {
+                log("Pulling \(reference)")
+                try await docker.run(["pull", "--quiet", reference])
+            }
         }
         return try await docker.run(["image", "inspect", "--format", "{{.Id}}", reference])
+    }
+
+    /// `docker build` with the Dockerfile on standard input (no build context).
+    func buildImage(_ tag: String, dockerfile: String) async throws {
+        let file = FileManager.default.temporaryDirectory.appending(path: "serverlab-\(UUID().uuidString).Dockerfile")
+        try dockerfile.write(to: file, atomically: true, encoding: .utf8)
+        defer { try? FileManager.default.removeItem(at: file) }
+        let result = try await docker.runAllowingFailure(
+            ["build", "--quiet", "--label", "\(LabLabels.managed)=true", "--tag", tag, "-"], input: file)
+        guard result.status == 0 else {
+            throw ServerLabError.dockerFailed(command: "build \(tag)", status: result.status,
+                                              output: String((result.standardError + result.standardOutput).suffix(2_000)))
+        }
     }
 
     func imageExists(_ reference: String) async throws -> Bool {

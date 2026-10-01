@@ -113,6 +113,14 @@ and expired, wrong-host and self-signed certificates, all from a per-machine lab
 Network faults on any server through a Toxiproxy part (latency, bandwidth, hangs, resets, cuts).
 Kerberos through a shared Samba Active Directory domain (LAB.TEST) for SQL Server 2019–2025 and
 PostgreSQL 16–18. SQL Server Always On availability groups (2 or 3 replicas, failover).
+Database states on every engine (`database-states`: offline, emergency, restoring, standby,
+single-user, orphaned owners on SQL Server; no-connection, limit-0, template, read-only, other
+encodings and tablespaces on PostgreSQL). SQL Server `backups`, `service-broker` (messages waiting),
+`query-store` (forced plan), `database-mail` (Mailpit part) and `full-text` on the `fulltext` image
+variant, a base image the lab builds itself from a Dockerfile (`ContainerSpec.dockerfile`).
+MySQL/MariaDB `partitioning`, `temporal` (MariaDB), `auth-plugins` (an account per login plugin),
+GTID `source-replica`. `serverOptions` in a recipe put server options on the command line
+(`sql_mode`, logs to tables, PostgreSQL output styles), so they hold in servers from the image.
 
 Sample files live on testlab in `/opt/serverlab/samples` (downloaded from their sources and
 checked against `LabSamples`), mirrored in the `samples-v1` release of this repo.

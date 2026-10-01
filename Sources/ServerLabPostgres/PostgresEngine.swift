@@ -19,6 +19,7 @@ public struct PostgresEngine: LabEngine {
         PostgresLowPrivilegePack(),
         PostgresEdgeCasesPack(),
         PostgresDatabaseStatesPack(),
+        PostgresThirdPartyExtensionsPack(),
     ]
 
     public init() {}
@@ -36,16 +37,20 @@ public struct PostgresEngine: LabEngine {
             environment["POSTGRES_INITDB_ARGS"] = "--lc-collate=\(collation) --lc-ctype=\(collation)"
         }
         var command = ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=200"]
+        if recipe.settings.imageVariant == Self.extensionsVariant { command += Self.extensionsSettings }
         if recipe.settings.topology == Self.publisherSubscriber { command += ["-c", "wal_level=logical"] }
         command += (recipe.settings.serverOptions ?? [:]).sorted { $0.key < $1.key }.flatMap { ["-c", "\($0.key)=\($0.value)"] }
+        let dockerfile = recipe.settings.imageVariant == Self.extensionsVariant ? Self.extensionsDockerfile(version: recipe.version) : nil
         return ContainerSpec(
-            image: try Self.image(version: recipe.version, variant: recipe.settings.imageVariant),
+            image: try dockerfile.map { ContainerSpec.derivedImageTag(name: "postgres-extensions-\(recipe.version)", dockerfile: $0) }
+                ?? Self.image(version: recipe.version, variant: recipe.settings.imageVariant),
             internalPort: 5432,
             environment: environment,
             command: command,
             memoryMB: recipe.settings.memoryMB ?? 1_024,
             // Empty locations for tablespaces, owned by the server's user (uid 999 in the images).
-            files: Dictionary(uniqueKeysWithValues: Self.tablespaceLocations.map { ($0, .directory(owner: 999)) })
+            files: Dictionary(uniqueKeysWithValues: Self.tablespaceLocations.map { ($0, .directory(owner: 999)) }),
+            dockerfile: dockerfile
         )
     }
 
@@ -58,7 +63,7 @@ public struct PostgresEngine: LabEngine {
         case nil: "postgres:\(version)"
         case "pgvector": "pgvector/pgvector:pg\(version)"
         case "postgis": "postgis/postgis:\(version)-3.5"
-        case let other?: throw ServerLabError.invalidParameter("imageVariant \(other)", expected: "pgvector or postgis")
+        case let other?: throw ServerLabError.invalidParameter("imageVariant \(other)", expected: "pgvector, postgis or extensions")
         }
     }
 

@@ -23,6 +23,7 @@ public struct SQLServerEngine: LabEngine {
         SQLServerBackupsPack(),
         SQLServerServiceBrokerPack(),
         SQLServerQueryStorePack(),
+        SQLServerFullTextPack(),
         SQLServerExtendedPropertiesPack(),
         SQLServerExtendedEventsPack(),
         SQLServerResourceGovernorPack(),
@@ -53,15 +54,40 @@ public struct SQLServerEngine: LabEngine {
         if let collation = recipe.settings.collation { environment["MSSQL_COLLATION"] = collation }
         let availabilityGroup = recipe.settings.topology == Self.availabilityGroup
         if availabilityGroup { environment["MSSQL_ENABLE_HADR"] = "1" }
+        let official = "mcr.microsoft.com/mssql/server:\(recipe.version)-latest"
+        let dockerfile: String?
+        switch recipe.settings.imageVariant {
+        case nil: dockerfile = nil
+        case "fulltext": dockerfile = Self.fullTextDockerfile(from: official, version: recipe.version)
+        case let other?: throw ServerLabError.invalidParameter("imageVariant \(other)", expected: "fulltext")
+        }
         // The image declares no volumes, so /var/opt/mssql is kept by `docker commit`.
         return ContainerSpec(
-            image: "mcr.microsoft.com/mssql/server:\(recipe.version)-latest",
+            image: dockerfile.map { ContainerSpec.derivedImageTag(name: "mssql-fulltext-\(recipe.version)", dockerfile: $0) } ?? official,
             internalPort: 1433,
             environment: environment,
             memoryMB: memoryMB,
             // @@SERVERNAME comes from the builder's host name; an AG names its replicas by it.
-            hostname: availabilityGroup ? Self.primaryRole : nil
+            hostname: availabilityGroup ? Self.primaryRole : nil,
+            dockerfile: dockerfile
         )
+    }
+
+    /// The official image plus `mssql-server-fts` from Microsoft's repository for the image's
+    /// Ubuntu release (the official images leave full-text search out).
+    static func fullTextDockerfile(from image: String, version: String) -> String {
+        """
+        FROM \(image)
+        USER root
+        RUN apt-get update && apt-get install -y --no-install-recommends curl gnupg ca-certificates \\
+         && . /etc/os-release \\
+         && curl -fsSL https://packages.microsoft.com/keys/microsoft.asc | gpg --dearmor -o /etc/apt/trusted.gpg.d/microsoft.gpg \\
+         && curl -fsSL -o /etc/apt/sources.list.d/mssql-server.list \\
+            https://packages.microsoft.com/config/ubuntu/$VERSION_ID/mssql-server-\(version).list \\
+         && apt-get update && apt-get install -y mssql-server-fts \\
+         && apt-get clean && rm -rf /var/lib/apt/lists/*
+        USER mssql
+        """
     }
 
     /// TLS and Active Directory through mssql.conf: the lab's certificate, `forceencryption`,

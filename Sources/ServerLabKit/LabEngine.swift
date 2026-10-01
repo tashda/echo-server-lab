@@ -136,9 +136,12 @@ public struct ContainerSpec: Sendable, Hashable {
     /// The container's host name, which becomes SQL Server's `@@SERVERNAME` when a seeded image is
     /// built. Nil: Docker's (the container ID).
     public var hostname: String?
+    /// When set, `image` is built on the lab host from this Dockerfile (an official image plus
+    /// packages it lacks, e.g. SQL Server full-text search) instead of pulled.
+    public var dockerfile: String?
 
     public init(image: String, internalPort: Int, environment: [String: String], command: [String] = [], memoryMB: Int,
-                files: [String: ContainerFile] = [:], extraPorts: [Int] = [], hostname: String? = nil) {
+                files: [String: ContainerFile] = [:], extraPorts: [Int] = [], hostname: String? = nil, dockerfile: String? = nil) {
         self.image = image
         self.internalPort = internalPort
         self.environment = environment
@@ -147,6 +150,13 @@ public struct ContainerSpec: Sendable, Hashable {
         self.files = files
         self.extraPorts = extraPorts
         self.hostname = hostname
+        self.dockerfile = dockerfile
+    }
+
+    /// `serverlab-base/<name>:<first 12 of the Dockerfile's digest>`: a changed Dockerfile is a new
+    /// base image, and so a new fingerprint for every recipe on it.
+    public static func derivedImageTag(name: String, dockerfile: String) -> String {
+        "serverlab-base/\(name):\(RecipeFingerprint.digest(dockerfile).prefix(12))"
     }
 }
 
