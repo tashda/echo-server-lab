@@ -8,6 +8,7 @@ let package = Package(
         .library(name: "ServerLabKit", targets: ["ServerLabKit"]),
         .library(name: "ServerLabCatalog", targets: ["ServerLabCatalog"]),
         .library(name: "ServerLabTesting", targets: ["ServerLabTesting"]),
+        .library(name: "ServerLabWorkloads", targets: ["ServerLabWorkloads"]),
         // For test targets that must not link the lab or its drivers (Echo): talks to the serverlab tool.
         .library(name: "ServerLabClient", targets: ["ServerLabClient"]),
         // The TDS protocol reference and a decoder that explains TDS bytes (was the tds-mcp repo).
