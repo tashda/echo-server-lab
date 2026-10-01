@@ -133,6 +133,12 @@ public struct LabWire: Sendable {
         guard ServerLab.keyLogPath == nil else { return }
         let directory = FileManager.default.homeDirectoryForCurrentUser.appending(path: ".echo-testlab/keylogs")
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        // Logs of earlier runs older than a day go.
+        let dayAgo = Date(timeIntervalSinceNow: -86_400)
+        for file in (try? FileManager.default.contentsOfDirectory(at: directory, includingPropertiesForKeys: [.contentModificationDateKey])) ?? []
+        where ((try? file.resourceValues(forKeys: [.contentModificationDateKey]).contentModificationDate) ?? .distantFuture) < dayAgo {
+            try? FileManager.default.removeItem(at: file)
+        }
         setenv("SSLKEYLOGFILE", directory.appending(path: "tests-\(ProcessInfo.processInfo.processIdentifier).keys").path, 0)
     }
 

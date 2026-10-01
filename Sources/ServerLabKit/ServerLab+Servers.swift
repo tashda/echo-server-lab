@@ -201,10 +201,11 @@ extension ServerLab {
             .split(separator: "\n").map(String.init))
         var reserved = 0
         if !labIDs.isEmpty {
-            let limits = try await docker.run(["inspect", "--format", "{{.HostConfig.Memory}}"] + labIDs.sorted())
+            // Other suites remove servers meanwhile: inspect still prints the ones that exist.
+            let limits = try await docker.runAllowingFailure(["inspect", "--format", "{{.HostConfig.Memory}}"] + labIDs.sorted()).standardOutput
             reserved += limits.split(separator: "\n").compactMap { Int($0) }.reduce(0, +) / (1024 * 1024)
         }
-        let usage = try await docker.run(["stats", "--no-stream", "--format", "{{.ID}}\t{{.MemUsage}}"])
+        let usage = try await docker.runAllowingFailure(["stats", "--no-stream", "--format", "{{.ID}}\t{{.MemUsage}}"]).standardOutput
         for line in usage.split(separator: "\n") {
             let fields = line.split(separator: "\t")
             guard fields.count == 2, !labIDs.contains(where: { $0.hasPrefix(fields[0]) }) else { continue }
