@@ -21,7 +21,7 @@ enum PostgresTypeSamples {
     }
 
     static func cast(_ literal: String, _ type: String) -> PostgresInsertValue {
-        .sql("'\(literal.replacingOccurrences(of: "'", with: "''"))'::\(type)")
+        .castLiteral(literal, as: type)
     }
 
     private static func sample(

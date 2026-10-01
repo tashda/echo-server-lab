@@ -10,7 +10,7 @@ import ServerLabKit
 /// Parameters: `database` (default `labdata`), `products` (rows, default 200).
 struct PostgresIndexesPack: ContentPack {
     let name = "indexes-constraints"
-    let version = 1
+    let version = 2
     let summary = "Every index method (btree, hash, GIN, GiST, SP-GiST, BRIN; expression, partial, covering) and constraint kind (FK, check, unique, exclusion)."
 
     func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
@@ -79,6 +79,24 @@ struct PostgresIndexesPack: ContentPack {
         ])
     }
 
+    /// One product, every value typed (casts through postgres-wire's castLiteral).
+    private static func productRow(_ index: Int) -> [PostgresInsertValue] {
+        let color = ["red", "green", "blue"][index % 3]
+        let email: PostgresInsertValue = index % 7 == 0 ? .null : PostgresInsertValue("Buyer\(index)@Example.com")
+        return [
+            PostgresInsertValue(index % 10 + 1),
+            PostgresInsertValue(String(format: "SKU-%05d", index)),
+            PostgresInsertValue("Product \(index)"),
+            email,
+            .castLiteral("\(index % 500).99", as: "numeric"),
+            PostgresInsertValue(index * 7 % 1_000),
+            .jsonbLiteral(#"{"color": "\#(color)", "size": \#(index % 5), "tags": ["a\#(index % 4)"]}"#),
+            .castLiteral("{t\(index % 6),t\(index % 11)}", as: "text[]"),
+            .castLiteral("product number \(index) quick brown fox", as: "tsvector"),
+            .castLiteral("(\(index % 100),\(index / 100))", as: "point"),
+        ]
+    }
+
     private static func fill(_ client: PostgresClient, products: Int) async throws {
         let bulk = client.bulk
         _ = try await bulk.insert(into: "categories", schema: schema, columns: ["id", "name"],
@@ -86,27 +104,25 @@ struct PostgresIndexesPack: ContentPack {
         _ = try await bulk.insert(into: "category_tree", schema: schema, columns: ["id", "parent_id", "label"],
                                   values: (1...15).map { [PostgresInsertValue($0), $0 <= 3 ? .null : PostgresInsertValue(($0 - 1) / 3), PostgresInsertValue("Node \($0)")] })
         for batch in stride(from: 1, through: products, by: 100) {
+            let rows: [[PostgresInsertValue]] = (batch...min(batch + 99, products)).map(Self.productRow)
             _ = try await bulk.insert(into: "products", schema: schema,
                                       columns: ["category_id", "sku", "name", "email", "price", "stock", "attributes", "tags", "search", "location"],
-                                      values: (batch...min(batch + 99, products)).map { index in [
-                PostgresInsertValue(index % 10 + 1),
-                PostgresInsertValue(String(format: "SKU-%05d", index)),
-                PostgresInsertValue("Product \(index)"),
-                index % 7 == 0 ? .null : PostgresInsertValue("Buyer\(index)@Example.com"),
-                .sql("\(index % 500).99"),
-                PostgresInsertValue(index * 7 % 1_000),
-                .jsonbLiteral(#"{"color": "\#(["red", "green", "blue"][index % 3])", "size": \#(index % 5), "tags": ["a\#(index % 4)"]}"#),
-                .sql("ARRAY['t\(index % 6)', 't\(index % 11)']::text[]"),
-                .sql("to_tsvector('english', 'product number \(index) quick brown fox')"),
-                .sql("point(\(index % 100), \(index / 100))"),
-            ] })
+                                      values: rows)
         }
-        _ = try await bulk.insert(into: "order_lines", schema: schema, columns: ["order_id", "line_number", "product_id", "quantity"],
-                                  values: (0..<300).map { [PostgresInsertValue($0 / 3 + 1), PostgresInsertValue($0 % 3 + 1), PostgresInsertValue($0 % products + 1), PostgresInsertValue($0 % 5 + 1)] })
-        _ = try await bulk.insert(into: "bookings", schema: schema, columns: ["id", "room", "during"],
-                                  values: (1...20).map { [PostgresInsertValue($0), PostgresInsertValue($0 % 4), .sql("tstzrange('2026-01-01'::timestamptz + interval '\($0) days', '2026-01-01'::timestamptz + interval '\($0) days 2 hours')")] })
-        _ = try await bulk.insert(into: "events", schema: schema, columns: ["at", "kind", "value"],
-                                  values: (0..<1_000).map { [.sql("'2026-01-01'::timestamptz + interval '\($0) minutes'"), PostgresInsertValue(["click", "view", "buy"][$0 % 3]), .sql("\(Double($0) / 3)")] })
+        let orderLines: [[PostgresInsertValue]] = (0..<300).map { (index: Int) -> [PostgresInsertValue] in
+            [PostgresInsertValue(index / 3 + 1), PostgresInsertValue(index % 3 + 1), PostgresInsertValue(index % products + 1), PostgresInsertValue(index % 5 + 1)]
+        }
+        _ = try await bulk.insert(into: "order_lines", schema: schema, columns: ["order_id", "line_number", "product_id", "quantity"], values: orderLines)
+        let bookings: [[PostgresInsertValue]] = (1...20).map { (day: Int) -> [PostgresInsertValue] in
+            let range = String(format: "[2026-01-%02d 00:00:00+00,2026-01-%02d 02:00:00+00)", day, day)
+            return [PostgresInsertValue(day), PostgresInsertValue(day % 4), .castLiteral(range, as: "tstzrange")]
+        }
+        _ = try await bulk.insert(into: "bookings", schema: schema, columns: ["id", "room", "during"], values: bookings)
+        let events: [[PostgresInsertValue]] = (0..<1_000).map { (minute: Int) -> [PostgresInsertValue] in
+            let at = String(format: "2026-01-01 %02d:%02d:00+00", minute / 60 % 24, minute % 60)
+            return [.castLiteral(at, as: "timestamptz"), PostgresInsertValue(["click", "view", "buy"][minute % 3]), PostgresInsertValue(Double(minute) / 3)]
+        }
+        _ = try await bulk.insert(into: "events", schema: schema, columns: ["at", "kind", "value"], values: events)
     }
 
     private static func addConstraints(_ client: PostgresClient) async throws {

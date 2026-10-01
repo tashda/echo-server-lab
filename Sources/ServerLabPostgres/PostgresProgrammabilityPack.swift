@@ -9,7 +9,7 @@ import ServerLabKit
 /// Parameters: `database` (default `labdata`), `customers` (rows, default 50).
 struct PostgresProgrammabilityPack: ContentPack {
     let name = "programmability"
-    let version = 1
+    let version = 2
     let summary = "Schemas, view, materialized view, functions, trigger, procedure, sequence, enum, domain, composite type."
 
     func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
@@ -89,7 +89,7 @@ struct PostgresProgrammabilityPack: ContentPack {
             [
                 PostgresInsertValue("Customer \($0)"),
                 $0 % 5 == 0 ? .null : PostgresInsertValue("customer\($0)@example.com"),
-                .sql("ROW('Street \($0)', 'City \($0 % 7)', '\(1000 + $0)')::sales.address"),
+                .castLiteral("(\"Street \($0)\",\"City \($0 % 7)\",\(1000 + $0))", as: "sales.address"),
             ]
         })
         // Orders go in after the audit trigger exists (createRoutines), so the trigger fires for each.
@@ -131,8 +131,8 @@ struct PostgresProgrammabilityPack: ContentPack {
         _ = try await client.bulk.insert(into: "orders", schema: "sales", columns: ["customer_id", "total", "state"], values: (1...Int(customers) * 3).map {
             [
                 PostgresInsertValue($0 % Int(customers) + 1),
-                .sql("\($0 * 7).\($0 % 100)"),
-                .sql("'\(["new", "paid", "shipped"][$0 % 3])'::sales.order_state"),
+                .castLiteral("\($0 * 7).\($0 % 100)", as: "numeric"),
+                .castLiteral(["new", "paid", "shipped"][$0 % 3], as: "sales.order_state"),
             ]
         })
     }

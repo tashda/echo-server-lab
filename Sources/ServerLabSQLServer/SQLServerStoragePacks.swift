@@ -51,7 +51,7 @@ struct SQLServerPartitioningPack: ContentPack {
 /// Parameters: `database` (default `LabData`).
 struct SQLServerTemporalPack: ContentPack {
     let name = "temporal"
-    let version = 1
+    let version = 2
     let summary = "A system-versioned (temporal) table with a named history table that already holds history."
 
     func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
@@ -69,9 +69,17 @@ struct SQLServerTemporalPack: ContentPack {
                                        values: (1...30).map { [.string(String(format: "SKU-%03d", $0)), .decimal("\($0).00")] })
             try await client.temporal.addPeriodColumnsAndEnableVersioning(database: database, schema: Self.schema, table: "Prices",
                                                                           historySchema: Self.schema, historyTable: "PricesHistory")
+            // Three rounds of +10% on a growing share of the rows; each new price is a typed value.
+            var prices = Dictionary(uniqueKeysWithValues: (1...30).map { ($0, Decimal($0)) })
             for round in 1...3 {
-                _ = try await admin.updateRows(in: "Prices", schema: Self.schema, set: ["Price": .raw("Price * 1.1")],
-                                               where: "Sku <= 'SKU-0\(round)0'")
+                for item in 1...(round * 10) {
+                    var raised = (prices[item] ?? 0) * Decimal(11) / Decimal(10)
+                    var rounded = Decimal()
+                    NSDecimalRound(&rounded, &raised, 2, .plain)
+                    prices[item] = rounded
+                    _ = try await admin.updateRows(in: "Prices", schema: Self.schema, set: ["Price": .decimal("\(rounded)")],
+                                                   where: String(format: "Sku = 'SKU-%03d'", item))
+                }
             }
             _ = try await admin.deleteRows(from: "Prices", schema: Self.schema, where: "Sku = 'SKU-030'")
         }

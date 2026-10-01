@@ -6,7 +6,7 @@ import ServerLabKit
 /// and a hash-partitioned table, all with rows in every partition. Parameters: `database`.
 struct PostgresPartitioningPack: ContentPack {
     let name = "partitioning"
-    let version = 1
+    let version = 2
     let summary = "Range (with default), list and hash partitioned tables with rows in every partition."
 
     func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
@@ -25,7 +25,7 @@ struct PostgresPartitioningPack: ContentPack {
             }
             _ = try await admin.createPartition(name: "orders_other", schema: Self.schema, parentTable: "orders", parentSchema: Self.schema, bound: "DEFAULT")
             _ = try await client.bulk.insert(into: "orders", schema: Self.schema, columns: ["id", "ordered_on", "total"], values: (1...250).map {
-                [PostgresInsertValue($0), .sql("'\(2022 + $0 % 5)-\(String(format: "%02d", $0 % 12 + 1))-15'::date"), .sql("\($0 * 3).50")]
+                [PostgresInsertValue($0), .castLiteral("\(2022 + $0 % 5)-\(String(format: "%02d", $0 % 12 + 1))-15", as: "date"), .castLiteral("\($0 * 3).50", as: "numeric")]
             })
 
             _ = try await admin.createPartitionedTable(name: "customers_by_region", schema: Self.schema, columns: [
@@ -76,7 +76,7 @@ struct PostgresPartitioningPack: ContentPack {
 /// loopback server, a user mapping and a foreign table that answers. Parameters: `database`.
 struct PostgresExtensionsPack: ContentPack {
     let name = "extensions"
-    let version = 1
+    let version = 2
     let summary = "Contrib extensions used by real columns and indexes, and a loopback postgres_fdw foreign table."
 
     static let extensions = ["citext", "hstore", "ltree", "pg_trgm", "uuid-ossp", "pgcrypto", "btree_gist", "intarray",
@@ -103,11 +103,12 @@ struct PostgresExtensionsPack: ContentPack {
                                              columns: ["email", "attributes", "category_path", "title", "tags", "secret"], values: (1...100).map {
                 [
                     PostgresInsertValue("Item\($0)@Example.COM"),
-                    .sql("'color => \(["red", "blue"][$0 % 2]), size => \($0 % 5)'::hstore"),
-                    .sql("'shop.\(["garden", "kitchen", "tools"][$0 % 3]).level\($0 % 4)'::ltree"),
+                    .castLiteral("color => \(["red", "blue"][$0 % 2]), size => \($0 % 5)", as: "hstore"),
+                    .castLiteral("shop.\(["garden", "kitchen", "tools"][$0 % 3]).level\($0 % 4)", as: "ltree"),
                     PostgresInsertValue("Café item \($0) crème brûlée"),
-                    .sql("ARRAY[\($0 % 7), \($0 % 11), \($0 % 13)]"),
-                    .sql("pgp_sym_encrypt('secret \($0)', 'lab')"),
+                    .castLiteral("{\($0 % 7),\($0 % 11),\($0 % 13)}", as: "integer[]"),
+                    // Encrypting would need pgp_sym_encrypt(), a function call with no typed API; the bytes stand in.
+                    .castLiteral("\\x" + Array("secret \($0)".utf8).map { String(format: "%02x", $0) }.joined(), as: "bytea"),
                 ]
             })
             let indexes = client.indexes

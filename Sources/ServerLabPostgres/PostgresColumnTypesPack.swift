@@ -8,7 +8,7 @@ import ServerLabKit
 /// Parameters: `database` (default `labdata`), `rows` (default 200), `largeValueKB` (default 1024).
 struct PostgresColumnTypesPack: ContentPack {
     let name = "column-types"
-    let version = 2
+    let version = 3
     let summary = "Every built-in type (json, jsonb, arrays, ranges, network, geometric, text search) with edge values."
 
     func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {

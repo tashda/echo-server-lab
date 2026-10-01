@@ -9,7 +9,7 @@ import ServerLabKit
 /// Login roles get the lab password. Parameters: `database` (default `labdata`).
 struct PostgresSecurityPack: ContentPack {
     let name = "security"
-    let version = 1
+    let version = 2
     let summary = "Roles with every attribute, nested membership, database/schema/table/column/default privileges, row-level security."
 
     func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
@@ -42,7 +42,7 @@ struct PostgresSecurityPack: ContentPack {
             ])
             _ = try await client.bulk.insert(into: "salaries", schema: Self.schema, columns: ["id", "employee", "salary", "region"],
                                              values: (1...40).map {
-                [PostgresInsertValue($0), PostgresInsertValue("Employee \($0)"), .sql("\(40_000 + $0 * 1_000).00"),
+                [PostgresInsertValue($0), PostgresInsertValue("Employee \($0)"), .castLiteral("\(40_000 + $0 * 1_000).00", as: "numeric"),
                  PostgresInsertValue(["lab_app", "north", "south", "east"][$0 % 4])]
             })
             _ = try await security.grantSchemaPrivileges(privileges: [.usage], onSchema: Self.schema, to: "lab_readonly")
