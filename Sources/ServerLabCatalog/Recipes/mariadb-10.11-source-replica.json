@@ -1,0 +1,17 @@
+{
+  "name": "mariadb-10.11-source-replica",
+  "summary": "MariaDB 10.11 primary (binary log, GTIDs) with a read-only replica following it; parts primary and replica, promote makes the replica writable.",
+  "engine": "mariadb",
+  "version": "10.11",
+  "settings": {
+    "topology": "source-replica"
+  },
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "programmability"
+    }
+  ]
+}

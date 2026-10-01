@@ -70,14 +70,20 @@ struct Up: AsyncParsableCommand {
 }
 
 struct Down: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(abstract: "Remove lab servers by container name, or all of them.")
+    static let configuration = CommandConfiguration(abstract: "Remove lab servers by container name, or all of one owner's.")
 
     @Argument(help: "Container names.") var names: [String] = []
-    @Flag(help: "Remove every lab server and builder on the host.") var all = false
+    @Flag(help: "Remove every lab server of --owner (default cli: the ones `serverlab up` started).") var all = false
+    @Option(help: "With --all: whose servers (a suite name, cli, echo-labs).") var owner = "cli"
+    @Flag(help: "With --all: every owner's servers, other agents' included. Look at `serverlab ps` first.") var everyone = false
 
     func run() async throws {
         let lab = try ServerLab.standard()
-        let containers = try await lab.running().filter { all || names.contains($0.name) || names.contains($0.server) }
+        let running = try await lab.running()
+        let containers = running.filter { container in
+            names.contains(container.name) || names.contains(container.server)
+                || (all && (everyone || container.owner == owner || running.contains { $0.name == container.server && $0.owner == owner }))
+        }
         for server in Set(containers.map(\.server)).sorted() {
             try await lab.remove(serverNamed: server)
             print("removed \(server)")

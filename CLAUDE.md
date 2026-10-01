@@ -51,7 +51,9 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    - **Driver test suites:** `eval "$(swift run --package-path ../echo-server-lab serverlab up <recipe> --env)"`
      sets `TDS_*` (sqlserver-nio) or `POSTGRES_*` (postgres-wire). Run the tests, then
      `swift run --package-path ../echo-server-lab serverlab down "$SERVERLAB_CONTAINER"`.
-   - **By hand:** `serverlab up <recipe>` prints host, port and user.
+   - **By hand:** `serverlab up <recipe>` prints host, port and user. Remove yours with `serverlab down
+     <server>` or `serverlab down --all` (only `--owner cli`'s, the default); never `--everyone` while
+     other agents work.
    - **Test targets that already link the drivers (Echo's `EchoTests`):** import `ServerLabClient`
      instead of `ServerLabTesting`. Same `.server(...)` and `LabServer.current`, through the
      `serverlab` tool (`SERVERLAB_CLI`, else the lab checkout's release build, built once if missing).

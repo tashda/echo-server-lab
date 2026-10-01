@@ -581,3 +581,43 @@ struct MariaDBStrictTLSTests {
         await client.close()
     }
 }
+
+func replicationRoundTrip(_ server: LabServer) async throws {
+    #expect(server.parts.map(\.role) == ["primary", "replica"])
+    func client(_ role: String) throws -> MySQLClient {
+        let endpoint = try server.endpoint(of: role)
+        return MySQLClient(configuration: MySQLConfiguration(host: endpoint.host, port: endpoint.port, username: endpoint.username,
+                                                             password: endpoint.password, database: "labdata", tlsMode: .required))
+    }
+    let primary = try client("primary")
+    try await primary.bulk.insertValues(into: "customers", schema: "labdata", columns: ["name"], rows: [[.data(MySQLData(string: "replicated"))]])
+    await primary.close()
+    let replica = try client("replica")
+    try await retryUntilReady("row on the replica", timeout: .seconds(30), every: .milliseconds(250)) {
+        guard try await replica.metadata.exactRowCount(schema: "labdata", table: "customers") == 21 else { throw CancellationError() }
+    }
+    // Read-only until promoted. MySQL's super_read_only stops root too; MariaDB has none, and root
+    // holds READ_ONLY ADMIN there, so only MySQL refuses this write.
+    if server.engine == .mysql {
+        await #expect(throws: (any Error).self) {
+            try await replica.bulk.insertValues(into: "customers", schema: "labdata", columns: ["name"], rows: [[.data(MySQLData(string: "too early"))]])
+        }
+    }
+    await replica.close()
+    try await server.promote(part: "replica")
+    let promoted = try client("replica")
+    try await promoted.bulk.insertValues(into: "customers", schema: "labdata", columns: ["name"], rows: [[.data(MySQLData(string: "after promote"))]])
+    #expect(try await promoted.metadata.exactRowCount(schema: "labdata", table: "customers") == 22)
+    #expect(try await promoted.replication.replicaState() == nil)
+    await promoted.close()
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mysql-8.4-source-replica"))
+struct MySQLSourceReplicaTests {
+    @Test func replicaFollowsAndCanBePromoted() async throws { try await replicationRoundTrip(try #require(LabServer.current)) }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mariadb-11.4-source-replica"))
+struct MariaDBSourceReplicaTests {
+    @Test func replicaFollowsAndCanBePromoted() async throws { try await replicationRoundTrip(try #require(LabServer.current)) }
+}

@@ -32,6 +32,10 @@ public struct MySQLEngine: LabEngine {
                        // The images declare /var/lib/mysql as a volume, which `docker commit` skips.
                        "--datadir=/labdata/mysql",
                        "--innodb-buffer-pool-size=256M", "--max-connections=200"]
+        if recipe.settings.topology == Self.sourceReplica {
+            // Binary log and GTIDs from the first build on, so a replica can follow from the start.
+            command += Self.replicationArguments(kind: kind, serverID: 1)
+        }
         if let collation = recipe.settings.collation {
             command += ["--collation-server=\(collation)", "--character-set-server=\(collation.prefix { $0 != "_" })"]
         }
