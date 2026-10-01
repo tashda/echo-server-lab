@@ -168,6 +168,10 @@ public struct LabWire: Sendable {
 /// set (CI sets it per run, so `serverlab down --all --owner-prefix <prefix>` removes exactly that
 /// run's servers, including ones a crash left behind).
 func labOwner(forSuite name: String, environment: [String: String] = ProcessInfo.processInfo.environment) -> String {
-    guard let prefix = environment["SERVERLAB_OWNER_PREFIX"], !prefix.isEmpty else { return name }
-    return "\(prefix)/\(name)"
+    // `<suite>@<machine>:<pid>`, so `serverlab down --abandoned` can remove what a killed process left.
+    var buffer = [CChar](repeating: 0, count: 256)
+    gethostname(&buffer, buffer.count - 1)
+    let owner = "\(name)@\(String(cString: buffer)):\(getpid())"
+    guard let prefix = environment["SERVERLAB_OWNER_PREFIX"], !prefix.isEmpty else { return owner }
+    return "\(prefix)/\(owner)"
 }
