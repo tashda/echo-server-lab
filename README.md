@@ -121,6 +121,12 @@ variant, a base image the lab builds itself from a Dockerfile (`ContainerSpec.do
 MySQL/MariaDB `partitioning`, `temporal` (MariaDB), `auth-plugins` (an account per login plugin),
 GTID `source-replica`. `serverOptions` in a recipe put server options on the command line
 (`sql_mode`, logs to tables, PostgreSQL output styles), so they hold in servers from the image.
+SQL Server `encryption` (master keys, valid and expired certificates, symmetric and asymmetric keys,
+TDE); PostgreSQL `third-party-extensions` on the `extensions` image (30 extensions, pg_cron and
+pgAgent jobs); MySQL/MariaDB client-certificate TLS. Live workloads on any engine
+(`startWorkload(.blockingChain)`, `serverlab workload`). Captures of PostgreSQL and MySQL TLS
+sessions decode (drivers write `SSLKEYLOGFILE`). SQLite fixtures also in WAL mode, with edge names,
+2,000 columns, a million rows, empty, not a database and corrupt.
 
 Sample files live on testlab in `/opt/serverlab/samples` (downloaded from their sources and
 checked against `LabSamples`), mirrored in the `samples-v1` release of this repo.
