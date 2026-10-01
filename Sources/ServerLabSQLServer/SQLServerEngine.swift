@@ -25,6 +25,7 @@ public struct SQLServerEngine: LabEngine {
         SQLServerQueryStorePack(),
         SQLServerFullTextPack(),
         SQLServerEncryptionPack(),
+        SQLServerReplicationPack(),
         SQLServerExtendedPropertiesPack(),
         SQLServerExtendedEventsPack(),
         SQLServerResourceGovernorPack(),
@@ -68,11 +69,17 @@ public struct SQLServerEngine: LabEngine {
             internalPort: 1433,
             environment: environment,
             memoryMB: memoryMB,
-            // @@SERVERNAME comes from the builder's host name; an AG names its replicas by it.
-            hostname: availabilityGroup ? Self.primaryRole : nil,
+            // Where replication writes snapshots; the server runs as mssql (uid 10001).
+            files: [Self.replicationFolder: .directory(mode: 0o755, owner: 10001)],
+            // @@SERVERNAME comes from the builder's host name; an AG names its replicas by it, and
+            // replication agents connect to it, so it must still resolve in a server started later.
+            hostname: availabilityGroup ? Self.primaryRole : Self.hostName,
             dockerfile: dockerfile
         )
     }
+
+    static let hostName = "labsql"
+    static let replicationFolder = "/var/opt/mssql/repldata"
 
     /// The official image plus `mssql-server-fts` from Microsoft's repository for the image's
     /// Ubuntu release (the official images leave full-text search out).
@@ -149,6 +156,17 @@ public struct SQLServerEngine: LabEngine {
 
     /// A Windows login for the domain user, through the driver.
     public func configure(_ server: LabServer) async throws {
+        // With Agent on, the server is ready once Agent runs: until then starting a job fails
+        // with "SQLServerAgent is starting".
+        try await retryUntilReady("SQL Server Agent of \(server.containerName)", timeout: .seconds(120)) {
+            let (status, starting) = try await SQLServerSession.with(server.endpoint) { client in
+                let status = try await client.metadata.fetchAgentStatus()
+                return (status, status.isSqlAgentEnabled ? try await client.agent.isStarting() : false)
+            }
+            guard !status.isSqlAgentEnabled || (status.isSqlAgentRunning && !starting) else {
+                throw ServerLabError.packCheckFailed(pack: "agent", reason: "SQL Server Agent is still starting")
+            }
+        }
         guard server.kerberos != nil else { return }
         try await SQLServerSession.with(server.endpoint) { client in
             try await client.serverSecurity.createWindowsLogin(name: "\(LabDomain.netbiosName)\\\(LabDomain.user)")

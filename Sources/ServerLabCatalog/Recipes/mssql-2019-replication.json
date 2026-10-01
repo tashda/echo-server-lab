@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2019-replication",
+  "summary": "SQL Server 2019 with Agent: the instance as its own distributor, SalesHub published by snapshot (LabSnapshot: Customers, Orders) and pushed to SalesReplica, agents run once.",
+  "engine": "sqlserver",
+  "version": "2019",
+  "settings": {
+    "agent": true
+  },
+  "packs": [
+    {
+      "pack": "replication"
+    }
+  ]
+}
