@@ -11,6 +11,9 @@ public struct MySQLEngine: LabEngine {
     public let packs: [any ContentPack] = [
         MySQLDatabasePack(),
         MySQLColumnTypesPack(),
+        MySQLProgrammabilityPack(),
+        MySQLIndexesPack(),
+        MySQLSecurityPack(),
     ]
 
     public init(_ kind: EngineKind) {

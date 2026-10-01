@@ -1,0 +1,17 @@
+{
+  "name": "mysql-8.4-indexes-security",
+  "summary": "MySQL 8.4: unique, composite, prefix, FULLTEXT, SPATIAL, invisible indexes, foreign key/CHECK/unique constraints; roles, users with grants and a locked account.",
+  "engine": "mysql",
+  "version": "8.4",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "indexes-constraints"
+    },
+    {
+      "pack": "security"
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "name": "mariadb-11.8-programmability",
+  "summary": "MariaDB 11.8: customers and orders with a view, function, procedure, BEFORE/AFTER triggers writing an audit log, and a scheduled event.",
+  "engine": "mariadb",
+  "version": "11.8",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "programmability"
+    }
+  ]
+}

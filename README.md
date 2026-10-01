@@ -93,7 +93,7 @@ instead of `testlab`. The integration tests run with `SERVERLAB_INTEGRATION=1`.
 ## Status
 
 Engines: SQL Server 2017–2025, PostgreSQL 13–18, MySQL 8.0/8.4/9 and MariaDB 10.6/10.11/11.4/11.8
-(packs `database` and `column-types` so far, through mysql-wire). Packs: `database`,
+(packs `database`, `column-types`, `programmability`, `indexes-constraints`, `security`, through mysql-wire). Packs: `database`,
 `column-types`, `programmability`, `indexes-constraints` and `security` (both engines),
 `partitioning` (both), `agent-jobs`, `temporal`, `linked-servers` (SQL Server),
 `extensions` (PostgreSQL), and `sample` (both): AdventureWorks, AdventureWorksLT,

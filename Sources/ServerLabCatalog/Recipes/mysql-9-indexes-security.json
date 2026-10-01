@@ -1,0 +1,17 @@
+{
+  "name": "mysql-9-indexes-security",
+  "summary": "MySQL 9: unique, composite, prefix, FULLTEXT, SPATIAL, invisible indexes, foreign key/CHECK/unique constraints; roles, users with grants and a locked account.",
+  "engine": "mysql",
+  "version": "9",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "indexes-constraints"
+    },
+    {
+      "pack": "security"
+    }
+  ]
+}

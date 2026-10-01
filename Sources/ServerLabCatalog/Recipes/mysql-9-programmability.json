@@ -1,0 +1,14 @@
+{
+  "name": "mysql-9-programmability",
+  "summary": "MySQL 9: customers and orders with a view, function, procedure, BEFORE/AFTER triggers writing an audit log, and a scheduled event.",
+  "engine": "mysql",
+  "version": "9",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "programmability"
+    }
+  ]
+}

@@ -1,0 +1,17 @@
+{
+  "name": "mariadb-11.8-indexes-security",
+  "summary": "MariaDB 11.8: unique, composite, prefix, FULLTEXT, SPATIAL indexes, foreign key/CHECK/unique constraints; roles, users with grants and a locked account.",
+  "engine": "mariadb",
+  "version": "11.8",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "indexes-constraints"
+    },
+    {
+      "pack": "security"
+    }
+  ]
+}
