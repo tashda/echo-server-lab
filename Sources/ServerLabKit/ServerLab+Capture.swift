@@ -106,10 +106,11 @@ extension ServerLab {
         return data.range(of: Data(text.utf8)) != nil || data.range(of: utf16) != nil
     }
 
-    /// Deletes pcap files older than `age` on the host.
+    /// Deletes pcap files older than `age` on the host. Runs detached: the caller does not wait
+    /// for the delete, so a slow disk cannot hold up a test run.
     public func pruneCaptures(olderThan age: Duration = .seconds(24 * 3600)) async throws {
         let minutes = max(1, Int(age.components.seconds / 60))
-        _ = try await docker.runAllowingFailure(["run", "--rm", "--volume", "\(capturesDirectory):/captures", "alpine",
+        _ = try await docker.runAllowingFailure(["run", "--detach", "--rm", "--memory", "64m", "--volume", "\(capturesDirectory):/captures", "alpine",
                                                  "find", "/captures", "-name", "*.pcap", "-mmin", "+\(minutes)", "-delete"])
     }
 }

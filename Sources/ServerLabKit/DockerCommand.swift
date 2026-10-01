@@ -42,6 +42,8 @@ public struct DockerCommand: Sendable {
             process.terminationHandler = { continuation.yield($0.terminationStatus); continuation.finish() }
         }
         try process.run()
+        let watchdog = Self.terminate(process, after: Self.defaultTimeout)
+        defer { watchdog.cancel() }
         async let data = Self.readData(output.fileHandleForReading)
         async let errorText = Self.collect(errors.fileHandleForReading)
         var exitStatus: Int32 = -1
@@ -51,6 +53,16 @@ public struct DockerCommand: Sendable {
             throw ServerLabError.dockerFailed(command: arguments.prefix(2).joined(separator: " "), status: exitStatus, output: message)
         }
         return bytes
+    }
+
+    /// Stops `process` if it is still running after `timeout`.
+    private static func terminate(_ process: Process, after timeout: Duration) -> Task<Void, Never> {
+        let processID = process.processIdentifier
+        return Task(name: "docker-timeout-\(processID)") {
+            try? await Task.sleep(for: timeout)
+            guard !Task.isCancelled else { return }
+            kill(processID, SIGTERM)
+        }
     }
 
     @concurrent
@@ -64,8 +76,29 @@ public struct DockerCommand: Sendable {
         public var standardError: String
     }
 
-    /// `input` is a file sent to the command's standard input.
-    public func runAllowingFailure(_ arguments: [String], input: URL? = nil) async throws -> Result {
+    /// How long one command may run before it is stopped: long enough for pulls, seeding commits
+    /// and restores, short enough that a hung SSH session cannot stall a test run for good.
+    public static let defaultTimeout: Duration = .seconds(30 * 60)
+
+    /// `input` is a file sent to the command's standard input. A command that could not reach the
+    /// Docker host (an SSH connection dropped while many commands start at once) is tried again.
+    public func runAllowingFailure(_ arguments: [String], input: URL? = nil, timeout: Duration = defaultTimeout) async throws -> Result {
+        var attempt = 0
+        while true {
+            let result = try await runOnce(arguments, input: input, timeout: timeout)
+            attempt += 1
+            guard result.status != 0, Self.couldNotConnect(result.standardError), attempt < 5 else { return result }
+            try await Task.sleep(for: .milliseconds(500 * attempt))
+        }
+    }
+
+    /// True when the CLI never reached the daemon, so running the command again is safe.
+    static func couldNotConnect(_ message: String) -> Bool {
+        message.contains("error during connect") || message.contains("Cannot connect to the Docker daemon")
+            || message.contains("connection reset by peer") && message.contains("dial-stdio")
+    }
+
+    private func runOnce(_ arguments: [String], input: URL?, timeout: Duration) async throws -> Result {
         let process = Process()
         process.executableURL = executable
         process.arguments = (host.dockerHost.map { ["--host", $0] } ?? []) + arguments
@@ -82,11 +115,17 @@ public struct DockerCommand: Sendable {
             }
         }
         try process.run()
+        let watchdog = Self.terminate(process, after: timeout)
+        defer { watchdog.cancel() }
         async let standardOutput = Self.collect(output.fileHandleForReading)
         async let standardError = Self.collect(errors.fileHandleForReading)
         var exitStatus: Int32 = -1
         for await value in status { exitStatus = value }
-        return Result(status: exitStatus, standardOutput: try await standardOutput, standardError: try await standardError)
+        var message = try await standardError
+        if process.terminationReason == .uncaughtSignal {
+            message += "\n(ended by a signal; the lab stops Docker commands after \(timeout))"
+        }
+        return Result(status: exitStatus, standardOutput: try await standardOutput, standardError: message)
     }
 
     /// Reads a pipe to its end on a thread-pool thread (a byte-by-byte async read is slow for

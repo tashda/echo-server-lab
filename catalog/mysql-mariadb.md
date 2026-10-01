@@ -25,9 +25,10 @@ features (audit log, firewall, data masking, thread pool, TDE with Oracle keyrin
 > ENUM/SET, JSON, all geometry, VECTOR on MySQL 9 / MariaDB 11.8, MariaDB INET4/INET6/UUID),
 > `programmability` (view, function, procedure, triggers, event), `indexes-constraints` (unique,
 > composite DESC, prefix, FULLTEXT, SPATIAL, invisible; FK, CHECK, unique), `security` (roles, users,
-> grants, locked account), `sample` (Sakila, world, Chinook). Setups: TLS (required/optional/strict and
-> bad certificates), `source-replica` (GTID), fault proxy, explained captures. Not yet: MariaDB
-> sequences and system-versioned tables, partitioning, client-certificate accounts, Galera/Group
+> grants, locked account), `sample` (Sakila, world, Chinook), `partitioning` (RANGE, RANGE COLUMNS,
+> LIST, HASH, KEY), `temporal` (MariaDB: system-versioned table with history, sequences). Setups: TLS (required/optional/strict and
+> bad certificates), `source-replica` (GTID), fault proxy, explained captures. Not yet: LIST COLUMNS,
+> LINEAR HASH and subpartitions, application-time periods, client-certificate accounts, Galera/Group
 > Replication.
 
 ## 1. Data types

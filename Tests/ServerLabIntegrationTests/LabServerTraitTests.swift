@@ -9,7 +9,7 @@ import SQLServerKit
 import Testing
 
 /// Starts real servers on the lab host. Run with SERVERLAB_INTEGRATION=1.
-private let integrationEnabled = ProcessInfo.processInfo.environment["SERVERLAB_INTEGRATION"] == "1"
+let integrationEnabled = ProcessInfo.processInfo.environment["SERVERLAB_INTEGRATION"] == "1"
 
 @Suite(.enabled(if: integrationEnabled), .server("mssql-2022-column-types"))
 struct SQLServerColumnTypesServerTests {

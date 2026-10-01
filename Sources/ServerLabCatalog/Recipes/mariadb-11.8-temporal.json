@@ -1,0 +1,14 @@
+{
+  "name": "mariadb-11.8-temporal",
+  "summary": "MariaDB 11.8: a system-versioned prices table with history from updates and a delete, and two sequences (one cycling).",
+  "engine": "mariadb",
+  "version": "11.8",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "temporal"
+    }
+  ]
+}

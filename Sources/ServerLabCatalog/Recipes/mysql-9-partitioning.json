@@ -1,0 +1,14 @@
+{
+  "name": "mysql-9-partitioning",
+  "summary": "MySQL 9: RANGE, RANGE COLUMNS, LIST, HASH and KEY partitioned tables, 120 rows each.",
+  "engine": "mysql",
+  "version": "9",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "partitioning"
+    }
+  ]
+}

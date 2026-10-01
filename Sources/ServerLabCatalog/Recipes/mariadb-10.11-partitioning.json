@@ -1,0 +1,14 @@
+{
+  "name": "mariadb-10.11-partitioning",
+  "summary": "MariaDB 10.11: RANGE, RANGE COLUMNS, LIST, HASH and KEY partitioned tables, 120 rows each.",
+  "engine": "mariadb",
+  "version": "10.11",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "partitioning"
+    }
+  ]
+}

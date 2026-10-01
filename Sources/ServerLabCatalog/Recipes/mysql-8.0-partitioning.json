@@ -1,0 +1,14 @@
+{
+  "name": "mysql-8.0-partitioning",
+  "summary": "MySQL 8.0: RANGE, RANGE COLUMNS, LIST, HASH and KEY partitioned tables, 120 rows each.",
+  "engine": "mysql",
+  "version": "8.0",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "partitioning"
+    }
+  ]
+}
