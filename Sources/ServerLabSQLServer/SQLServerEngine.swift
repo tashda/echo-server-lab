@@ -24,6 +24,7 @@ public struct SQLServerEngine: LabEngine {
         SQLServerServiceBrokerPack(),
         SQLServerQueryStorePack(),
         SQLServerFullTextPack(),
+        SQLServerEncryptionPack(),
         SQLServerExtendedPropertiesPack(),
         SQLServerExtendedEventsPack(),
         SQLServerResourceGovernorPack(),

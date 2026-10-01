@@ -1,0 +1,11 @@
+{
+  "name": "mssql-2025-encryption",
+  "summary": "SQL Server 2025: EncryptedLab with a master key, a valid and an expired certificate, a symmetric (AES-256) and an asymmetric (RSA-2048) key, and Transparent Data Encryption by a certificate in master.",
+  "engine": "sqlserver",
+  "version": "2025",
+  "packs": [
+    {
+      "pack": "encryption"
+    }
+  ]
+}

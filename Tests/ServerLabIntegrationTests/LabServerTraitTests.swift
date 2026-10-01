@@ -316,13 +316,13 @@ struct PostgresFaultTests {
     @Test func latencySlowsQueriesAndACutDropsConnections() async throws {
         let server = try #require(LabServer.current)
         let client = try await connectThroughProxy(server)
+        // The pool connects lazily: warm it up so only the query is timed. A loaded host makes
+        // absolute times noisy, so the check is only that the injected latency shows up.
+        _ = try await client.metadata.listDatabases()
         let clock = ContinuousClock()
-        let fast = try await clock.measure { _ = try await client.metadata.listDatabases() }
-
         let latency = try await server.addFault(.latency(milliseconds: 400))
         let slow = try await clock.measure { _ = try await client.metadata.listDatabases() }
         #expect(slow >= .milliseconds(400))
-        #expect(slow > fast)
         try await server.clearFaults(latency)
 
         try await server.cutConnections()
