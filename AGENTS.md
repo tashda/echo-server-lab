@@ -63,6 +63,9 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    `serverlab up <recipe> --capture`, then `serverlab wire <server>` or `serverlab pcap <server>`
    (opens in Wireshark). Capture and decoding run on the lab host; nothing to install. SQL Server
    traffic is encrypted when the client asks for TLS; connect with encryption off to read it.
+   PostgreSQL and MySQL TLS sessions decode anyway: with `capture: true` the trait sets
+   `SSLKEYLOGFILE`, postgres-wire and mysql-wire write their TLS secrets there, and the lab hands
+   that file to tshark (open a pcap in Wireshark with the same file under TLS → key log).
 5. **Restarts, failover and replicas:** every server keeps a fixed host port for its life, so it
    can be stopped and started without the address changing. Recipes with a `topology` setting are
    several containers ("parts") on a private network, each with its own port: `pg-<v>-primary-standby`

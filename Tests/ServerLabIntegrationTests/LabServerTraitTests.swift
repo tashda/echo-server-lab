@@ -233,6 +233,10 @@ struct PostgresTLSRequiredTests {
         for try await _ in rows {}
         client.close()
         #expect(try await LabWire.current?.containsPlaintext("lab_tls_marker") == false)
+        // postgres-wire logs the TLS secrets (SSLKEYLOGFILE), so Wireshark reads the encrypted query.
+        let messages = try await #require(LabWire.current).messages()
+        #expect(messages.contains { $0.protocolName == "pgsql" && $0.text?.contains("lab_tls_marker") == true },
+                "decrypted: \(messages.prefix(8))")
     }
 }
 
@@ -542,7 +546,7 @@ func mysqlClient(_ server: LabServer, _ mode: MySQLWireTLSMode) -> MySQLClient {
                                                   password: server.password, database: "labdata", tlsMode: mode))
 }
 
-@Suite(.enabled(if: integrationEnabled), .server("mysql-8.4-tls-required"))
+@Suite(.enabled(if: integrationEnabled), .server("mysql-8.4-tls-required", capture: true))
 struct MySQLTLSRequiredTests {
     @Test func verifiesAgainstTheLabCAAndRefusesPlaintext() async throws {
         let server = try #require(LabServer.current)
@@ -550,6 +554,10 @@ struct MySQLTLSRequiredTests {
         let verified = mysqlClient(server, .verifyIdentity(caCertificatePath: tls.caPath))
         #expect(try await verified.metadata.listDatabases().contains("labdata"))
         await verified.close()
+        // mysql-wire logs the TLS secrets (SSLKEYLOGFILE), so Wireshark reads the encrypted commands.
+        let messages = try await #require(LabWire.current).messages()
+        #expect(messages.contains { $0.protocolName == "mysql" && $0.text == "SHOW DATABASES" },
+                "decrypted: \(messages.prefix(8))")
         let plain = mysqlClient(server, .disabled)
         await #expect(throws: (any Error).self) { _ = try await plain.metadata.listDatabases() }
         await plain.close()

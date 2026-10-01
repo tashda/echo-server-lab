@@ -40,6 +40,8 @@ public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
             return
         }
         let lab = try ServerLab.standard()
+        // Drivers that support it log TLS secrets here, so recorded TLS traffic can be decrypted.
+        if capture { LabWire.enableKeyLogging() }
         // SERVERLAB_SERVER=<container>: run against a server already up (e.g. while debugging one),
         // when its recipe matches; it is left running.
         if let name = ProcessInfo.processInfo.environment["SERVERLAB_SERVER"],
@@ -125,6 +127,14 @@ public struct LabWire: Sendable {
     public let server: LabServer
 
     @TaskLocal public static var current: LabWire?
+
+    /// Points `SSLKEYLOGFILE` at a per-process file under ~/.echo-testlab/keylogs unless it is set.
+    static func enableKeyLogging() {
+        guard ServerLab.keyLogPath == nil else { return }
+        let directory = FileManager.default.homeDirectoryForCurrentUser.appending(path: ".echo-testlab/keylogs")
+        try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true, attributes: [.posixPermissions: 0o700])
+        setenv("SSLKEYLOGFILE", directory.appending(path: "tests-\(ProcessInfo.processInfo.processIdentifier).keys").path, 0)
+    }
 
     /// Everything sent and received so far.
     public func messages() async throws -> [WireMessage] {

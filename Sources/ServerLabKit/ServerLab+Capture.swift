@@ -73,6 +73,13 @@ extension ServerLab {
             + [Self.captureImage, "tcpdump", "-i", "eth0", "-U", "-s", "0", "-w", "/captures/\(server.containerName).pcap",
                "tcp", "port", String(server.engine.internalPort)]
         )
+        // tcpdump writes the file header once it listens; connections opened before that are lost
+        // (a TLS session without its handshake cannot be decrypted).
+        try await retryUntilReady("capture of \(server.containerName)", timeout: .seconds(20), every: .milliseconds(200)) {
+            let check = try await docker.runAllowingFailure(["exec", name, "test", "-s", "/captures/\(server.containerName).pcap"])
+            guard check.status == 0 else { throw ServerLabError.dockerFailed(command: "capture not listening", status: check.status, output: "") }
+        }
+        try await Task.sleep(for: .milliseconds(300))
     }
 
     /// Stops recording; the pcap file stays on the host until `pruneCaptures(olderThan:)`.
@@ -84,13 +91,32 @@ extension ServerLab {
     public func wireMessages(of server: LabServer) async throws -> [WireMessage] {
         let fields = ["frame.time_relative", "tcp.dstport", "tds.type", "tds.status", "tds.query", "tds.rpc.name",
                       "tds.rpc.proc_id", "pgsql.type", "pgsql.query", "mysql.command", "mysql.query", "mysql.response_code"]
+        let keyLog = try await uploadKeyLog(for: server)
         let output = try await docker.run(
             ["run", "--rm", "--volume", "\(capturesDirectory):/captures:ro", Self.captureImage,
              "tshark", "-r", "/captures/\(server.containerName).pcap", "-Y", "tds || pgsql || mysql", "-T", "fields",
              "-E", "separator=\t", "-E", "occurrence=a", "-E", "aggregator=\u{1F}"]
+            + (keyLog.map { ["-o", "tls.keylog_file:\($0)"] } ?? [])
             + fields.flatMap { ["-e", $0] }
         )
         return WireDecoding.messages(fromTSharkFields: output, serverPort: server.engine.internalPort)
+    }
+
+    /// The TLS key log this process's drivers write (`SSLKEYLOGFILE`, set by `.server(...,
+    /// capture: true)`), so tshark can decrypt TLS sessions in a capture.
+    public static var keyLogPath: String? {
+        ProcessInfo.processInfo.environment["SSLKEYLOGFILE"].flatMap { $0.isEmpty ? nil : $0 }
+    }
+
+    /// Copies the key log next to the server's capture on the host; returns its path there.
+    func uploadKeyLog(for server: LabServer) async throws -> String? {
+        guard let path = Self.keyLogPath, FileManager.default.fileExists(atPath: path) else { return nil }
+        let name = "\(server.containerName).keys"
+        let result = try await docker.runAllowingFailure(
+            ["run", "--rm", "--interactive", "--volume", "\(capturesDirectory):/captures", "alpine",
+             "sh", "-c", "cat > /captures/\(name) && chmod 600 /captures/\(name)"],
+            input: URL(fileURLWithPath: path))
+        return result.status == 0 ? "/captures/\(name)" : nil
     }
 
     /// The raw pcap, for opening in Wireshark.
@@ -111,7 +137,7 @@ extension ServerLab {
     public func pruneCaptures(olderThan age: Duration = .seconds(24 * 3600)) async throws {
         let minutes = max(1, Int(age.components.seconds / 60))
         _ = try await docker.runAllowingFailure(["run", "--detach", "--rm", "--memory", "64m", "--volume", "\(capturesDirectory):/captures", "alpine",
-                                                 "find", "/captures", "-name", "*.pcap", "-mmin", "+\(minutes)", "-delete"])
+                                                 "find", "/captures", "(", "-name", "*.pcap", "-o", "-name", "*.keys", ")", "-mmin", "+\(minutes)", "-delete"])
     }
 }
 
