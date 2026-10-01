@@ -1,6 +1,5 @@
 import Foundation
 import MySQLKit
-import MySQLWire
 import ServerLabKit
 
 /// Partitioned tables of every kind: RANGE by year with MAXVALUE, RANGE COLUMNS by date, LIST by

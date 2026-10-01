@@ -1,6 +1,5 @@
 import Foundation
 import MySQLKit
-import MySQLWire
 import PostgresKit
 import ServerLabKit
 import ServerLabTesting

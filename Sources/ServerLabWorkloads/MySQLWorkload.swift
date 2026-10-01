@@ -1,7 +1,6 @@
 import Foundation
 import Logging
 import MySQLKit
-import MySQLWire
 import ServerLabKit
 
 /// Sessions on MySQL and MariaDB, each on its own connection: the head updates row 1 in an open

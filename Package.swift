@@ -19,7 +19,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/tashda/sqlserver-nio", branch: "dev"),
         .package(url: "https://github.com/tashda/postgres-wire", branch: "official"),
-        .package(url: "https://github.com/tashda/mysql-wire", branch: "dev"),
+        .package(url: "https://github.com/tashda/mysql-wire", branch: "official"),
         // SQLite files are made through sqlite-nio (no first-party SQLite driver), as Echo uses it.
         .package(url: "https://github.com/vapor/sqlite-nio", from: "1.12.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),
@@ -54,8 +54,7 @@ let package = Package(
         // MySQL and MariaDB: container settings, readiness and content packs, through MySQLKit only.
         .target(
             name: "ServerLabMySQL",
-            dependencies: ["ServerLabKit", .product(name: "MySQLKit", package: "mysql-wire"),
-                           .product(name: "MySQLWire", package: "mysql-wire")]
+            dependencies: ["ServerLabKit", .product(name: "MySQLKit", package: "mysql-wire")]
         ),
         // SQLite fixture files, built locally through sqlite-nio.
         .target(
@@ -67,7 +66,7 @@ let package = Package(
             name: "ServerLabWorkloads",
             dependencies: ["ServerLabKit", .product(name: "SQLServerKit", package: "sqlserver-nio"),
                            .product(name: "PostgresKit", package: "postgres-wire"),
-                           .product(name: "MySQLKit", package: "mysql-wire"), .product(name: "MySQLWire", package: "mysql-wire")]
+                           .product(name: "MySQLKit", package: "mysql-wire")]
         ),
         .target(
             name: "ServerLabCatalog",
@@ -109,7 +108,6 @@ let package = Package(
                 "ServerLabWorkloads",
                 "ServerLabTesting",
                 .product(name: "MySQLKit", package: "mysql-wire"),
-                .product(name: "MySQLWire", package: "mysql-wire"),
                 .product(name: "SQLServerKit", package: "sqlserver-nio"),
                 .product(name: "PostgresKit", package: "postgres-wire"),
             ]
