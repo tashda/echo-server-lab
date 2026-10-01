@@ -1,0 +1,6 @@
+{
+  "name": "mysql-9-empty",
+  "summary": "MySQL 9, nothing added.",
+  "engine": "mysql",
+  "version": "9"
+}

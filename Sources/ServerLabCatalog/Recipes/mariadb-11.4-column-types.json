@@ -1,0 +1,14 @@
+{
+  "name": "mariadb-11.4-column-types",
+  "summary": "MariaDB 11.4 with every column type (unsigned, DECIMAL(65,30), bits, temporal, text/blob sizes, ENUM, SET, JSON, geometry, INET/UUID): minimum, maximum and NULL rows.",
+  "engine": "mariadb",
+  "version": "11.4",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "column-types"
+    }
+  ]
+}

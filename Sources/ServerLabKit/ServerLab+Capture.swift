@@ -45,6 +45,7 @@ extension EngineKind {
         switch self {
         case .sqlServer: 1433
         case .postgres: 5432
+        case .mysql, .mariadb: 3306
         }
     }
 }

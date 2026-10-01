@@ -20,6 +20,8 @@ public struct LabServer: Codable, Sendable, Hashable {
 
     public var isSQLServer: Bool { engine == "sqlserver" }
     public var isPostgres: Bool { engine == "postgresql" }
+    public var isMySQL: Bool { engine == "mysql" }
+    public var isMariaDB: Bool { engine == "mariadb" }
 
     /// The host port of a part, e.g. `port(of: "standby")`.
     public func port(of role: String) -> Int? { parts.first { $0.role == role }?.port }

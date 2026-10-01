@@ -1,0 +1,14 @@
+{
+  "name": "mysql-9-column-types",
+  "summary": "MySQL 9 with every column type (unsigned, DECIMAL(65,30), bits, temporal, text/blob sizes, ENUM, SET, JSON, geometry, VECTOR): minimum, maximum and NULL rows.",
+  "engine": "mysql",
+  "version": "9",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "column-types"
+    }
+  ]
+}

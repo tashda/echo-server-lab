@@ -130,6 +130,9 @@ public struct LabServer: Sendable, Hashable, Codable {
         case .postgres:
             variables.merge(["POSTGRES_HOST": host, "POSTGRES_PORT": String(port), "POSTGRES_USERNAME": username,
                              "POSTGRES_PASSWORD": password, "POSTGRES_DATABASE": "postgres"]) { current, _ in current }
+        case .mysql, .mariadb:
+            variables.merge(["MYSQL_HOST": host, "MYSQL_PORT": String(port), "MYSQL_USERNAME": username,
+                             "MYSQL_PASSWORD": password, "MYSQL_DATABASE": "labdata"]) { current, _ in current }
         }
         return variables
     }

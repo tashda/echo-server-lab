@@ -40,6 +40,18 @@ public struct Recipe: Codable, Sendable, Hashable {
 public enum EngineKind: String, Codable, Sendable, Hashable, CaseIterable {
     case sqlServer = "sqlserver"
     case postgres = "postgresql"
+    case mysql = "mysql"
+    case mariadb = "mariadb"
+
+    /// The product's name for people.
+    public var displayName: String {
+        switch self {
+        case .sqlServer: "SQL Server"
+        case .postgres: "PostgreSQL"
+        case .mysql: "MySQL"
+        case .mariadb: "MariaDB"
+        }
+    }
 }
 
 /// Settings chosen when the server starts, not created with a pack.

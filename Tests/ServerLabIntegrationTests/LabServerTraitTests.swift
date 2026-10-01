@@ -1,5 +1,6 @@
 import Foundation
 import Logging
+import MySQLKit
 import PostgresKit
 import ServerLabKit
 import ServerLabTesting
@@ -492,5 +493,45 @@ struct PostgresTrafficMatchesTheProtocolTests {
         let text = messages.map(\.explanation.text).joined()
         #expect(text.contains("all_types"))
         #expect(!text.contains(server.password))
+    }
+}
+
+// MARK: - MySQL and MariaDB
+
+func mysqlTypes(_ server: LabServer) async throws -> (columns: [String], rows: Int) {
+    let client = MySQLClient(configuration: MySQLConfiguration(
+        host: server.host, port: server.port, username: server.username, password: server.password,
+        database: "labdata", tlsMode: .required
+    ))
+    defer { Task { await client.close() } }
+    let columns = try await client.metadata.listColumns(in: "all_types", schema: "labdata").map(\.name)
+    return (columns, try await client.metadata.exactRowCount(schema: "labdata", table: "all_types"))
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mysql-8.4-column-types"))
+struct MySQL84ColumnTypesServerTests {
+    /// MySQL 8+ labels information_schema columns in upper case; mysql-wire must still read them.
+    @Test func metadataReadsUpperCaseLabels() async throws {
+        let (columns, rows) = try await mysqlTypes(try #require(LabServer.current))
+        #expect(rows == 203)
+        #expect(columns.count == 46)
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mysql-9-column-types"))
+struct MySQLColumnTypesServerTests {
+    @Test func serverHoldsEveryTypeIncludingVector() async throws {
+        let (columns, rows) = try await mysqlTypes(try #require(LabServer.current))
+        #expect(rows == 203)
+        for column in ["bigint_unsigned_col", "geometrycollection_col", "vector_col"] { #expect(columns.contains(column), "\(column) missing from \(columns)") }
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mariadb-11.8-column-types"))
+struct MariaDBColumnTypesServerTests {
+    @Test func serverHoldsEveryTypeIncludingMariaDBOnes() async throws {
+        let (columns, rows) = try await mysqlTypes(try #require(LabServer.current))
+        #expect(rows == 203)
+        #expect(columns.contains("inet6_col") && columns.contains("uuid_col") && columns.contains("vector_col"))
     }
 }

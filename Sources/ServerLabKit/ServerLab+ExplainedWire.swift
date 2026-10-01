@@ -35,6 +35,7 @@ extension ServerLab {
         switch server.engine {
         case .sqlServer: return TDSStreamReassembly.messages(fromTSharkFields: output, serverPort: server.engine.internalPort)
         case .postgres: return PostgresStreamReassembly.messages(fromTSharkFields: output, serverPort: server.engine.internalPort)
+        case .mysql, .mariadb: throw ServerLabError.unsupported("Explained captures of \(server.engine.displayName) (Wire shows Wireshark's decode)")
         }
     }
 }

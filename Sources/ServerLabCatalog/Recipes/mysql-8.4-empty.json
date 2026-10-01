@@ -1,0 +1,6 @@
+{
+  "name": "mysql-8.4-empty",
+  "summary": "MySQL 8.4, nothing added.",
+  "engine": "mysql",
+  "version": "8.4"
+}

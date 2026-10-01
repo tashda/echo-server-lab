@@ -1,0 +1,6 @@
+{
+  "name": "mariadb-10.6-empty",
+  "summary": "MariaDB 10.6, nothing added.",
+  "engine": "mariadb",
+  "version": "10.6"
+}

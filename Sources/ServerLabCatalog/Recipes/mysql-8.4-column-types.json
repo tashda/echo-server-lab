@@ -1,0 +1,14 @@
+{
+  "name": "mysql-8.4-column-types",
+  "summary": "MySQL 8.4 with every column type (unsigned, DECIMAL(65,30), bits, temporal, text/blob sizes, ENUM, SET, JSON, geometry): minimum, maximum and NULL rows.",
+  "engine": "mysql",
+  "version": "8.4",
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "column-types"
+    }
+  ]
+}

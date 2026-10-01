@@ -1,5 +1,6 @@
 import Foundation
 import ServerLabKit
+import ServerLabMySQL
 import ServerLabPostgres
 import ServerLabSQLServer
 
@@ -10,7 +11,7 @@ extension ServerLab {
     }
 
     public static var standardEngines: [any LabEngine] {
-        [SQLServerEngine(), PostgresEngine()]
+        [SQLServerEngine(), PostgresEngine(), MySQLEngine(.mysql), MySQLEngine(.mariadb)]
     }
 
     /// The recipes in `Sources/ServerLabCatalog/Recipes`.

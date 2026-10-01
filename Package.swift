@@ -18,6 +18,7 @@ let package = Package(
     dependencies: [
         .package(url: "https://github.com/tashda/sqlserver-nio", branch: "dev"),
         .package(url: "https://github.com/tashda/postgres-wire", branch: "dev"),
+        .package(url: "https://github.com/tashda/mysql-wire", branch: "dev"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),
         .package(url: "https://github.com/apple/swift-certificates.git", from: "1.10.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"5.0.0"),
@@ -46,10 +47,16 @@ let package = Package(
             name: "ServerLabPostgres",
             dependencies: ["ServerLabKit", .product(name: "PostgresKit", package: "postgres-wire")]
         ),
+        // MySQL and MariaDB: container settings, readiness and content packs, through MySQLKit only.
+        .target(
+            name: "ServerLabMySQL",
+            dependencies: ["ServerLabKit", .product(name: "MySQLKit", package: "mysql-wire"),
+                           .product(name: "MySQLWire", package: "mysql-wire")]
+        ),
         // The standard lab: every engine plus the recipes shipped in Recipes/.
         .target(
             name: "ServerLabCatalog",
-            dependencies: ["ServerLabKit", "ServerLabSQLServer", "ServerLabPostgres"],
+            dependencies: ["ServerLabKit", "ServerLabSQLServer", "ServerLabPostgres", "ServerLabMySQL"],
             resources: [.copy("Recipes")]
         ),
         // Swift Testing trait: @Suite(.server("recipe-name")).
@@ -82,6 +89,7 @@ let package = Package(
             name: "ServerLabIntegrationTests",
             dependencies: [
                 "ServerLabTesting",
+                .product(name: "MySQLKit", package: "mysql-wire"),
                 .product(name: "SQLServerKit", package: "sqlserver-nio"),
                 .product(name: "PostgresKit", package: "postgres-wire"),
             ]
