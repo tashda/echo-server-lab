@@ -127,6 +127,12 @@ public enum ServerLabCLI {
         _ = try await run(executable(), ["fault", server.containerName, action] + (name.map { [$0] } ?? []))
     }
 
+    /// A fresh copy of a SQLite fixture (`all-types`, `programmability`, `chinook`) for a test to
+    /// open and change; built through sqlite-nio the first time. Remove it when done.
+    public static func sqliteFixture(_ fixture: String) async throws -> URL {
+        URL(fileURLWithPath: try await run(executable(), ["sqlite", fixture]).trimmingCharacters(in: .whitespacesAndNewlines))
+    }
+
     /// The server's recorded traffic, decoded by Wireshark (needs `capture: true` at `up`).
     public static func wire(_ server: LabServer) async throws -> [WireMessage] {
         let output = try await run(executable(), ["wire", server.containerName, "--json"])

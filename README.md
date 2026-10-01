@@ -58,6 +58,7 @@ swift run serverlab promote <server>                # standby becomes primary
 swift run serverlab fault <server> latency 400       # after `up <recipe> --faults`; cut, restore, clear
 swift run serverlab sqlcmd <server> "SELECT 1"      # Microsoft's client, login-only encryption
 swift run serverlab mysql <server> "SELECT 1"       # the MySQL/MariaDB image's client, no TLS
+swift run serverlab sqlite all-types               # path of a fresh SQLite fixture copy
 swift run serverlab explain <server>                # captured TDS/PostgreSQL/MySQL, field by field, checked
 ```
 
@@ -96,7 +97,8 @@ instead of `testlab`. The integration tests run with `SERVERLAB_INTEGRATION=1`.
 
 Engines: SQL Server 2017–2025, PostgreSQL 13–18, MySQL 8.0/8.4/9 and MariaDB 10.6/10.11/11.4/11.8
 (packs `database`, `column-types`, `programmability`, `indexes-constraints`, `security`, and `sample`:
-Sakila, world, Chinook; all through mysql-wire). Packs: `database`,
+Sakila, world, Chinook; all through mysql-wire). SQLite fixture files (all types, programmability,
+Chinook) built locally through sqlite-nio. Packs: `database`,
 `column-types`, `programmability`, `indexes-constraints` and `security` (both engines),
 `partitioning` (both), `agent-jobs`, `temporal`, `linked-servers` (SQL Server),
 `extensions` (PostgreSQL), and `sample` (both): AdventureWorks, AdventureWorksLT,

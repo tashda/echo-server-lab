@@ -124,6 +124,10 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
     COM_ command, OK/ERR/EOF, result sets in text and binary, prepared statements, MariaDB's metadata
     caching). mysql-wire encrypts and cannot log in to MySQL without TLS, so `serverlab mysql <server>
     "<sql>"` (`ServerLab.runMySQLClient`) sends through the image's own client without TLS.
+11. **SQLite files:** SQLite has no server; `LabSQLite.freshCopy(.allTypes | .programmability |
+    .chinook)` (or `serverlab sqlite <fixture>`, `ServerLabCLI.sqliteFixture` from Echo) builds the
+    fixture once through sqlite-nio in `~/.echo-testlab/sqlite` and returns a copy of its own to open
+    and change; remove it when done.
 
 ## Adding a scenario
 

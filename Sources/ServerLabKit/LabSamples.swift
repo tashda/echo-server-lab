@@ -61,6 +61,9 @@ public enum LabSamples {
         LabSample(file: "Chinook_MySql.sql",
                   source: "https://github.com/lerocha/chinook-database/releases/download/v1.4.5/Chinook_MySql.sql",
                   sha256: "02a1835417c3ea19bff64e1d1f22be738ce51b3f88b0473c24eebff9a3ccde4b", bytes: 616_450),
+        LabSample(file: "Chinook_Sqlite.sql",
+                  source: "https://github.com/lerocha/chinook-database/releases/download/v1.4.5/Chinook_Sqlite.sql",
+                  sha256: "fdcb271b3e9c840216b09168752bddca973ed3917b40e49b603b15831114aea1", bytes: 611_447),
     ]
 
     public static func sample(named file: String) throws -> LabSample {

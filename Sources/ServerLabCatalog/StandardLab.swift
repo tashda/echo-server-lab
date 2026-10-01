@@ -3,6 +3,7 @@ import ServerLabKit
 import ServerLabMySQL
 import ServerLabPostgres
 import ServerLabSQLServer
+@_exported import ServerLabSQLite
 
 extension ServerLab {
     /// Every engine and the recipes shipped with this package, on the host `SERVERLAB_HOST` selects.

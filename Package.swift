@@ -19,6 +19,8 @@ let package = Package(
         .package(url: "https://github.com/tashda/sqlserver-nio", branch: "dev"),
         .package(url: "https://github.com/tashda/postgres-wire", branch: "dev"),
         .package(url: "https://github.com/tashda/mysql-wire", branch: "dev"),
+        // SQLite files are made through sqlite-nio (no first-party SQLite driver), as Echo uses it.
+        .package(url: "https://github.com/vapor/sqlite-nio", from: "1.12.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),
         .package(url: "https://github.com/apple/swift-certificates.git", from: "1.10.0"),
         .package(url: "https://github.com/apple/swift-crypto.git", "3.0.0"..<"5.0.0"),
@@ -54,10 +56,15 @@ let package = Package(
             dependencies: ["ServerLabKit", .product(name: "MySQLKit", package: "mysql-wire"),
                            .product(name: "MySQLWire", package: "mysql-wire")]
         ),
+        // SQLite fixture files, built locally through sqlite-nio.
+        .target(
+            name: "ServerLabSQLite",
+            dependencies: ["ServerLabKit", .product(name: "SQLiteNIO", package: "sqlite-nio")]
+        ),
         // The standard lab: every engine plus the recipes shipped in Recipes/.
         .target(
             name: "ServerLabCatalog",
-            dependencies: ["ServerLabKit", "ServerLabSQLServer", "ServerLabPostgres", "ServerLabMySQL"],
+            dependencies: ["ServerLabKit", "ServerLabSQLServer", "ServerLabPostgres", "ServerLabMySQL", "ServerLabSQLite"],
             resources: [.copy("Recipes")]
         ),
         // Swift Testing trait: @Suite(.server("recipe-name")).
@@ -82,7 +89,8 @@ let package = Package(
         ),
         .testTarget(
             name: "ServerLabKitTests",
-            dependencies: ["ServerLabKit", "ServerLabCatalog", .product(name: "X509", package: "swift-certificates")]
+            dependencies: ["ServerLabKit", "ServerLabCatalog", .product(name: "X509", package: "swift-certificates"),
+                           .product(name: "SQLiteNIO", package: "sqlite-nio")]
         ),
         .testTarget(
             name: "ServerLabClientTests",

@@ -10,7 +10,7 @@ struct ServerLabCommand: AsyncParsableCommand {
         abstract: "Start disposable database servers from recipes.",
         discussion: "The host is testlab unless SERVERLAB_HOST=local.",
         subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, StopPart.self, StartPart.self, Promote.self, Fault.self,
-                      Images.self, Prune.self, Reap.self, Wire.self, Explain.self, Sqlcmd.self, MySQLCommand.self, Pcap.self]
+                      Images.self, Prune.self, Reap.self, Wire.self, Explain.self, Sqlcmd.self, MySQLCommand.self, SQLite.self, Pcap.self]
     )
 }
 
@@ -300,6 +300,25 @@ struct MySQLCommand: AsyncParsableCommand {
     func run() async throws {
         let lab = try ServerLab.standard()
         print(try await lab.runMySQLClient(lab.server(named: name), sql: sql, database: database))
+    }
+}
+
+struct SQLite: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "sqlite",
+        abstract: "Print the path of a fresh copy of a SQLite fixture (built through sqlite-nio the first time).",
+        discussion: "Fixtures: " + LabSQLiteFixture.allCases.map { "\($0.rawValue): \($0.summary)" }.joined(separator: " ")
+    )
+
+    @Argument(help: "all-types, programmability or chinook.") var fixture: String
+    @Flag(help: "Print the shared built file instead of a copy (do not change it).") var shared = false
+
+    func run() async throws {
+        guard let chosen = LabSQLiteFixture(rawValue: fixture) else {
+            throw ValidationError("Fixtures: " + LabSQLiteFixture.allCases.map(\.rawValue).joined(separator: ", "))
+        }
+        let log: LabLog = { line in FileHandle.standardError.write(Data((line + "\n").utf8)) }
+        print(shared ? try await LabSQLite.file(chosen, log: log).path : try await LabSQLite.freshCopy(chosen, log: log).path)
     }
 }
 

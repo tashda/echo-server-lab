@@ -1,5 +1,5 @@
 {
-  "originHash" : "09bb43a62fa3c4fb0a8768ef4f05ae140160930d5d17cf7c753ae36d21358075",
+  "originHash" : "ffcb68ab62d895d9edba6df3aa058e4cef55478c492c2ddd43be9cd75cae8e1c",
   "pins" : [
     {
       "identity" : "mysql-nio",
@@ -16,7 +16,7 @@
       "location" : "https://github.com/tashda/mysql-wire",
       "state" : {
         "branch" : "dev",
-        "revision" : "2bfe2fba79de1c081188d765e65a582e1bb73c80"
+        "revision" : "ab9e3fb850e151a1b03d26e9cd8143f282e22dbd"
       }
     },
     {
@@ -26,6 +26,15 @@
       "state" : {
         "branch" : "dev",
         "revision" : "39a16ffcbdee90d9c7bacec06f00556d4864658d"
+      }
+    },
+    {
+      "identity" : "sqlite-nio",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/vapor/sqlite-nio",
+      "state" : {
+        "revision" : "553a6be0e228085b4d5e7c7ecb6a590186c31136",
+        "version" : "1.13.0"
       }
     },
     {
