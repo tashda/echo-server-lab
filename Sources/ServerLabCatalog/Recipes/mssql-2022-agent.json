@@ -1,0 +1,9 @@
+{
+  "name": "mssql-2022-agent",
+  "summary": "SQL Server 2022 with Agent on and nothing added: the shared server for Echo's SQL Server suites.",
+  "engine": "sqlserver",
+  "version": "2022",
+  "settings": {
+    "agent": true
+  }
+}
