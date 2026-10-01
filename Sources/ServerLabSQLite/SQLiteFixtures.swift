@@ -105,6 +105,65 @@ enum SQLiteFixtures {
 
     /// Runs a plain SQL script: statements end at a semicolon outside quotes and comments (the
     /// samples have no triggers, whose bodies would need more).
+    static func wal(_ connection: SQLiteConnection) async throws {
+        _ = try await connection.query("PRAGMA journal_mode = WAL")
+        _ = try await connection.query("CREATE TABLE journal_entries (id INTEGER PRIMARY KEY, note TEXT NOT NULL)")
+        for index in 1...100 {
+            _ = try await connection.query("INSERT INTO journal_entries (note) VALUES (?)", [.text("entry \(index)")])
+        }
+    }
+
+    static func edgeNames(_ connection: SQLiteConnection) async throws {
+        for statement in [
+            #"CREATE TABLE "Order Details" ("Order ID" INTEGER PRIMARY KEY, "Unit Price" REAL, "Quantity" INTEGER)"#,
+            #"CREATE TABLE "select" ("from" TEXT, "where" TEXT, "group" INTEGER)"#,
+            #"CREATE TABLE "it's ""quoted""" ("col with 'quote'" TEXT, "col""double" TEXT)"#,
+            #"CREATE TABLE "Café ☕️ 数据" ("名前" TEXT, "émoji 🎉" TEXT)"#,
+            #"CREATE TABLE "MixedCase" ("ID" INTEGER, "id2" INTEGER, "Id3" INTEGER)"#,
+            #"CREATE INDEX "idx on spaces" ON "Order Details" ("Unit Price")"#,
+            #"CREATE VIEW "view of select" AS SELECT "from", "where" FROM "select""#,
+            #"INSERT INTO "Order Details" VALUES (1, 9.5, 3), (2, 0.25, 10)"#,
+            #"INSERT INTO "select" VALUES ('a', 'b', 1)"#,
+            #"INSERT INTO "it's ""quoted""" VALUES ('x', 'y')"#,
+            #"INSERT INTO "Café ☕️ 数据" VALUES ('山田', '🎉🎉')"#,
+            #"INSERT INTO "MixedCase" VALUES (1, 2, 3)"#,
+        ] {
+            _ = try await connection.query(statement)
+        }
+    }
+
+    static func wide(_ connection: SQLiteConnection) async throws {
+        // 2,000 columns including the key: SQLITE_MAX_COLUMN's default.
+        let columns = (1..<2000).map { "c\($0) INTEGER" }.joined(separator: ", ")
+        _ = try await connection.query("CREATE TABLE wide_table (id INTEGER PRIMARY KEY, \(columns))")
+        _ = try await connection.query("INSERT INTO wide_table (id, c1, c999, c1999) VALUES (1, 1, 999, 1999)")
+    }
+
+    static func large(_ connection: SQLiteConnection, rows: Int) async throws {
+        _ = try await connection.query("CREATE TABLE readings (id INTEGER PRIMARY KEY, sensor TEXT NOT NULL, value REAL NOT NULL, taken_at TEXT NOT NULL)")
+        _ = try await connection.query("BEGIN")
+        let batch = 500
+        for start in stride(from: 0, to: rows, by: batch) {
+            let count = min(batch, rows - start)
+            let placeholders = Array(repeating: "(?, ?, ?)", count: count).joined(separator: ", ")
+            let values: [SQLiteData] = (start..<start + count).flatMap { index -> [SQLiteData] in
+                [.text("sensor-\(index % 50)"), .float(Double(index % 1000) / 10), .text("2026-01-01T00:\(String(format: "%02d", index % 60)):00Z")]
+            }
+            _ = try await connection.query("INSERT INTO readings (sensor, value, taken_at) VALUES \(placeholders)", values)
+        }
+        _ = try await connection.query("COMMIT")
+        _ = try await connection.query("CREATE INDEX readings_sensor ON readings (sensor)")
+    }
+
+    /// Overwrites the middle of the file (table pages, past the schema page) so reading fails.
+    static func damage(_ file: URL) throws {
+        let handle = try FileHandle(forUpdating: file)
+        defer { try? handle.close() }
+        let size = try handle.seekToEnd()
+        try handle.seek(toOffset: size / 2)
+        try handle.write(contentsOf: Data(repeating: 0xA5, count: 8192))
+    }
+
     static func run(script: String, on connection: SQLiteConnection) async throws {
         var statement = ""
         var quote: Character?

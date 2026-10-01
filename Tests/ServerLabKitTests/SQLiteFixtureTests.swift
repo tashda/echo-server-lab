@@ -9,9 +9,14 @@ import Testing
         let file = try await LabSQLite.freshCopy(fixture)
         defer { try? FileManager.default.removeItem(at: file) }
         let connection = try await SQLiteConnection.open(storage: .file(path: file.path))
-        let result = try await connection.query(sql)
-        try await connection.close()
-        return result
+        do {
+            let result = try await connection.query(sql)
+            try await connection.close()
+            return result
+        } catch {
+            try? await connection.close()
+            throw error
+        }
     }
 
     @Test func allTypesHoldsExtremesAndAStrictTable() async throws {
@@ -30,4 +35,36 @@ import Testing
         let audit = try await rows(.programmability, "SELECT COUNT(*) AS count FROM audit_log")
         #expect(audit.first?.column("count")?.integer == 100)
     }
+
+    @Test func walModeIsInTheHeader() async throws {
+        #expect(try await rows(.wal, "PRAGMA journal_mode").first?.column("journal_mode")?.string == "wal")
+    }
+
+    @Test func edgeNamesAreReadable() async throws {
+        let tables = try await rows(.edgeNames, "SELECT name FROM sqlite_schema WHERE type = 'table' ORDER BY name").compactMap { $0.column("name")?.string }
+        #expect(tables.contains("Order Details") && tables.contains("Café ☕️ 数据") && tables.contains(#"it's "quoted""#))
+        #expect(try await rows(.edgeNames, #"SELECT "émoji 🎉" AS value FROM "Café ☕️ 数据""#).first?.column("value")?.string == "🎉🎉")
+    }
+
+    @Test func wideTableHasTwoThousandColumns() async throws {
+        #expect(try await rows(.wide, "SELECT COUNT(*) AS count FROM pragma_table_info('wide_table')").first?.column("count")?.integer == 2000)
+    }
+
+    @Test func largeTableHasAMillionRows() async throws {
+        #expect(try await rows(.large, "SELECT COUNT(*) AS count FROM readings").first?.column("count")?.integer == 1_000_000)
+    }
+
+    @Test func emptyFileIsAnEmptyDatabase() async throws {
+        #expect(try await rows(.empty, "SELECT COUNT(*) AS count FROM sqlite_schema").first?.column("count")?.integer == 0)
+    }
+
+    @Test func textFileIsNotADatabase() async throws {
+        await #expect(throws: (any Error).self) { _ = try await rows(.notADatabase, "SELECT COUNT(*) FROM sqlite_schema") }
+    }
+
+    @Test func damagedFileFailsTheIntegrityCheck() async throws {
+        let result = try? await rows(.corrupt, "PRAGMA integrity_check")
+        #expect(result?.first?.column("integrity_check")?.string != "ok")
+    }
 }
+

@@ -21,8 +21,9 @@ Echo's SQLite tree shows Databases (main and attached), Tables, Views and a Main
 > **Built so far (2026-10-01).** Fixture files through sqlite-nio (`LabSQLite`, `serverlab sqlite`):
 > `all-types` (every declared type and affinity, extremes, a STRICT table), `programmability` (FKs,
 > CHECK, generated columns, AUTOINCREMENT, WITHOUT ROWID, partial/expression/descending indexes, view,
-> triggers, FTS5, R*Tree when compiled in), `chinook`. Not yet: attached databases, WAL vs rollback
-> journal files, encrypted (SQLCipher) files, very large files.
+> triggers, FTS5, R*Tree when compiled in), `chinook`, `wal`, `edge-names`, `wide` (2,000 columns),
+> `large` (1M rows), `empty`, `not-a-database`, `corrupt`. Not yet: attached databases, encrypted
+> (SQLCipher) files.
 
 ## 1. Data types
 

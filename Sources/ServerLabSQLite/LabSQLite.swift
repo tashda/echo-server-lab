@@ -14,6 +14,21 @@ public enum LabSQLiteFixture: String, Sendable, CaseIterable, Codable {
     case programmability
     /// The Chinook sample database.
     case chinook
+    /// WAL journal mode (stored in the file header), so opening it creates -wal and -shm files.
+    case wal
+    /// Tables, columns, indexes and a view named with spaces, quotes, emoji, reserved words and
+    /// mixed case.
+    case edgeNames = "edge-names"
+    /// A table with 2,000 columns, SQLite's default maximum.
+    case wide
+    /// One million rows in one table (about 60 MB).
+    case large
+    /// A zero-byte file: SQLite opens it as an empty database.
+    case empty
+    /// A text file with a .sqlite name: "file is not a database".
+    case notADatabase = "not-a-database"
+    /// A real database with a damaged page: opens, but reading the table fails as malformed.
+    case corrupt
 
     var version: Int { 1 }
 
@@ -22,6 +37,13 @@ public enum LabSQLiteFixture: String, Sendable, CaseIterable, Codable {
         case .allTypes: "Every declared type and affinity, a STRICT table, minimum, maximum and NULL values."
         case .programmability: "Foreign keys, CHECK, generated columns, AUTOINCREMENT, WITHOUT ROWID, partial and expression indexes, views, triggers, FTS5."
         case .chinook: "The Chinook sample database (music store)."
+        case .wal: "WAL journal mode: opening it creates -wal and -shm files next to it."
+        case .edgeNames: "Names with spaces, quotes, emoji, reserved words and mixed case."
+        case .wide: "A table with 2,000 columns, SQLite's default maximum."
+        case .large: "One million rows in one table (about 60 MB)."
+        case .empty: "A zero-byte file, which SQLite opens as an empty database."
+        case .notADatabase: "A text file named .sqlite: opening it fails with \"file is not a database\"."
+        case .corrupt: "A real database with a damaged page: it opens, reading the table fails as malformed."
         }
     }
 }
@@ -39,17 +61,32 @@ public enum LabSQLite {
         let building = directory.appending(path: "\(fixture.rawValue)-\(UUID().uuidString.prefix(8)).building")
         defer { try? FileManager.default.removeItem(at: building) }
         log("Building SQLite fixture \(fixture.rawValue)")
-        let connection = try await SQLiteConnection.open(storage: .file(path: building.path), logger: driverLogger("serverlab.sqlite"))
-        do {
-            switch fixture {
-            case .allTypes: try await SQLiteFixtures.allTypes(connection)
-            case .programmability: try await SQLiteFixtures.programmability(connection)
-            case .chinook: try await SQLiteFixtures.run(script: try await localSample("Chinook_Sqlite.sql", log: log), on: connection)
+        switch fixture {
+        case .empty:
+            FileManager.default.createFile(atPath: building.path, contents: Data())
+        case .notADatabase:
+            try Data("This is a text file, not a SQLite database.\n".utf8).write(to: building)
+        default:
+            let connection = try await SQLiteConnection.open(storage: .file(path: building.path), logger: driverLogger("serverlab.sqlite"))
+            do {
+                switch fixture {
+                case .allTypes: try await SQLiteFixtures.allTypes(connection)
+                case .programmability: try await SQLiteFixtures.programmability(connection)
+                case .chinook: try await SQLiteFixtures.run(script: try await localSample("Chinook_Sqlite.sql", log: log), on: connection)
+                case .wal: try await SQLiteFixtures.wal(connection)
+                case .edgeNames: try await SQLiteFixtures.edgeNames(connection)
+                case .wide: try await SQLiteFixtures.wide(connection)
+                case .large, .corrupt: try await SQLiteFixtures.large(connection, rows: fixture == .large ? 1_000_000 : 5_000)
+                case .empty, .notADatabase: break
+                }
+                try await connection.close()
+            } catch {
+                try? await connection.close()
+                throw error
             }
-            try await connection.close()
-        } catch {
-            try? await connection.close()
-            throw error
+            if fixture == .corrupt { try SQLiteFixtures.damage(building) }
+            // A WAL database leaves no sidecar files once closed; only the header says WAL.
+            for sidecar in ["-wal", "-shm"] { try? FileManager.default.removeItem(atPath: building.path + sidecar) }
         }
         // Another process may have built it meanwhile; either copy is the same.
         if !FileManager.default.fileExists(atPath: file.path) { try FileManager.default.moveItem(at: building, to: file) }
