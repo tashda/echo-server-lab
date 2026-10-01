@@ -49,3 +49,22 @@ extension Array {
         return results
     }
 }
+
+@Suite(.enabled(if: integrationEnabled), .server("mysql-8.4-database-states"))
+struct MySQLDatabaseStatesServerTests {
+    @Test func readOnlySchemaRefusesRootAndBrokenViewFails() async throws {
+        let server = try #require(LabServer.current)
+        let client = MySQLClient(configuration: MySQLConfiguration(host: server.host, port: server.port, username: server.username,
+                                                                   password: server.password, tlsMode: .required))
+        defer { Task { await client.close() } }
+        #expect(try await client.metadata.isSchemaReadOnly(name: "states_read_only"))
+        await #expect(throws: (any Error).self) {
+            try await client.bulk.insertValues(into: "frozen_rows", schema: "states_read_only", columns: ["id", "label"],
+                                               rows: [[.data(MySQLData(int: 99)), .data(MySQLData(string: "refused"))]])
+        }
+        let connection = try await MySQLWireConnection.connect(configuration: MySQLConfiguration(
+            host: server.host, port: server.port, username: server.username, password: server.password, tlsMode: .required))
+        await #expect(throws: (any Error).self) { _ = try await connection.simpleQuery("SELECT * FROM states_broken.orphan_view") }
+        try await connection.close()
+    }
+}

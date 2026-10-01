@@ -1,5 +1,5 @@
 {
-  "originHash" : "a1eaa73c074c5d904baaa87eaf1d76071a3bb1e568cde511cb1887309d564f2d",
+  "originHash" : "ae2abdacf3e2d86f8226fea567a39ca88552667b00837111fff9acd402952aef",
   "pins" : [
     {
       "identity" : "mysql-nio",
@@ -16,7 +16,7 @@
       "location" : "https://github.com/tashda/mysql-wire",
       "state" : {
         "branch" : "dev",
-        "revision" : "94e5b6564a02b9859e8d463b084f1542eeafe41c"
+        "revision" : "0f66698112df207b0e35f4ed078252b048af8c0e"
       }
     },
     {
@@ -43,7 +43,7 @@
       "location" : "https://github.com/tashda/sqlserver-nio",
       "state" : {
         "branch" : "dev",
-        "revision" : "bc64a74259657b29c38c4e90049236c928685cee"
+        "revision" : "57ce17d92db35ebd4562a6a70bf1822cb7046f0e"
       }
     },
     {

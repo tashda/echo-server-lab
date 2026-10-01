@@ -1,0 +1,11 @@
+{
+  "name": "mariadb-11.4-database-states",
+  "summary": "MariaDB 11.4: a view whose table was dropped, an empty schema and a MyISAM table.",
+  "engine": "mariadb",
+  "version": "11.4",
+  "packs": [
+    {
+      "pack": "database-states"
+    }
+  ]
+}

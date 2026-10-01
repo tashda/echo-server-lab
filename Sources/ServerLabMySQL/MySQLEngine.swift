@@ -18,6 +18,7 @@ public struct MySQLEngine: LabEngine {
         MySQLPartitioningPack(),
         MariaDBTemporalPack(),
         MySQLAuthenticationPack(),
+        MySQLDatabaseStatesPack(),
     ]
 
     public init(_ kind: EngineKind) {
