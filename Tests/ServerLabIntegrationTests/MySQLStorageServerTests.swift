@@ -65,6 +65,9 @@ struct MySQLDatabaseStatesServerTests {
         let connection = try await MySQLWireConnection.connect(configuration: MySQLConfiguration(
             host: server.host, port: server.port, username: server.username, password: server.password, tlsMode: .required))
         await #expect(throws: (any Error).self) { _ = try await connection.simpleQuery("SELECT * FROM states_broken.orphan_view") }
+        // The definer does not exist, so even root cannot read the view.
+        await #expect(throws: (any Error).self) { _ = try await connection.simpleQuery("SELECT * FROM states_broken.ghost_definer_view") }
+        #expect(try await connection.simpleQuery("SELECT * FROM states_broken.invoker_checked_view").count == 3)
         try await connection.close()
     }
 }

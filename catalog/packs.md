@@ -242,7 +242,7 @@ Conventions for every pack:
 | `my.config.charsets` | databases/columns in many charsets | — | — | 5.7 | charsets | 1/2 — GM-02 |
 | `my.config.sqlmode` | global `sql_mode` variants | `mode: strict` | — | 5.7 | variable value | ready |
 | `my.config.server` | persisted variables, resource groups | — | — | 8.0 | variables | 0/2 — GM-21, GM-22 |
-| `my.states` | super_read_only, broken views/definers, crashed-table repair | — | — | 5.7 | per state | **built** as `database-states` (read-only schema on MySQL, broken view, empty schema, MyISAM; recipes `*-database-states`); missing definers not yet (GM-18) |
+| `my.states` | super_read_only, broken views/definers, crashed-table repair | — | — | 5.7 | per state | **built** as `database-states` (read-only schema on MySQL, broken view, view with a missing definer, invoker view with CHECK OPTION, empty schema, MyISAM; recipes `*-database-states`) |
 | `my.edge.names` / `.scale` / `.nulls` | as for the other engines | — | — | 5.7 | names, counts | 0 — GM-01, GM-02, GM-12 |
 | `my.workload` (live) | sessions, lock waits, metadata locks, deadlock, performance_schema traffic | `sessions: 20` | any schema pack | 5.7 | `activity` snapshot | 2/3 — GM-02 |
 | `mariadb.types` | UUID, INET4, INET6, JSON alias | — | — | MariaDB 10.10 | types | 0/2 — GM-02, GM-20 |

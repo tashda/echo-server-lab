@@ -4,10 +4,11 @@ import MySQLWire
 import ServerLabKit
 
 /// Schemas in states a client has to show: a read-only schema (MySQL 8.0.22+), a view whose
-/// table was dropped (invalid), an empty schema, and a MyISAM table next to InnoDB ones.
+/// table was dropped (invalid), a view whose definer does not exist, a SQL SECURITY INVOKER
+/// view with CHECK OPTION, an empty schema, and a MyISAM table next to InnoDB ones.
 struct MySQLDatabaseStatesPack: ContentPack {
     let name = "database-states"
-    let version = 1
+    let version = 2
     let summary = "A read-only schema (MySQL 8.0.22+), a broken view, an empty schema and a MyISAM table."
 
     func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
@@ -28,6 +29,12 @@ struct MySQLDatabaseStatesPack: ContentPack {
             try await client.views.createView(schema: "states_broken", name: "orphan_view",
                                               definitionSQL: "SELECT id, label FROM states_broken.doomed")
             try await client.admin.dropTable(schema: "states_broken", name: "doomed")
+            try await client.views.createView(schema: "states_broken", name: "ghost_definer_view",
+                                              definitionSQL: "SELECT id, label FROM states_broken.legacy_myisam",
+                                              definer: (user: "lab_ghost", host: "%"), sqlSecurity: .definer)
+            try await client.views.createView(schema: "states_broken", name: "invoker_checked_view",
+                                              definitionSQL: "SELECT id, label FROM states_broken.legacy_myisam WHERE id > 2",
+                                              algorithm: .merge, sqlSecurity: .invoker, checkOption: .cascaded)
             if Self.hasReadOnlySchemas(recipe) {
                 try await client.admin.setSchemaReadOnly(name: "states_read_only", readOnly: true)
             }
@@ -43,7 +50,7 @@ struct MySQLDatabaseStatesPack: ContentPack {
             (try await client.metadata.listDatabases(), try await client.metadata.listTablesAndViews(in: "states_broken").map(\.name),
              Self.hasReadOnlySchemas(recipe) ? try await client.metadata.isSchemaReadOnly(name: "states_read_only") : true)
         }
-        guard ["states_read_only", "states_broken", "states_empty"].allSatisfy(schemas.contains), views.contains("orphan_view"), readOnly else {
+        guard ["states_read_only", "states_broken", "states_empty"].allSatisfy(schemas.contains), ["orphan_view", "ghost_definer_view", "invoker_checked_view"].allSatisfy(views.contains), readOnly else {
             throw ServerLabError.packCheckFailed(pack: name, reason: "schemas \(schemas), broken \(views), read-only \(readOnly)")
         }
     }
