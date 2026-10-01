@@ -100,7 +100,9 @@ Engines: SQL Server 2017–2025, PostgreSQL 13–18, MySQL 8.0/8.4/9 and MariaDB
 Sakila, world, Chinook; all through mysql-wire). SQLite fixture files (all types, programmability,
 Chinook) built locally through sqlite-nio. Packs: `database`,
 `column-types`, `programmability`, `indexes-constraints` and `security` (both engines),
-`partitioning` (both), `agent-jobs`, `temporal`, `linked-servers` (SQL Server),
+`partitioning` (both), `agent-jobs`, `temporal`, `linked-servers`, `change-tracking` (CT + CDC),
+`extended-properties`, `extended-events`, `resource-governor`, `central-management`, `low-privilege`,
+`edge-cases` (SQL Server),
 `extensions` (PostgreSQL), and `sample` (both): AdventureWorks, AdventureWorksLT,
 AdventureWorksDW, WideWorldImporters, Northwind, pubs (SQL Server 2017, 2022, 2025); Chinook
 (PostgreSQL 13+) and pagila (PostgreSQL 18, pgvector image). All built and checked.

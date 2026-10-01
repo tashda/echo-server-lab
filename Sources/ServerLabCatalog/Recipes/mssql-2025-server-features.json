@@ -1,0 +1,35 @@
+{
+  "name": "mssql-2025-server-features",
+  "summary": "SQL Server 2025: Change Tracking and CDC, extended properties, Extended Events sessions, Resource Governor, CMS groups, low-privilege logins, and edge cases (hostile names, NULL-heavy and empty tables, a 20-view chain).",
+  "engine": "sqlserver",
+  "version": "2025",
+  "settings": {
+    "agent": true
+  },
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "change-tracking"
+    },
+    {
+      "pack": "extended-properties"
+    },
+    {
+      "pack": "extended-events"
+    },
+    {
+      "pack": "resource-governor"
+    },
+    {
+      "pack": "central-management"
+    },
+    {
+      "pack": "low-privilege"
+    },
+    {
+      "pack": "edge-cases"
+    }
+  ]
+}

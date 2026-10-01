@@ -18,6 +18,13 @@ public struct SQLServerEngine: LabEngine {
         SQLServerTemporalPack(),
         SQLServerLinkedServersPack(),
         SQLServerSamplePack(),
+        SQLServerChangeTrackingPack(),
+        SQLServerExtendedPropertiesPack(),
+        SQLServerExtendedEventsPack(),
+        SQLServerResourceGovernorPack(),
+        SQLServerCentralManagementPack(),
+        SQLServerLowPrivilegePack(),
+        SQLServerEdgeCasesPack(),
     ]
 
     public init() {}

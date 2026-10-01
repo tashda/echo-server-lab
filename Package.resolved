@@ -1,5 +1,5 @@
 {
-  "originHash" : "ffcb68ab62d895d9edba6df3aa058e4cef55478c492c2ddd43be9cd75cae8e1c",
+  "originHash" : "a1eaa73c074c5d904baaa87eaf1d76071a3bb1e568cde511cb1887309d564f2d",
   "pins" : [
     {
       "identity" : "mysql-nio",
@@ -43,7 +43,7 @@
       "location" : "https://github.com/tashda/sqlserver-nio",
       "state" : {
         "branch" : "dev",
-        "revision" : "3412de4f558d4ee7403b5e2d4f471e0a83bc751a"
+        "revision" : "202cc1ccd1b8de6a20f99b73d7d5f2dbf73b3f44"
       }
     },
     {
