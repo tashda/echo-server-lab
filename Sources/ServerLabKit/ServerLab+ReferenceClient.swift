@@ -33,3 +33,27 @@ extension ServerLab {
         )
     }
 }
+
+extension ServerLab {
+    /// Runs `sql` with the server image's own `mysql` or `mariadb` client, without TLS (MySQL fetches
+    /// the server's RSA key for caching_sha2_password), so a capture can be read. Returns its output.
+    @discardableResult
+    public func runMySQLClient(_ server: LabServer, sql: String, database: String? = nil) async throws -> String {
+        guard server.engine == .mysql || server.engine == .mariadb else {
+            throw ServerLabError.unsupported("The MySQL client against \(server.engine.displayName)")
+        }
+        let recipe = try recipes.recipe(named: server.recipe)
+        let image = try engine(for: server.engine).containerSpec(for: recipe, password: server.password).image
+        let envFile = FileManager.default.temporaryDirectory.appending(path: "serverlab-\(UUID().uuidString).env")
+        try "MYSQL_PWD=\(server.password)".write(to: envFile, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: envFile.path)
+        defer { try? FileManager.default.removeItem(at: envFile) }
+        let mysql = server.engine == .mysql
+        let tlsOff = mysql ? ["--ssl-mode=DISABLED", "--get-server-public-key"] : ["--skip-ssl"]
+        return try await docker.run(
+            ["run", "--rm", "--memory", "256m", "--env-file", envFile.path, "--entrypoint", mysql ? "mysql" : "mariadb", image,
+             "--host", server.host, "--port", String(server.port), "--user", server.username, "--batch"]
+            + tlsOff + (database.map { ["--database", $0] } ?? []) + ["--execute", sql]
+        )
+    }
+}

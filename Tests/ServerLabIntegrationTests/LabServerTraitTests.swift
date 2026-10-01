@@ -621,3 +621,42 @@ struct MySQLSourceReplicaTests {
 struct MariaDBSourceReplicaTests {
     @Test func replicaFollowsAndCanBePromoted() async throws { try await replicationRoundTrip(try #require(LabServer.current)) }
 }
+
+/// The server image's client reading every column type (text protocol), then mysql-wire in plain
+/// text with a prepared statement (binary protocol): every packet must decode with nothing left over.
+func mysqlTrafficDecodes(_ server: LabServer, _ wire: LabWire) async throws {
+    let lab = try ServerLab.standard()
+    try await lab.runMySQLClient(server, sql: "SELECT * FROM all_types; SELECT COUNT(*) FROM all_types", database: "labdata")
+    // mysql-wire cannot log in to MySQL's caching_sha2_password without TLS (no RSA key exchange;
+    // catalog/driver-gaps.md), so its prepared statements are read on MariaDB only.
+    let preparedStatements = server.engine == .mariadb
+    if preparedStatements {
+        let client = mysqlClient(server, .disabled)
+        _ = try await client.metadata.listColumns(in: "all_types", schema: "labdata")
+        await client.close()
+    }
+
+    let messages = try await wire.explainedMessages()
+    #expect(messages.specProblems.isEmpty, "\(messages.specProblems.prefix(10))")
+    #expect(messages.contains { $0.kind == "Handshake" })
+    #expect(messages.contains { $0.kind == "text row" })
+    if preparedStatements {
+        #expect(messages.contains { $0.kind == "binary row" })
+        #expect(messages.contains { $0.kind == "COM_STMT_PREPARE" })
+    }
+    #expect(!messages.map(\.explanation.text).joined().contains(server.password))
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mysql-8.4-column-types", capture: true))
+struct MySQLTrafficMatchesTheProtocolTests {
+    @Test func everyPacketDecodes() async throws {
+        try await mysqlTrafficDecodes(try #require(LabServer.current), try #require(LabWire.current))
+    }
+}
+
+@Suite(.enabled(if: integrationEnabled), .server("mariadb-11.8-column-types", capture: true))
+struct MariaDBTrafficMatchesTheProtocolTests {
+    @Test func everyPacketDecodes() async throws {
+        try await mysqlTrafficDecodes(try #require(LabServer.current), try #require(LabWire.current))
+    }
+}

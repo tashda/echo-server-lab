@@ -10,7 +10,7 @@ struct ServerLabCommand: AsyncParsableCommand {
         abstract: "Start disposable database servers from recipes.",
         discussion: "The host is testlab unless SERVERLAB_HOST=local.",
         subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, StopPart.self, StartPart.self, Promote.self, Fault.self,
-                      Images.self, Prune.self, Reap.self, Wire.self, Explain.self, Sqlcmd.self, Pcap.self]
+                      Images.self, Prune.self, Reap.self, Wire.self, Explain.self, Sqlcmd.self, MySQLCommand.self, Pcap.self]
     )
 }
 
@@ -283,6 +283,23 @@ struct Sqlcmd: AsyncParsableCommand {
         default: .optional
         }
         print(try await lab.runMicrosoftClient(lab.server(named: name), sql: sql, database: database, encryption: mode))
+    }
+}
+
+struct MySQLCommand: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        commandName: "mysql",
+        abstract: "Run SQL through the MySQL or MariaDB image's own client, without TLS.",
+        discussion: "A second client to compare with mysql-wire, and readable in a capture."
+    )
+
+    @Argument(help: "Server container name.") var name: String
+    @Argument(help: "The SQL to run.") var sql: String
+    @Option(help: "Database.") var database: String?
+
+    func run() async throws {
+        let lab = try ServerLab.standard()
+        print(try await lab.runMySQLClient(lab.server(named: name), sql: sql, database: database))
     }
 }
 

@@ -25,7 +25,7 @@ extension Array where Element == ExplainedMessage {
 
 extension ServerLab {
     /// The captured traffic of a server as whole protocol messages (TDS or PostgreSQL) explained
-    /// field by field by the lab's own decoders. Encrypted parts show as TLS records.
+    /// field by field by the lab's own decoders (TDS, PostgreSQL, MySQL). Encrypted parts show as TLS records.
     public func explainedWire(of server: LabServer) async throws -> [ExplainedMessage] {
         let output = try await docker.run(
             ["run", "--rm", "--volume", "\(capturesDirectory):/captures:ro", Self.captureImage,
@@ -35,7 +35,7 @@ extension ServerLab {
         switch server.engine {
         case .sqlServer: return TDSStreamReassembly.messages(fromTSharkFields: output, serverPort: server.engine.internalPort)
         case .postgres: return PostgresStreamReassembly.messages(fromTSharkFields: output, serverPort: server.engine.internalPort)
-        case .mysql, .mariadb: throw ServerLabError.unsupported("Explained captures of \(server.engine.displayName) (Wire shows Wireshark's decode)")
+        case .mysql, .mariadb: return MySQLStreamReassembly.messages(fromTSharkFields: output, serverPort: server.engine.internalPort)
         }
     }
 }

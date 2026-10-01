@@ -35,6 +35,7 @@ let package = Package(
                 "WireExplanation",
                 "TDSSpec",
                 "PostgresProtocol",
+                "MySQLProtocol",
             ]
         ),
         // SQL Server: container settings, readiness and content packs, through SQLServerKit only.
@@ -70,9 +71,11 @@ let package = Package(
         .target(name: "TDSSpec", dependencies: ["WireExplanation"], resources: [.copy("Resources/spec")]),
         // PostgreSQL frontend/backend protocol decoder.
         .target(name: "PostgresProtocol", dependencies: ["WireExplanation"]),
+        // MySQL and MariaDB client/server protocol decoder.
+        .target(name: "MySQLProtocol", dependencies: ["WireExplanation"]),
         // MCP server (stdio) over TDSSpec, and over lab captures through ServerLabKit.
         .executableTarget(name: "tds-mcp", dependencies: ["TDSSpec", "ServerLabCatalog"]),
-        .testTarget(name: "TDSSpecTests", dependencies: ["TDSSpec", "PostgresProtocol"]),
+        .testTarget(name: "TDSSpecTests", dependencies: ["TDSSpec", "PostgresProtocol", "MySQLProtocol"]),
         .executableTarget(
             name: "serverlab",
             dependencies: ["ServerLabCatalog", .product(name: "ArgumentParser", package: "swift-argument-parser")]

@@ -57,7 +57,8 @@ swift run serverlab start <server> [--part standby]
 swift run serverlab promote <server>                # standby becomes primary
 swift run serverlab fault <server> latency 400       # after `up <recipe> --faults`; cut, restore, clear
 swift run serverlab sqlcmd <server> "SELECT 1"      # Microsoft's client, login-only encryption
-swift run serverlab explain <server>                # captured TDS, field by field, checked against MS-TDS
+swift run serverlab mysql <server> "SELECT 1"       # the MySQL/MariaDB image's client, no TLS
+swift run serverlab explain <server>                # captured TDS/PostgreSQL/MySQL, field by field, checked
 ```
 
 In a test (`ServerLabTesting`):
@@ -86,6 +87,7 @@ instead of `testlab`. The integration tests run with `SERVERLAB_INTEGRATION=1`.
 | `Sources/serverlab` | The command-line tool. |
 | `Sources/TDSSpec` | MS-TDS reference (spec JSON) and a TDS decoder that explains bytes, messages and captures. |
 | `Sources/PostgresProtocol` | PostgreSQL frontend/backend protocol decoder for explained captures. |
+| `Sources/MySQLProtocol` | MySQL/MariaDB client/server protocol decoder for explained captures. |
 | `Sources/WireExplanation` | Field trees shared by both decoders. |
 | `Sources/tds-mcp` | MCP server (stdio) over TDSSpec and lab captures; replaces the TypeScript tds-mcp repo. |
 | `catalog/` | Everything each engine has, what creates it, what the drivers still lack. |
