@@ -1,0 +1,22 @@
+name: CI
+
+# Unit tests on every push: recipes, packs and topologies are valid, the TDS/PostgreSQL/MySQL
+# decoders, the certificate issuer, the tar writer. The integration tests need the testlab host
+# (SERVERLAB_INTEGRATION=1) and run from a machine on that network.
+on:
+  push:
+    branches: [dev, main]
+  pull_request:
+
+jobs:
+  unit-tests:
+    runs-on: macos-26
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - name: Swift version
+        run: swift --version
+      - name: Build
+        run: swift build --build-tests
+      - name: Unit tests
+        run: swift test --skip-build --filter "ServerLabKitTests|TDSSpecTests|ServerLabClientTests"

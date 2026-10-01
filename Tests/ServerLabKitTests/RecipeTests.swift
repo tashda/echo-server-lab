@@ -1,6 +1,6 @@
 import Foundation
 import ServerLabCatalog
-import ServerLabKit
+@testable import ServerLabKit
 import Testing
 
 @Suite struct RecipeTests {
@@ -35,6 +35,8 @@ import Testing
             if recipe.packs.contains(where: { $0.pack == "agent-jobs" }) {
                 #expect(recipe.settings.agent == true, "\(recipe.name) needs Agent on")
             }
+            // Its parts, TLS and Kerberos settings are possible for this engine and version.
+            #expect(throws: Never.self, "\(recipe.name)") { try engine.topology(for: recipe, setup: Self.setup(for: recipe)) }
         }
     }
 
@@ -43,5 +45,20 @@ import Testing
             let names = engine.packs.map(\.name)
             #expect(Set(names).count == names.count, "\(engine.kind)")
         }
+    }
+
+    /// What `start` hands an engine, with throwaway certificates and keytab.
+    static func setup(for recipe: Recipe) throws -> ServerSetup {
+        var setup = ServerSetup(password: "Lab-Passw0rd")
+        if let tls = recipe.settings.tls {
+            let issued = IssuedCertificate(certificatePEM: "cert", keyPEM: "key")
+            setup.tls = ServerTLS(mode: tls.mode, certificateKind: tls.certificate, caPEM: "ca", server: issued,
+                                  client: tls.mode == .clientCertificate ? issued : nil)
+        }
+        if recipe.settings.kerberos == true {
+            let service = KerberosService(hostName: "x.lab.test", account: "x", servicePrincipals: ["svc/x.lab.test"])
+            setup.kerberos = ServerKerberos(service: service, keytab: Data([0x05, 0x02]), controllerAddress: "10.0.0.2")
+        }
+        return setup
     }
 }
