@@ -25,11 +25,7 @@ struct SQLServerWorkloadTests {
         #expect(blockedBy.count == 2)
         func head(of session: Int) -> Int { blockedBy[session].map(head(of:)) ?? session }
         #expect(Set(blockedBy.keys.map(head(of:))).count == 1, "\(blockedBy)")
-        // sqlserver-nio sends its application name in LOGIN7's client-interface slot, so
-        // program_name stays empty (catalog/driver-gaps.md).
-        withKnownIssue("LOGIN7 AppName and CltIntName swapped") {
-            #expect(processes.contains { $0.programName == workload.applicationName })
-        }
+        #expect(processes.contains { $0.programName == workload.applicationName })
     }
 }
 
