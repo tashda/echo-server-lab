@@ -83,7 +83,7 @@ Conventions for every pack:
 | `mssql.config.server` | `sp_configure` values, default paths, trace flags | `options: {…}` | — | 2017 | `serverConfig.listConfigurations` | 2/3 — GS-27 |
 | `mssql.config.database` | databases at every compat level and recovery model, RCSI/SI/ADR, scoped configs, containment | `compatLevels: all` | — | 2017 | `admin.fetchDatabaseProperties` | 5/6 — GS-36 |
 | `mssql.config.collations` | databases and columns in CS, BIN2, UTF-8, Japanese, Turkish collations | — | — | 2017 (UTF-8 2019) | collation names | ready |
-| `mssql.states` | offline, read-only, single-user (held), restricted, emergency, restoring, standby, auto-closed, snapshot, detached/attached, disabled index | `states: all` | `mssql.backups` | 2017 | `metadata.databaseState` per database | 11/12 — GS-37 |
+| `mssql.states` | offline, read-only, single-user (held), restricted, emergency, restoring, standby, auto-closed, snapshot, detached/attached, disabled index | `states: all` | `mssql.backups` | 2017 | `admin.getDatabaseProperties` per database | **built** as `database-states` (recipes `mssql-<v>-database-states`); snapshot, held single-user and disabled index not yet |
 | `mssql.states.damaged` | suspect / recovery-pending database | — | harness step | 2017 | state name | harness |
 | `mssql.backups` | backup history of every kind, backup devices | — | — | 2017 | `backupRestore.getBackupHistory` | 1/2 — GS-26 |
 | `mssql.edge.names` | the same small schema under hostile names at every level | `sets: [unicode, spaces, brackets, quotes, reserved, maxLength, caseOnly]` | — | 2017 | names round-trip exactly | ready (check escaping per API) |

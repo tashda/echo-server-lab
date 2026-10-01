@@ -1,0 +1,11 @@
+{
+  "name": "mssql-2019-database-states",
+  "summary": "SQL Server 2019: databases offline, read-only, single-user, restricted, emergency, auto-close, restoring, standby, re-attached, and owned by a disabled or dropped login.",
+  "engine": "sqlserver",
+  "version": "2019",
+  "packs": [
+    {
+      "pack": "database-states"
+    }
+  ]
+}

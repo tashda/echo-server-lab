@@ -246,7 +246,7 @@ extension SQLServerAdministrationClient {
 
 **GS-36 · database options — 1 item** (SS-CF-12): add `SQLServerDatabaseOption.acceleratedDatabaseRecovery(Bool)`, `.optimizedLocking(Bool)`.
 
-**GS-37 · database owner — 1 item** (SS-ST-11): `admin.setDatabaseOwner(database: String, login: String) async throws`.
+**GS-37 · database owner — closed** (SS-ST-11): `admin.setDatabaseOwner(name:login:)` (sqlserver-nio 28f25a4).
 
 **GS-32 · plan guides — 1 item** (SS-PR-15): `admin.createPlanGuide(name: String, statement: String, scope: SQLServerPlanGuideScope /* .sql(params:), .object(schema:name:), .template */, hints: String) async throws`.
 

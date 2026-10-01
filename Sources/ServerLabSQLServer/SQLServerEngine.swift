@@ -19,6 +19,7 @@ public struct SQLServerEngine: LabEngine {
         SQLServerLinkedServersPack(),
         SQLServerSamplePack(),
         SQLServerChangeTrackingPack(),
+        SQLServerDatabaseStatesPack(),
         SQLServerExtendedPropertiesPack(),
         SQLServerExtendedEventsPack(),
         SQLServerResourceGovernorPack(),
