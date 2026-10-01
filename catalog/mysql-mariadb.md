@@ -20,6 +20,16 @@ features (audit log, firewall, data masking, thread pool, TDE with Oracle keyrin
 
 ---
 
+> **Built so far (2026-10-01).** Engines `mysql` (8.0, 8.4, 9) and `mariadb` (10.6, 10.11, 11.4, 11.8),
+> all content through mysql-wire. Packs: `database`, `column-types` (every type incl. unsigned, BIT,
+> ENUM/SET, JSON, all geometry, VECTOR on MySQL 9 / MariaDB 11.8, MariaDB INET4/INET6/UUID),
+> `programmability` (view, function, procedure, triggers, event), `indexes-constraints` (unique,
+> composite DESC, prefix, FULLTEXT, SPATIAL, invisible; FK, CHECK, unique), `security` (roles, users,
+> grants, locked account), `sample` (Sakila, world, Chinook). Setups: TLS (required/optional/strict and
+> bad certificates), `source-replica` (GTID), fault proxy, explained captures. Not yet: MariaDB
+> sequences and system-versioned tables, partitioning, client-certificate accounts, Galera/Group
+> Replication.
+
 ## 1. Data types
 
 | ID | Item | Versions | Echo node kind | Typed API or GAP | Feasibility | Pack | Notes (edge values worth seeding) |
