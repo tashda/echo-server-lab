@@ -1,0 +1,9 @@
+{
+  "name": "mssql-2017-agent",
+  "summary": "SQL Server 2017 with Agent on and nothing added: Echo's SQL Server suites on 2017.",
+  "engine": "sqlserver",
+  "version": "2017",
+  "settings": {
+    "agent": true
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "name": "mssql-2019-agent",
+  "summary": "SQL Server 2019 with Agent on and nothing added: Echo's SQL Server suites on 2019.",
+  "engine": "sqlserver",
+  "version": "2019",
+  "settings": {
+    "agent": true
+  }
+}

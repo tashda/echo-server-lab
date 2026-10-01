@@ -1,0 +1,9 @@
+{
+  "name": "mssql-2025-agent",
+  "summary": "SQL Server 2025 with Agent on and nothing added: Echo's SQL Server suites on 2025.",
+  "engine": "sqlserver",
+  "version": "2025",
+  "settings": {
+    "agent": true
+  }
+}
