@@ -47,6 +47,8 @@ struct PostgresDatabaseStatesServerTests {
         #expect(try await client.metadata.materializedViewDetails(schema: "public", view: "pending_report")?.isPopulated == false)
         let trigger = try await client.metadata.listTriggers(schema: "public", table: "state_readings").first { $0.name == "paused_trigger" }
         #expect(trigger?.isEnabled == false)
+        let index = try await client.metadata.listIndexes(schema: "public", table: "state_readings").first { $0.name == "state_readings_reading_unique" }
+        #expect(index?.isValid == false)
         // The sequence is at its maximum and has no CYCLE.
         await #expect(throws: (any Error).self) { _ = try await client.sequences.nextval("public.exhausted_ids") }
     }

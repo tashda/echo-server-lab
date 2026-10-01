@@ -6,10 +6,11 @@ import ServerLabKit
 /// connections, one with a connection limit of 0, a template, one read-only by default, one on its
 /// own tablespace, LATIN1 / SQL_ASCII / EUC_JP databases, an empty tablespace, and inside
 /// `database`: an unpopulated materialized view, a sequence at its maximum, a NOT VALID check
-/// constraint and a disabled trigger. Parameter: `database` (default labdata).
+/// constraint, a disabled trigger and an invalid index (a failed CREATE INDEX CONCURRENTLY).
+/// Parameter: `database` (default labdata).
 struct PostgresDatabaseStatesPack: ContentPack {
     let name = "database-states"
-    let version = 1
+    let version = 2
     let summary = "No-connection, limit-0, template, read-only and other-encoding databases, tablespaces, and objects in odd states."
 
     /// Database, encoding, allows connections, connection limit, template, tablespace.
@@ -66,6 +67,12 @@ struct PostgresDatabaseStatesPack: ContentPack {
             _ = try await client.triggers.createTrigger(name: "paused_trigger", table: "state_readings", schema: "public", event: .before,
                                                         operations: [.insert], procedure: "public.keep_row()")
             _ = try await client.triggers.alterTrigger(name: "paused_trigger", table: "state_readings", enabled: false)
+            // A unique index over duplicates, built concurrently: it fails and stays, invalid.
+            _ = try await client.bulk.insert(into: "state_readings", schema: "public", columns: ["id", "reading"], values: [[.bind(3), .bind(7)]])
+            do {
+                _ = try await client.indexes.createAdvancedIndex(name: "state_readings_reading_unique", table: "state_readings", schema: "public",
+                                                                 columns: [PostgresIndexColumn(name: "reading")], unique: true, concurrently: true)
+            } catch {}
         }
         context.log("  \(Self.databases.count) databases, \(Self.tablespaces.count) tablespaces, objects in odd states in \(database)")
     }
@@ -96,6 +103,8 @@ struct PostgresDatabaseStatesPack: ContentPack {
             if view?.isPopulated != false { problems.append("pending_report populated: \(String(describing: view?.isPopulated))") }
             let triggers = try await client.metadata.listTriggers(schema: "public", table: "state_readings")
             if triggers.first(where: { $0.name == "paused_trigger" })?.isEnabled != false { problems.append("paused_trigger is not disabled") }
+            let index = try await client.metadata.listIndexes(schema: "public", table: "state_readings").first { $0.name == "state_readings_reading_unique" }
+            if index?.isValid != false { problems.append("state_readings_reading_unique is not an invalid index") }
         }
         guard problems.isEmpty else { throw ServerLabError.packCheckFailed(pack: name, reason: problems.joined(separator: "; ")) }
     }

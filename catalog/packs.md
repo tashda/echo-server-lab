@@ -171,7 +171,7 @@ Conventions for every pack:
 | `pg.config.encodings` | databases in UTF8, LATIN1, SQL_ASCII, EUC_JP | — | — | 13 | `pg_database.encoding` | **built** inside `database-states` (LATIN1, SQL_ASCII, EUC_JP) |
 | `pg.config.session` | per-database/per-role `DateStyle`, `IntervalStyle`, `TimeZone`, `bytea_output` | — | — | 13 | `pg_db_role_setting` | ready |
 | `pg.config.server` | `ALTER SYSTEM` values, pending-restart parameter | — | — | 13 | `pg_settings` | 0/1 — GP-16 |
-| `pg.states` | no-connection, limit-0, template, read-only-default databases; invalid index; unpopulated MV; sequence at max | — | `pg.schema.core` | 13 | per state | **built** as `database-states` (recipes `pg-<v>-database-states`, with tablespaces and encodings); invalid index not yet (GP-05) |
+| `pg.states` | no-connection, limit-0, template, read-only-default databases; invalid index; unpopulated MV; sequence at max | — | `pg.schema.core` | 13 | per state | **built** as `database-states` (recipes `pg-<v>-database-states`, with tablespaces, encodings and an invalid index) |
 | `pg.states.damaged` | invalid database | — | harness | 15.4 | `datconnlimit = -2` | harness |
 | `pg.edge.names` | hostile names at every level, dropped-column tables | `sets: all` | — | 13 | names round-trip | ready |
 | `pg.edge.scale` | 1,600-column table, 10,000 tables, 1,000 partitions, 10 MB values, 1 M rows | `tables: 10000`, `rows: 1_000_000` | — | 13 | counts | 2/3 — GP-13 |
