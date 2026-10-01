@@ -48,6 +48,19 @@ public enum LabSamples {
         LabSample(file: "Chinook_PostgreSql.sql",
                   source: "https://github.com/lerocha/chinook-database/releases/download/v1.4.5/Chinook_PostgreSql.sql",
                   sha256: "e3fde5c1a5b51a2a91429a702c9ca6e69ba56e6c7f5e112724d70c3d03db695e", bytes: 600_200),
+        // MySQL's own samples come as archives; the lab keeps the extracted files in its release.
+        LabSample(file: "sakila-schema.sql",
+                  source: "https://github.com/tashda/echo-server-lab/releases/download/samples-v1/sakila-schema.sql",
+                  sha256: "b32170e1e2ad5828749b61a5ec896155bcd143104b076e5ee8a3a3b013f44915", bytes: 24_269),
+        LabSample(file: "sakila-data.sql",
+                  source: "https://github.com/tashda/echo-server-lab/releases/download/samples-v1/sakila-data.sql",
+                  sha256: "8c228c678cec6ea9e5145ea868f48be87982252e806a547dcddb67758cadf174", bytes: 3_351_749),
+        LabSample(file: "world.sql",
+                  source: "https://github.com/tashda/echo-server-lab/releases/download/samples-v1/world.sql",
+                  sha256: "dc96faace01d61c3d571c45f0fa55a5c9dd26baa2a700f05a6fd74f382482b7b", bytes: 398_629),
+        LabSample(file: "Chinook_MySql.sql",
+                  source: "https://github.com/lerocha/chinook-database/releases/download/v1.4.5/Chinook_MySql.sql",
+                  sha256: "02a1835417c3ea19bff64e1d1f22be738ce51b3f88b0473c24eebff9a3ccde4b", bytes: 616_450),
     ]
 
     public static func sample(named file: String) throws -> LabSample {

@@ -1,0 +1,26 @@
+{
+  "name": "mysql-9-samples",
+  "summary": "MySQL 9 with Sakila (views, procedures, functions, triggers), world and Chinook, loaded through mysql-wire's script runner.",
+  "engine": "mysql",
+  "version": "9",
+  "packs": [
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "sakila"
+      }
+    },
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "world"
+      }
+    },
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "chinook"
+      }
+    }
+  ]
+}

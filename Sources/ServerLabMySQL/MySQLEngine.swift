@@ -14,6 +14,7 @@ public struct MySQLEngine: LabEngine {
         MySQLProgrammabilityPack(),
         MySQLIndexesPack(),
         MySQLSecurityPack(),
+        MySQLSamplePack(),
     ]
 
     public init(_ kind: EngineKind) {

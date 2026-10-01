@@ -1,0 +1,26 @@
+{
+  "name": "mariadb-11.4-samples",
+  "summary": "MariaDB 11.4 with Sakila (views, procedures, functions, triggers), world and Chinook, loaded through mysql-wire's script runner.",
+  "engine": "mariadb",
+  "version": "11.4",
+  "packs": [
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "sakila"
+      }
+    },
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "world"
+      }
+    },
+    {
+      "pack": "sample",
+      "params": {
+        "sample": "chinook"
+      }
+    }
+  ]
+}
