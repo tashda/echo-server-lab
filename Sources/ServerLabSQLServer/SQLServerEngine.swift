@@ -33,6 +33,7 @@ public struct SQLServerEngine: LabEngine {
         SQLServerLowPrivilegePack(),
         SQLServerEdgeCasesPack(),
         SQLServerDatabaseMailPack(),
+        SQLServerCompatibilityLevelPack(),
     ]
 
     public init() {}
