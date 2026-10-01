@@ -18,8 +18,8 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/tashda/sqlserver-nio", branch: "dev"),
-        .package(url: "https://github.com/tashda/postgres-wire", branch: "official"),
-        .package(url: "https://github.com/tashda/mysql-wire", branch: "official"),
+        .package(url: "https://github.com/tashda/postgres-wire", branch: "dev"),
+        .package(url: "https://github.com/tashda/mysql-wire", branch: "dev"),
         // SQLite files are made through sqlite-nio (no first-party SQLite driver), as Echo uses it.
         .package(url: "https://github.com/vapor/sqlite-nio", from: "1.12.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),

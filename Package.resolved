@@ -1,5 +1,5 @@
 {
-  "originHash" : "9637cfd8a89cf5fa3c8061abaecfe7539a5eecf489ed7badcea15a1cac673b47",
+  "originHash" : "a326af1a802e7ee0f728a02f4bce7b57f9e3141916bd621bfb5bf4adf966a0eb",
   "pins" : [
     {
       "identity" : "echo-libraries",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tashda/mysql-wire",
       "state" : {
-        "branch" : "official",
-        "revision" : "ca9dab8fa79d5b1bce5919d6f60ff8c59417825e"
+        "branch" : "dev",
+        "revision" : "69cb51069a24f0eba967deeb390495444705c95f"
       }
     },
     {
@@ -24,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tashda/postgres-wire",
       "state" : {
-        "branch" : "official",
-        "revision" : "b66a2894cb0826ddf4a8146c89f8d12af75dc705"
+        "branch" : "dev",
+        "revision" : "a4d47b964e04d49565c00e7805263aace3159e40"
       }
     },
     {
