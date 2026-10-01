@@ -1,5 +1,5 @@
 {
-  "originHash" : "ae2abdacf3e2d86f8226fea567a39ca88552667b00837111fff9acd402952aef",
+  "originHash" : "9ac8826a46c3e212430de7e59deb766f5ee85b70e885e53f3a701adb89b8d4c7",
   "pins" : [
     {
       "identity" : "mysql-nio",
@@ -15,8 +15,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tashda/mysql-wire",
       "state" : {
-        "branch" : "dev",
-        "revision" : "fdfa078b6dfdc46129c9031743c8091ac62c1927"
+        "branch" : "archive/swift-drivers",
+        "revision" : "6fd5039ec034729a377b7caca2891ff12e4f88da"
       }
     },
     {
@@ -24,8 +24,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tashda/postgres-wire",
       "state" : {
-        "branch" : "dev",
-        "revision" : "9e448aa0ee02e4c059c7795af541ab03c1b13052"
+        "branch" : "archive/swift-drivers",
+        "revision" : "7bc20ca2ce12a7396f91756eaa94ec0f34d612bb"
       }
     },
     {
@@ -42,8 +42,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tashda/sqlserver-nio",
       "state" : {
-        "branch" : "dev",
-        "revision" : "176979fb2b58e260193b594d74c7c13ecf68b60b"
+        "branch" : "archive/swift-drivers",
+        "revision" : "90ab6a535f5a2b4eb829c0e63f89a5e0e2cc343e"
       }
     },
     {
