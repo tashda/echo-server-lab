@@ -61,6 +61,9 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    - **By hand:** `serverlab up <recipe>` prints host, port and user. Remove yours with `serverlab down
      <server>` or `serverlab down --all` (only `--owner cli`'s, the default); never `--everyone` while
      other agents work.
+   - **One test run's servers:** set `SERVERLAB_OWNER_PREFIX` (CI uses its run id); every suite's
+     servers are then owned by `<prefix>/<suite>`, and `serverlab down --all --owner-prefix <prefix>`
+     removes exactly them, including any a crash left behind.
    - **Test targets that already link the drivers (Echo's `EchoTests`):** import `ServerLabClient`
      instead of `ServerLabTesting`. Same `.server(...)` and `LabServer.current`, through the
      `serverlab` tool (`SERVERLAB_CLI`, else the lab checkout's release build, built once if missing).

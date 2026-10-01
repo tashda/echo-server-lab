@@ -138,13 +138,19 @@ struct Down: AsyncParsableCommand {
     @Flag(help: "Remove every lab server of --owner (default cli: the ones `serverlab up` started).") var all = false
     @Option(help: "With --all: whose servers (a suite name, cli, echo-labs).") var owner = "cli"
     @Flag(help: "With --all: every owner's servers, other agents' included. Look at `serverlab ps` first.") var everyone = false
+    @Option(help: "With --all: the servers of every owner under this prefix (SERVERLAB_OWNER_PREFIX of a test run).")
+    var ownerPrefix: String?
 
     func run() async throws {
         let lab = try ServerLab.standard()
         let running = try await lab.running()
+        func owned(_ owner: String) -> Bool {
+            if let ownerPrefix { return owner.hasPrefix(ownerPrefix + "/") }
+            return owner == self.owner
+        }
         let containers = running.filter { container in
             names.contains(container.name) || names.contains(container.server)
-                || (all && (everyone || container.owner == owner || running.contains { $0.name == container.server && $0.owner == owner }))
+                || (all && (everyone || owned(container.owner) || running.contains { $0.name == container.server && owned($0.owner) }))
         }
         for server in Set(containers.map(\.server)).sorted() {
             try await lab.remove(serverNamed: server)

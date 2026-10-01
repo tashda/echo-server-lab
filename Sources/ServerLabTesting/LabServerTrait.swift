@@ -56,7 +56,7 @@ public struct LabServerTrait: SuiteTrait, TestTrait, TestScoping {
         }
         var server = try await lab.start(
             recipeNamed: recipeName,
-            owner: test.name,
+            owner: labOwner(forSuite: test.name),
             lease: lease,
             log: { print("[serverlab] \($0)") }
         )
@@ -162,4 +162,12 @@ public struct LabWire: Sendable {
     public func containsPlaintext(_ text: String) async throws -> Bool {
         try await lab.captureContainsPlaintext(text, of: server)
     }
+}
+
+/// The owner label for a suite's servers: its name, after `SERVERLAB_OWNER_PREFIX/` when that is
+/// set (CI sets it per run, so `serverlab down --all --owner-prefix <prefix>` removes exactly that
+/// run's servers, including ones a crash left behind).
+func labOwner(forSuite name: String, environment: [String: String] = ProcessInfo.processInfo.environment) -> String {
+    guard let prefix = environment["SERVERLAB_OWNER_PREFIX"], !prefix.isEmpty else { return name }
+    return "\(prefix)/\(name)"
 }
