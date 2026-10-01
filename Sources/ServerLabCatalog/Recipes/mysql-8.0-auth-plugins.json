@@ -1,0 +1,11 @@
+{
+  "name": "mysql-8.0-auth-plugins",
+  "summary": "MySQL 8.0: an account for every login plugin the server has (lab_auth_caching_sha2, lab_auth_sha256, lab_auth_mysql_native where loaded), all with the lab password.",
+  "engine": "mysql",
+  "version": "8.0",
+  "packs": [
+    {
+      "pack": "auth-plugins"
+    }
+  ]
+}

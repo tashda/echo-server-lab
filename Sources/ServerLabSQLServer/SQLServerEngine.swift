@@ -35,6 +35,9 @@ public struct SQLServerEngine: LabEngine {
         guard supportedVersions.contains(recipe.version) else {
             throw ServerLabError.unsupportedVersion(kind, recipe.version, supported: supportedVersions)
         }
+        if recipe.settings.serverOptions?.isEmpty == false {
+            throw ServerLabError.unsupported("serverOptions on SQL Server (use agent, collation, tls or a pack)")
+        }
         let memoryMB = recipe.settings.memoryMB ?? 3_072
         var environment = [
             "ACCEPT_EULA": "Y",

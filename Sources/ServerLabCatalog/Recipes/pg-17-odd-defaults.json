@@ -1,0 +1,24 @@
+{
+  "name": "pg-17-odd-defaults",
+  "summary": "PostgreSQL 17 with defaults that change how values come back: SQL/DMY dates, sql_standard intervals, escape bytea, Pacific/Chatham time zone, serializable transactions; column types loaded.",
+  "engine": "postgresql",
+  "version": "17",
+  "settings": {
+    "serverOptions": {
+      "datestyle": "SQL, DMY",
+      "intervalstyle": "sql_standard",
+      "bytea_output": "escape",
+      "timezone": "Pacific/Chatham",
+      "default_transaction_isolation": "serializable",
+      "extra_float_digits": "0"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "column-types"
+    }
+  ]
+}

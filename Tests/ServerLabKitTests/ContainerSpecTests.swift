@@ -36,6 +36,20 @@ import Testing
         #expect(spec.image == "postgres:\(version)")
     }
 
+    @Test func serverOptionsGoOnTheCommandLine() throws {
+        let options = ["sql_mode": "ANSI_QUOTES", "general_log": "ON"]
+        let mysql = try engine(.mysql).containerSpec(
+            for: Recipe(name: "r", engine: .mysql, version: "8.4", settings: .init(serverOptions: options)), password: "pw")
+        #expect(mysql.command.suffix(2) == ["--general_log=ON", "--sql_mode=ANSI_QUOTES"])
+        let postgres = try engine(.postgres).containerSpec(
+            for: Recipe(name: "r", engine: .postgres, version: "17", settings: .init(serverOptions: ["log_statement": "all"])), password: "pw")
+        #expect(postgres.command.suffix(2) == ["-c", "log_statement=all"])
+        #expect(throws: ServerLabError.self) {
+            try engine(.sqlServer).containerSpec(
+                for: Recipe(name: "r", engine: .sqlServer, version: "2022", settings: .init(serverOptions: ["x": "y"])), password: "pw")
+        }
+    }
+
     @Test func unsupportedVersionIsRejected() throws {
         #expect(throws: ServerLabError.self) {
             try engine(.postgres).containerSpec(for: Recipe(name: "r", engine: .postgres, version: "9.6"), password: "pw")

@@ -1,0 +1,16 @@
+{
+  "name": "mysql-8.4-auth-plugins",
+  "summary": "MySQL 8.4 with mysql_native_password loaded again: accounts lab_auth_caching_sha2, lab_auth_sha256 and lab_auth_mysql_native.",
+  "engine": "mysql",
+  "version": "8.4",
+  "settings": {
+    "serverOptions": {
+      "mysql-native-password": "ON"
+    }
+  },
+  "packs": [
+    {
+      "pack": "auth-plugins"
+    }
+  ]
+}

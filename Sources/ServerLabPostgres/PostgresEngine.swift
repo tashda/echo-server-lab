@@ -37,6 +37,7 @@ public struct PostgresEngine: LabEngine {
         }
         var command = ["postgres", "-c", "shared_buffers=256MB", "-c", "max_connections=200"]
         if recipe.settings.topology == Self.publisherSubscriber { command += ["-c", "wal_level=logical"] }
+        command += (recipe.settings.serverOptions ?? [:]).sorted { $0.key < $1.key }.flatMap { ["-c", "\($0.key)=\($0.value)"] }
         return ContainerSpec(
             image: try Self.image(version: recipe.version, variant: recipe.settings.imageVariant),
             internalPort: 5432,

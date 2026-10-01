@@ -1,0 +1,20 @@
+{
+  "name": "mysql-8.4-sql-mode-loose",
+  "summary": "MySQL 8.4 with an empty sql_mode (not strict: zero dates, truncation) and an odd time zone (+05:45), column types loaded.",
+  "engine": "mysql",
+  "version": "8.4",
+  "settings": {
+    "serverOptions": {
+      "sql_mode": "",
+      "default-time-zone": "+05:45"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "column-types"
+    }
+  ]
+}

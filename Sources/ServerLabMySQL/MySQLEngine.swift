@@ -17,6 +17,7 @@ public struct MySQLEngine: LabEngine {
         MySQLSamplePack(),
         MySQLPartitioningPack(),
         MariaDBTemporalPack(),
+        MySQLAuthenticationPack(),
     ]
 
     public init(_ kind: EngineKind) {
@@ -41,6 +42,7 @@ public struct MySQLEngine: LabEngine {
         if let collation = recipe.settings.collation {
             command += ["--collation-server=\(collation)", "--character-set-server=\(collation.prefix { $0 != "_" })"]
         }
+        command += (recipe.settings.serverOptions ?? [:]).sorted { $0.key < $1.key }.map { "--\($0.key)=\($0.value)" }
         return ContainerSpec(
             image: "\(kind == .mysql ? "mysql" : "mariadb"):\(recipe.version)",
             internalPort: 3306,

@@ -76,6 +76,21 @@ Still open, found while building:
 | mysql-wire | lab | Client certificates (MySQL `REQUIRE X509` / `REQUIRE SUBJECT` accounts, MariaDB the same): `MySQLWireConfiguration` cannot present one, so the lab has no `client-certificate` MySQL recipe yet. |
 | mysql-wire | lab | Fixed while building the MySQL engine: TLS by IP (SNI), `--ssl-mode` semantics (`MySQLWireTLSMode`), empty metadata on MySQL 8+ (upper-case labels), `CREATE USER … IDENTIFIED BY`, roles and grants without a host (MariaDB). Echo still passes `useTLS:` (verify identity); its "require" mode should map to `.required`. |
 
+## Found while adding login plugins and database states (2026-10-01)
+
+Tests: `MySQLAuthenticationServerTests`, `MariaDBAuthenticationServerTests` (each gap is a
+`withKnownIssue`, so closing it fails the test until the expectation moves to "works").
+
+| Driver | Owner | What |
+|---|---|---|
+| mysql-wire | lab | `sha256_password` accounts cannot log in, with or without TLS ("Unsupported auth plugin name: sha256_password"). Repro: `mysql-8.4-auth-plugins`, account `lab_auth_sha256`. |
+| mysql-wire | lab | MariaDB `ed25519` accounts cannot log in ("Unsupported auth plugin name: client_ed25519"). Repro: `mariadb-11.8-auth-plugins`, `lab_auth_ed25519`. |
+| mysql-wire | lab | MariaDB 11.6+ `parsec` accounts cannot log in ("Unsupported auth plugin name: parsec"). Repro: `mariadb-11.8-auth-plugins`, `lab_auth_parsec`. |
+| mysql-wire | lab | Fixed: `security.listUsers()` failed on MariaDB (its `mysql.user` view has no `account_locked`); it now reads `mysql.global_priv`. Added `installPlugin`, `uninstallPlugin`, `metadata.listPlugins`, and MariaDB's `IDENTIFIED VIA … USING PASSWORD(…)`. |
+| postgres-wire | lab | Fixed: server-side prepared statements (`queryPreparedRows`) kept the text row description while asking for binary rows, so every boolean or integer column failed to decode. Also `createDatabase(ifNotExists:)` (PostgreSQL has no IF NOT EXISTS), `createMaterializedView(withData:)`, `PostgresViewDetails.isPopulated`. |
+| mysql-wire | lab | Fixed: `serverConfig.globalVariables(named:)` sent `SHOW GLOBAL VARIABLES LIKE ?`, which SHOW does not accept (every named lookup failed); `errorLog.readTableLog(named: "slow_log")` ordered by `event_time`, which the slow log lacks (Echo's slow-log view could not load). |
+| sqlserver-nio | lab | Added `admin.setDatabaseOwner(name:login:)` (GS-37). |
+
 ## Ranking across drivers
 
 | Rank | Gap | Driver · namespace | Items unblocked |

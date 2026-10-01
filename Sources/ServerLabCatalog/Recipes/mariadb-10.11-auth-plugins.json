@@ -1,0 +1,11 @@
+{
+  "name": "mariadb-10.11-auth-plugins",
+  "summary": "MariaDB 10.11: accounts for mysql_native_password, ed25519 and (11.6+) parsec, all with the lab password.",
+  "engine": "mariadb",
+  "version": "10.11",
+  "packs": [
+    {
+      "pack": "auth-plugins"
+    }
+  ]
+}

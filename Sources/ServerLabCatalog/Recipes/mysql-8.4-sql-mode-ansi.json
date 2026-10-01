@@ -1,0 +1,19 @@
+{
+  "name": "mysql-8.4-sql-mode-ansi",
+  "summary": "MySQL 8.4 in ANSI mode: double quotes quote names, || concatenates, no backslash escapes; column types loaded.",
+  "engine": "mysql",
+  "version": "8.4",
+  "settings": {
+    "serverOptions": {
+      "sql_mode": "ANSI,NO_BACKSLASH_ESCAPES"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "column-types"
+    }
+  ]
+}

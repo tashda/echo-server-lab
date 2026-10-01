@@ -1,0 +1,22 @@
+{
+  "name": "mysql-8.4-logs-to-tables",
+  "summary": "MySQL 8.4 writing the general log and the slow log (every statement) to mysql.general_log and mysql.slow_log, with programmability objects run at build.",
+  "engine": "mysql",
+  "version": "8.4",
+  "settings": {
+    "serverOptions": {
+      "general_log": "ON",
+      "slow_query_log": "ON",
+      "log_output": "TABLE",
+      "long_query_time": "0"
+    }
+  },
+  "packs": [
+    {
+      "pack": "database"
+    },
+    {
+      "pack": "programmability"
+    }
+  ]
+}

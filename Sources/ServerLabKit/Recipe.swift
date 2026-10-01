@@ -78,9 +78,14 @@ public struct ServerSettings: Codable, Sendable, Hashable {
     /// A Mailpit part (`smtp`, port 1025; its web UI and API on the part's control port) for
     /// Database Mail to send to.
     public var mailServer: Bool?
+    /// Server options set on the server's command line, so they hold after a restart: `sql_mode`,
+    /// `general_log`, `log_output` on MySQL and MariaDB (`--name=value`); any `postgresql.conf`
+    /// setting on PostgreSQL (`-c name=value`). Not available on SQL Server.
+    public var serverOptions: [String: String]?
 
     public init(agent: Bool? = nil, collation: String? = nil, memoryMB: Int? = nil, imageVariant: String? = nil,
-                topology: String? = nil, tls: TLSSettings? = nil, kerberos: Bool? = nil, replicas: Int? = nil, mailServer: Bool? = nil) {
+                topology: String? = nil, tls: TLSSettings? = nil, kerberos: Bool? = nil, replicas: Int? = nil, mailServer: Bool? = nil,
+                serverOptions: [String: String]? = nil) {
         self.agent = agent
         self.collation = collation
         self.memoryMB = memoryMB
@@ -90,6 +95,7 @@ public struct ServerSettings: Codable, Sendable, Hashable {
         self.kerberos = kerberos
         self.replicas = replicas
         self.mailServer = mailServer
+        self.serverOptions = serverOptions
     }
 }
 
