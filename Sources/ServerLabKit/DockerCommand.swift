@@ -31,6 +31,8 @@ public struct DockerCommand: Sendable {
 
     /// Runs `docker <arguments>` and returns standard output as raw bytes (for binary files).
     public func runData(_ arguments: [String]) async throws -> Data {
+        await DockerGate.shared.enter()
+        defer { Task { await DockerGate.shared.leave() } }
         let process = Process()
         process.executableURL = executable
         process.arguments = (host.dockerHost.map { ["--host", $0] } ?? []) + arguments
@@ -99,6 +101,8 @@ public struct DockerCommand: Sendable {
     }
 
     private func runOnce(_ arguments: [String], input: URL?, timeout: Duration) async throws -> Result {
+        await DockerGate.shared.enter()
+        defer { Task { await DockerGate.shared.leave() } }
         let process = Process()
         process.executableURL = executable
         process.arguments = (host.dockerHost.map { ["--host", $0] } ?? []) + arguments
@@ -133,5 +137,35 @@ public struct DockerCommand: Sendable {
     @concurrent
     private static func collect(_ handle: FileHandle) async throws -> String {
         String(decoding: try handle.readToEnd() ?? Data(), as: UTF8.self)
+    }
+}
+
+/// Limits how many docker commands one process runs at once. Each one opens its own SSH session
+/// to the lab host, and sshd drops sessions when dozens start together (suites start in
+/// parallel); a dropped session can leave the docker CLI hanging. `SERVERLAB_DOCKER_CONCURRENCY`
+/// overrides the default of 8.
+actor DockerGate {
+    static let shared = DockerGate(limit: Int(ProcessInfo.processInfo.environment["SERVERLAB_DOCKER_CONCURRENCY"] ?? "") ?? 8)
+
+    private let limit: Int
+    private var running = 0
+    private var waiting: [CheckedContinuation<Void, Never>] = []
+
+    init(limit: Int) { self.limit = max(1, limit) }
+
+    func enter() async {
+        if running < limit {
+            running += 1
+            return
+        }
+        await withCheckedContinuation { waiting.append($0) }
+    }
+
+    func leave() {
+        if waiting.isEmpty {
+            running -= 1
+        } else {
+            waiting.removeFirst().resume()
+        }
     }
 }

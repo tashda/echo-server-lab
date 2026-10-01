@@ -4,11 +4,11 @@ import ServerLabKit
 
 /// Every third-party extension of the `extensions` image created in `database` (pg_cron,
 /// pgaudit, TimescaleDB, pg_partman, PostGIS and pgRouting, AGE, h3, rum, …) and pgAgent in
-/// `postgres`, and pg_cron jobs: nightly, every minute, one paused and one running in another
-/// database. Parameter: `database` (default labdata, which pg_cron is configured for).
+/// `postgres`, pg_cron jobs (nightly, every minute, one paused, one in another database) and
+/// pgAgent jobs (two steps with schedules, one disabled). Parameter: `database` (default labdata, which pg_cron is configured for).
 struct PostgresThirdPartyExtensionsPack: ContentPack {
     let name = "third-party-extensions"
-    let version = 2
+    let version = 3
     let summary = "pg_cron, pgaudit, TimescaleDB, pg_partman, PostGIS, pgRouting, AGE and 20 more extensions (extensions image)."
 
     func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
@@ -19,6 +19,16 @@ struct PostgresThirdPartyExtensionsPack: ContentPack {
         try await PostgresSession.with(server) { client in
             _ = try await client.admin.createDatabase(name: database, ifNotExists: true)
             _ = try await client.maintenance.createExtension("pgagent", cascade: true)
+            try await client.pgAgent.createJob(PgAgentJobDefinition(
+                name: "Nightly maintenance", description: "Vacuum, then report",
+                steps: [.init(name: "vacuum", code: "VACUUM ANALYZE", database: database),
+                        .init(name: "report", kind: .batch, code: "echo maintenance done", onError: .ignore)],
+                schedules: [.init(name: "nightly", minutes: [30], hours: [2]),
+                            .init(name: "sunday morning", minutes: [0], hours: [6], weekdays: [0])]))
+            try await client.pgAgent.createJob(PgAgentJobDefinition(
+                name: "Monthly report", jobClass: "Data Summarisation", isEnabled: false,
+                steps: [.init(name: "summarise", code: "SELECT 1", database: database)],
+                schedules: [.init(name: "first of the month", minutes: [0], hours: [7], monthDays: [1])]))
         }
         try await PostgresSession.with(server, database: database) { client in
             for extensionName in PostgresEngine.thirdPartyExtensions {
@@ -38,6 +48,10 @@ struct PostgresThirdPartyExtensionsPack: ContentPack {
         let database = try parameters.string("database", default: PostgresDatabasePack.defaultName)
         let (installed, jobs) = try await PostgresSession.with(server, database: database) { client in
             (Set(try await client.metadata.listExtensions().map(\.name)), try await client.cron.listJobs())
+        }
+        let agentJobs = try await PostgresSession.with(server) { try await $0.pgAgent.listJobs() }
+        guard agentJobs.map(\.name) == ["Nightly maintenance", "Monthly report"], agentJobs.map(\.isEnabled) == [true, false] else {
+            throw ServerLabError.packCheckFailed(pack: name, reason: "pgAgent jobs \(agentJobs.map(\.name))")
         }
         let missing = PostgresEngine.thirdPartyExtensions.filter { !installed.contains($0) }
         guard missing.isEmpty else { throw ServerLabError.packCheckFailed(pack: name, reason: "missing \(missing)") }

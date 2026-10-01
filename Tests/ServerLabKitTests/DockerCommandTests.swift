@@ -20,3 +20,28 @@ struct DockerCommandTests {
         #expect(!DockerCommand.couldNotConnect(message))
     }
 }
+
+struct DockerGateTests {
+    actor Peak {
+        var current = 0, highest = 0
+        func start() { current += 1; highest = max(highest, current) }
+        func end() { current -= 1 }
+    }
+
+    @Test func neverRunsMoreThanTheLimit() async {
+        let gate = DockerGate(limit: 2)
+        let peak = Peak()
+        await withTaskGroup(of: Void.self) { group in
+            for _ in 1...10 {
+                group.addTask {
+                    await gate.enter()
+                    await peak.start()
+                    try? await Task.sleep(for: .milliseconds(20))
+                    await peak.end()
+                    await gate.leave()
+                }
+            }
+        }
+        #expect(await peak.highest == 2)
+    }
+}

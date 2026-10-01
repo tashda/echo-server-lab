@@ -1,3 +1,4 @@
+import Synchronization
 import Foundation
 
 extension ServerLab {
@@ -186,7 +187,7 @@ extension ServerLab {
         _ = try await docker.runAllowingFailure(["network", "prune", "--force", "--filter", "label=\(LabLabels.managed)=true"])
         if host.isDedicated {
             _ = try await docker.runAllowingFailure(["volume", "prune", "--force"])
-            try? await pruneCaptures()
+            if CapturePruning.claim() { try? await pruneCaptures() }
         }
         return expired.count
     }
@@ -364,4 +365,16 @@ public struct SeededImage: Sendable, Hashable {
     public var size: String
     public var created: String
     public var recipe: String
+}
+
+/// Old captures are pruned once per process, not by every suite's reaper.
+enum CapturePruning {
+    private static let done = Mutex(false)
+
+    static func claim() -> Bool {
+        done.withLock { done in
+            defer { done = true }
+            return !done
+        }
+    }
 }
