@@ -235,7 +235,7 @@ extension ServerLab {
         }
         if try await !fits() {
             log("Waiting for \(neededMB) MB within \(host.name)'s \(host.memoryBudgetMB) MB budget")
-            try await retryUntilReady("memory budget", timeout: .seconds(900), every: .seconds(5)) {
+            try await retryUntilReady("memory budget", timeout: .seconds(45 * 60), every: .seconds(5)) {
                 guard try await fits() else { throw ServerLabError.budgetTimeout(neededMB: neededMB, budgetMB: host.memoryBudgetMB) }
             }
         }

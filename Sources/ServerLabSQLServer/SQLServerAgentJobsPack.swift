@@ -59,6 +59,8 @@ struct SQLServerAgentJobsPack: ContentPack {
                 throw ServerLabError.packRequirement(pack: "agent-jobs", reason: "Agent not running yet")
             }
         }
+        // Running is reported before Agent accepts job changes (SQL Server 2017 and 2025 both).
+        try await SQLServerEngine.waitForAgent(client)
     }
 
     /// SQL Server 2017 reports Agent as running while it still refuses job changes with

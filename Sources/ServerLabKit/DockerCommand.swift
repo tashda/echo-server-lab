@@ -64,6 +64,10 @@ public struct DockerCommand: Sendable {
             try? await Task.sleep(for: timeout)
             guard !Task.isCancelled else { return }
             kill(processID, SIGTERM)
+            // A docker CLI stuck on a dropped SSH session ignores SIGTERM.
+            try? await Task.sleep(for: .seconds(10))
+            guard !Task.isCancelled else { return }
+            kill(processID, SIGKILL)
         }
     }
 
@@ -78,13 +82,22 @@ public struct DockerCommand: Sendable {
         public var standardError: String
     }
 
-    /// How long one command may run before it is stopped: long enough for pulls, seeding commits
-    /// and restores, short enough that a hung SSH session cannot stall a test run for good.
-    public static let defaultTimeout: Duration = .seconds(30 * 60)
+    /// How long one command may run before it is stopped. A docker CLI whose SSH session the lab
+    /// host dropped hangs instead of failing; ten minutes covers every ordinary command (commits
+    /// of large images included), so such a hang costs a run minutes, not half an hour.
+    public static let defaultTimeout: Duration = .seconds(10 * 60)
+    /// Pulls and image builds download gigabytes.
+    public static let longTimeout: Duration = .seconds(45 * 60)
+
+    /// The timeout for `arguments`: long for `pull` and `build`, the default otherwise.
+    static func timeout(for arguments: [String]) -> Duration {
+        ["pull", "build"].contains(arguments.first ?? "") ? longTimeout : defaultTimeout
+    }
 
     /// `input` is a file sent to the command's standard input. A command that could not reach the
     /// Docker host (an SSH connection dropped while many commands start at once) is tried again.
-    public func runAllowingFailure(_ arguments: [String], input: URL? = nil, timeout: Duration = defaultTimeout) async throws -> Result {
+    public func runAllowingFailure(_ arguments: [String], input: URL? = nil, timeout: Duration? = nil) async throws -> Result {
+        let timeout = timeout ?? Self.timeout(for: arguments)
         var attempt = 0
         while true {
             let result = try await runOnce(arguments, input: input, timeout: timeout)

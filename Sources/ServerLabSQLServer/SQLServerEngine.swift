@@ -79,6 +79,15 @@ public struct SQLServerEngine: LabEngine {
     }
 
     static let hostName = "labsql"
+
+    /// Waits until SQL Server Agent accepts jobs (it reports running before it does).
+    static func waitForAgent(_ client: SQLServerClient) async throws {
+        for _ in 0..<60 {
+            if try await !client.agent.isStarting() { return }
+            try await Task.sleep(for: .seconds(2))
+        }
+        throw ServerLabError.packRequirement(pack: "agent", reason: "SQL Server Agent was still starting after two minutes")
+    }
     static let replicationFolder = "/var/opt/mssql/repldata"
 
     /// The official image plus `mssql-server-fts` from Microsoft's repository for the image's

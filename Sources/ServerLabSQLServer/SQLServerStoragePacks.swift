@@ -112,7 +112,10 @@ struct SQLServerLinkedServersPack: ContentPack {
     func apply(to server: ServerEndpoint, recipe: Recipe, parameters: PackParameters, context: PackContext) async throws {
         let provider = recipe.version == "2017" ? "SQLNCLI" : "MSOLEDBSQL"
         try await SQLServerSession.with(server) { client in
-            try await client.linkedServers.add(name: "LAB_LOOPBACK", provider: provider, dataSource: "127.0.0.1,1433")
+            // MSOLEDBSQL 19 (SQL Server 2025) encrypts and checks the certificate by default; the
+            // server's own certificate is self-signed.
+            try await client.linkedServers.add(name: "LAB_LOOPBACK", provider: provider, dataSource: "127.0.0.1,1433",
+                                               providerString: provider == "MSOLEDBSQL" ? "TrustServerCertificate=Yes" : nil)
             try await client.linkedServers.addLoginMapping(serverName: "LAB_LOOPBACK", remoteUser: server.username, remotePassword: server.password)
             try await client.linkedServers.add(name: "LAB_UNREACHABLE", provider: provider, dataSource: "unreachable.invalid,1433")
         }

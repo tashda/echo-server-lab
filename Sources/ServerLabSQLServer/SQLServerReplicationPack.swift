@@ -17,6 +17,7 @@ struct SQLServerReplicationPack: ContentPack {
             throw ServerLabError.packRequirement(pack: name, reason: "replication agents run in SQL Server Agent: set agent: true")
         }
         try await SQLServerSession.with(server) { client in
+            try await SQLServerEngine.waitForAgent(client)
             for database in [Self.publisher, Self.subscriber] { try await client.admin.createDatabase(name: database) }
             let admin = client.admin.scoped(to: Self.publisher)
             try await admin.createTable(name: "Customers", columns: [
