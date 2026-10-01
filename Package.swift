@@ -3,7 +3,7 @@ import PackageDescription
 
 let package = Package(
     name: "echo-server-lab",
-    platforms: [.macOS(.v15)],
+    platforms: [.macOS(.v26)],
     products: [
         .library(name: "ServerLabKit", targets: ["ServerLabKit"]),
         .library(name: "ServerLabCatalog", targets: ["ServerLabCatalog"]),
@@ -18,7 +18,7 @@ let package = Package(
     ],
     dependencies: [
         .package(url: "https://github.com/tashda/sqlserver-nio", branch: "dev"),
-        .package(url: "https://github.com/tashda/postgres-wire", branch: "dev"),
+        .package(url: "https://github.com/tashda/postgres-wire", branch: "official"),
         .package(url: "https://github.com/tashda/mysql-wire", branch: "dev"),
         // SQLite files are made through sqlite-nio (no first-party SQLite driver), as Echo uses it.
         .package(url: "https://github.com/vapor/sqlite-nio", from: "1.12.0"),

@@ -1,6 +1,15 @@
 {
-  "originHash" : "ae2abdacf3e2d86f8226fea567a39ca88552667b00837111fff9acd402952aef",
+  "originHash" : "b71d87227ac0b545ff6879106568f4dc39bfcad9fe0d7d0d22a3ea6dba33bee9",
   "pins" : [
+    {
+      "identity" : "echo-libraries",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tashda/echo-libraries",
+      "state" : {
+        "revision" : "5a80804f2c91faa5548bfa1a6f7c4512b0f0d2b9",
+        "version" : "1.1.0"
+      }
+    },
     {
       "identity" : "mysql-nio",
       "kind" : "remoteSourceControl",
@@ -24,8 +33,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/tashda/postgres-wire",
       "state" : {
-        "branch" : "dev",
-        "revision" : "9e448aa0ee02e4c059c7795af541ab03c1b13052"
+        "branch" : "official",
+        "revision" : "17b07fb82bf9c0e0b40f77f4ec406355670d2c13"
       }
     },
     {
@@ -74,15 +83,6 @@
       }
     },
     {
-      "identity" : "swift-async-algorithms",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-async-algorithms.git",
-      "state" : {
-        "revision" : "13713a4ffdee8abd929f92568ee9462a46ae26e0",
-        "version" : "1.1.7"
-      }
-    },
-    {
       "identity" : "swift-atomics",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-atomics.git",
@@ -128,15 +128,6 @@
       }
     },
     {
-      "identity" : "swift-metrics",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-metrics.git",
-      "state" : {
-        "revision" : "087e8074afa97040c3b870c8664fe5482fb87cc4",
-        "version" : "2.11.0"
-      }
-    },
-    {
       "identity" : "swift-nio",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-nio.git",
@@ -155,30 +146,12 @@
       }
     },
     {
-      "identity" : "swift-nio-transport-services",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/apple/swift-nio-transport-services.git",
-      "state" : {
-        "revision" : "67787bb645a5e67d2edcdfbe48a216cc549222d5",
-        "version" : "1.28.0"
-      }
-    },
-    {
       "identity" : "swift-numerics",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/apple/swift-numerics.git",
       "state" : {
         "revision" : "0c0290ff6b24942dadb83a929ffaaa1481df04a2",
         "version" : "1.1.1"
-      }
-    },
-    {
-      "identity" : "swift-service-lifecycle",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/swift-server/swift-service-lifecycle.git",
-      "state" : {
-        "revision" : "7f9326b0326ff86e3646295ea6e891f68c471c5e",
-        "version" : "2.12.0"
       }
     },
     {
