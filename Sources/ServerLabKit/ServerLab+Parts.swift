@@ -71,16 +71,18 @@ extension ServerLab {
 
     /// The server's containers, by the `server` label (containers from before parts have none).
     func parts(ofServerNamed name: String, internalPort: Int) async throws -> [LabServerPart] {
-        let format = "{{.ID}}\t{{.Names}}\t{{.Label \"\(LabLabels.part)\"}}"
+        let format = "{{.ID}}\t{{.Names}}\t{{.Label \"\(LabLabels.part)\"}}\t{{.Label \"\(LabLabels.ports)\"}}"
         let output = try await docker.run(["ps", "--all", "--no-trunc", "--format", format, "--filter", "label=\(LabLabels.server)=\(name)"])
         var parts: [LabServerPart] = []
         for line in output.split(separator: "\n") {
             let fields = line.split(separator: "\t", omittingEmptySubsequences: false).map(String.init)
-            guard fields.count == 3 else { continue }
-            let isProxy = fields[2] == Self.faultProxyRole
+            guard fields.count >= 3 else { continue }
+            // The ports label names the part's own ports; older containers have none.
+            var ports = (fields.count > 3 ? fields[3] : "").split(separator: ",").compactMap { Int($0) }
+            if ports.isEmpty { ports = fields[2] == Self.faultProxyRole ? [internalPort, 8474] : [internalPort] }
+            let control = ports.count > 1 ? try await hostPort(of: fields[1], internalPort: ports[1]) : nil
             parts.append(LabServerPart(role: fields[2], containerID: fields[0], containerName: fields[1],
-                                       port: try await hostPort(of: fields[1], internalPort: internalPort),
-                                       controlPort: isProxy ? try await hostPort(of: fields[1], internalPort: 8474) : nil))
+                                       port: try await hostPort(of: fields[1], internalPort: ports[0]), controlPort: control))
         }
         return parts
     }

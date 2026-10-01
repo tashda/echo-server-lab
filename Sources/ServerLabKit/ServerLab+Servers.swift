@@ -94,7 +94,8 @@ extension ServerLab {
                     extraArguments: networkArguments(part.role, hostname: part.container.hostname)
                 )
                 current = started.id
-                server.parts.append(LabServerPart(role: part.role, containerID: started.id, containerName: started.name, port: started.port))
+                server.parts.append(LabServerPart(role: part.role, containerID: started.id, containerName: started.name, port: started.port,
+                                                  controlPort: started.extraPorts.sorted { $0.key < $1.key }.first?.value))
                 if part.acceptsLogins {
                     log("Waiting for \(part.role) \(started.name) on \(host.address):\(started.port)")
                     try await engine.waitUntilReady(try server.endpoint(of: part.role), timeout: .seconds(300))
@@ -266,6 +267,7 @@ extension ServerLab {
         if let fingerprint { labels[LabLabels.fingerprint] = fingerprint }
         if let server { labels[LabLabels.server] = server }
         if let part { labels[LabLabels.part] = part }
+        labels[LabLabels.ports] = ([spec.internalPort] + spec.extraPorts).map(String.init).joined(separator: ",")
 
         // Secrets go through an env file (read by the local docker tool), not the command line.
         let envFile = FileManager.default.temporaryDirectory.appending(path: "serverlab-\(UUID().uuidString).env")

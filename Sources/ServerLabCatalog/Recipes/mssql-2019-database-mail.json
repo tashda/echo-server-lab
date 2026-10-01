@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2019-database-mail",
+  "summary": "SQL Server 2019 with Database Mail: account and public default profile, failed mail from the build, and mail delivered to the server's Mailpit part (smtp; web UI on its control port).",
+  "engine": "sqlserver",
+  "version": "2019",
+  "settings": {
+    "mailServer": true
+  },
+  "packs": [
+    {
+      "pack": "database-mail"
+    }
+  ]
+}

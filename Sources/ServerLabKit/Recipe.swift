@@ -75,9 +75,12 @@ public struct ServerSettings: Codable, Sendable, Hashable {
     public var kerberos: Bool?
     /// Replicas of an `availability-group` topology, the primary included (default 2).
     public var replicas: Int?
+    /// A Mailpit part (`smtp`, port 1025; its web UI and API on the part's control port) for
+    /// Database Mail to send to.
+    public var mailServer: Bool?
 
     public init(agent: Bool? = nil, collation: String? = nil, memoryMB: Int? = nil, imageVariant: String? = nil,
-                topology: String? = nil, tls: TLSSettings? = nil, kerberos: Bool? = nil, replicas: Int? = nil) {
+                topology: String? = nil, tls: TLSSettings? = nil, kerberos: Bool? = nil, replicas: Int? = nil, mailServer: Bool? = nil) {
         self.agent = agent
         self.collation = collation
         self.memoryMB = memoryMB
@@ -86,6 +89,7 @@ public struct ServerSettings: Codable, Sendable, Hashable {
         self.tls = tls
         self.kerberos = kerberos
         self.replicas = replicas
+        self.mailServer = mailServer
     }
 }
 

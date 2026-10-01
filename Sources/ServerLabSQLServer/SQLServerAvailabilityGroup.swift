@@ -30,6 +30,7 @@ extension SQLServerEngine {
     }
 
     public func waitUntilTopologyReady(_ server: LabServer, files: any ServerPartFiles) async throws {
+        try await deliverMail(server)
         let secondaries = server.parts.map(\.role).filter { $0.hasPrefix("secondary") }
         guard !secondaries.isEmpty else { return }
         let certificate = "\(Self.certificateDirectory)/\(Self.endpointCertificate).cer"

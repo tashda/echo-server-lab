@@ -1,0 +1,14 @@
+{
+  "name": "mssql-2025-database-mail",
+  "summary": "SQL Server 2025 with Database Mail: account and public default profile, failed mail from the build, and mail delivered to the server's Mailpit part (smtp; web UI on its control port).",
+  "engine": "sqlserver",
+  "version": "2025",
+  "settings": {
+    "mailServer": true
+  },
+  "packs": [
+    {
+      "pack": "database-mail"
+    }
+  ]
+}

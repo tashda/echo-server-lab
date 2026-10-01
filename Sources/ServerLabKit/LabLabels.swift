@@ -19,6 +19,8 @@ public enum LabLabels {
     public static let part = "dev.echodb.lab.part"
     /// `<mode>/<certificate>` on servers started with TLS, so tools that did not start them can connect.
     public static let tls = "dev.echodb.lab.tls"
+    /// The container's ports, the service port first (`1025,8025`), so tools find a part's ports.
+    public static let ports = "dev.echodb.lab.ports"
     /// The service host name (`sql.lab.test`) on servers started with Kerberos.
     public static let kerberos = "dev.echodb.lab.kerberos"
 

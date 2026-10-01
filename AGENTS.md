@@ -128,6 +128,9 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
     .chinook)` (or `serverlab sqlite <fixture>`, `ServerLabCLI.sqliteFixture` from Echo) builds the
     fixture once through sqlite-nio in `~/.echo-testlab/sqlite` and returns a copy of its own to open
     and change; remove it when done.
+12. **Mail:** `mssql-2019/2022/2025-database-mail` have a Mailpit part `smtp` (port 1025; its web UI and
+    API on the part's `controlPort`): Database Mail with an account, a public default profile, three
+    failed mails from the build and one delivered after start.
 
 ## Adding a scenario
 

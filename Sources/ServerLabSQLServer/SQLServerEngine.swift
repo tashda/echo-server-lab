@@ -25,6 +25,7 @@ public struct SQLServerEngine: LabEngine {
         SQLServerCentralManagementPack(),
         SQLServerLowPrivilegePack(),
         SQLServerEdgeCasesPack(),
+        SQLServerDatabaseMailPack(),
     ]
 
     public init() {}
@@ -66,7 +67,8 @@ public struct SQLServerEngine: LabEngine {
         case let other?: throw ServerLabError.unsupported("Topology '\(other)' on SQL Server (use \(Self.availabilityGroup))")
         }
         if availabilityGroup, recipe.settings.kerberos == true { throw ServerLabError.unsupported("Kerberos on an availability group") }
-        guard availabilityGroup || setup.tls != nil || setup.kerberos != nil || recipe.settings.kerberos == true else { return .single }
+        let mail = recipe.settings.mailServer == true
+        guard availabilityGroup || mail || setup.tls != nil || setup.kerberos != nil || recipe.settings.kerberos == true else { return .single }
         var network = ["[network]"]
         var files: [String: ContainerFile] = [:]
         if let tls = setup.tls {
@@ -95,8 +97,11 @@ public struct SQLServerEngine: LabEngine {
         if network.count > 1 {
             files["/var/opt/mssql/mssql.conf"] = ContainerFile(network.joined(separator: "\n") + "\n", owner: 10001)
         }
-        guard availabilityGroup else { return ServerTopology(mainRole: "server", mainFiles: files) }
-        return try availabilityGroupTopology(for: recipe, password: setup.password, files: files)
+        var topology = availabilityGroup
+            ? try availabilityGroupTopology(for: recipe, password: setup.password, files: files)
+            : ServerTopology(mainRole: "server", mainFiles: files)
+        if mail { topology.parts.append(Self.mailServerPart) }
+        return topology
     }
 
     static let keytabPath = "/var/opt/mssql/secrets/mssql.keytab"
