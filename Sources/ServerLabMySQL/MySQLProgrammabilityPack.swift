@@ -1,6 +1,5 @@
 import Foundation
 import MySQLKit
-import MySQLWire
 import ServerLabKit
 
 /// Customers and orders with a view, a procedure, a function, BEFORE and AFTER triggers (one

@@ -1,6 +1,5 @@
 import Foundation
 import MySQLKit
-import MySQLWire
 import ServerLabKit
 
 /// Schemas in states a client has to show: a read-only schema (MySQL 8.0.22+), a view whose

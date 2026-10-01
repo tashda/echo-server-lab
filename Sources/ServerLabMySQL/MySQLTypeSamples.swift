@@ -1,6 +1,5 @@
 import Foundation
 import MySQLKit
-import MySQLWire
 import ServerLabKit
 
 /// One column per MySQL/MariaDB type, with its smallest and largest values and a way to make more.

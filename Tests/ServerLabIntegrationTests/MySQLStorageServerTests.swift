@@ -1,5 +1,4 @@
 import MySQLKit
-import MySQLWire
 import ServerLabKit
 import ServerLabTesting
 import Testing
