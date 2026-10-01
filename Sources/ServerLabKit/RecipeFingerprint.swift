@@ -4,8 +4,10 @@ import Foundation
 /// Identifies a seeded image: the same recipe, pack versions, base image and password give the same
 /// fingerprint, so an existing image is reused; any change builds a new one.
 public enum RecipeFingerprint {
-    /// Raise when the way images are built changes.
-    static let formatVersion = 1
+    /// Raise when the way images are built changes. 2: packs seed through PostgresKit on libpq and
+    /// MySQLKit on MariaDB Connector/C (the driver switch), so their images never mix with the ones
+    /// the Swift drivers seeded.
+    static let formatVersion = 2
 
     public static func compute(
         recipe: Recipe,
