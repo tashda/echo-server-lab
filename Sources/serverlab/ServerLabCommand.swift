@@ -2,6 +2,7 @@ import ArgumentParser
 import Foundation
 import ServerLabCatalog
 import ServerLabKit
+import ServerLabWorkloads
 
 @main
 struct ServerLabCommand: AsyncParsableCommand {
@@ -9,7 +10,7 @@ struct ServerLabCommand: AsyncParsableCommand {
         commandName: "serverlab",
         abstract: "Start disposable database servers from recipes.",
         discussion: "The host is testlab unless SERVERLAB_HOST=local.",
-        subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, StopPart.self, StartPart.self, Promote.self, Fault.self,
+        subcommands: [Recipes.self, Build.self, Up.self, Down.self, List.self, StopPart.self, StartPart.self, Promote.self, Fault.self, Workload.self,
                       Images.self, Prune.self, Reap.self, Wire.self, Explain.self, Sqlcmd.self, MySQLCommand.self, SQLite.self, Pcap.self]
     )
 }
@@ -142,6 +143,33 @@ struct Promote: AsyncParsableCommand {
         let lab = try ServerLab.standard()
         try await lab.promote(part: part, of: lab.server(named: name))
         print("promoted \(part) of \(name)")
+    }
+}
+
+struct Workload: AsyncParsableCommand {
+    static let configuration = CommandConfiguration(
+        abstract: "Run a live workload on a server until the time is up or Ctrl-C.",
+        discussion: """
+            Kinds: blocking-chain (a session holds a row lock, --waiters more wait for it) and
+            idle-in-transaction. Sessions report the application name serverlab-workload.
+            """
+    )
+
+    @Argument(help: "Server container name.") var name: String
+    @Argument(help: "blocking-chain or idle-in-transaction.") var kind: String
+    @Option(help: "Sessions waiting on the lock (blocking-chain).") var waiters = 2
+    @Option(help: "How long to keep it running.") var minutes = 10
+
+    func run() async throws {
+        guard let kind = LabWorkloadKind(rawValue: kind) else {
+            throw ValidationError("Kinds: \(LabWorkloadKind.allCases.map(\.rawValue).joined(separator: ", "))")
+        }
+        let server = try await ServerLab.standard().server(named: name)
+        let workload = try await server.startWorkload(kind, waiters: waiters)
+        print("Running \(kind.rawValue) on \(name) for \(minutes) minutes; Ctrl-C stops it (the server rolls back).")
+        try? await Task.sleep(for: .seconds(minutes * 60))
+        await workload.stop()
+        print("Stopped.")
     }
 }
 

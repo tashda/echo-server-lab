@@ -66,7 +66,11 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    PostgreSQL and MySQL TLS sessions decode anyway: with `capture: true` the trait sets
    `SSLKEYLOGFILE`, postgres-wire and mysql-wire write their TLS secrets there, and the lab hands
    that file to tshark (open a pcap in Wireshark with the same file under TLS → key log).
-5. **Restarts, failover and replicas:** every server keeps a fixed host port for its life, so it
+5. **Live activity:** `try await LabServer.current!.startWorkload(.blockingChain, waiters: 2)` holds a row
+   lock in an open transaction with sessions waiting on it (`.idleInTransaction`: just the open
+   transaction), on every engine, until `stop()`. Sessions report the application name
+   `serverlab-workload`. By hand: `serverlab workload <server> blocking-chain --minutes 10`.
+6. **Restarts, failover and replicas:** every server keeps a fixed host port for its life, so it
    can be stopped and started without the address changing. Recipes with a `topology` setting are
    several containers ("parts") on a private network, each with its own port: `pg-<v>-primary-standby`
    has `primary` and `standby` (a hot standby streaming through a replication slot);
@@ -76,7 +80,7 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    `server.start(part:)` (returns once it takes logins) and `server.promote()` in tests; by hand
    `serverlab stop|start <server> [--part standby]` and `serverlab promote <server>`. `--env` adds
    `SERVERLAB_STANDBY_PORT` etc. Restarting the main part restarts a capture (a new recording).
-6. **TLS and certificate checks:** recipes with a `tls` setting (`*-tls-required`, `-optional`,
+7. **TLS and certificate checks:** recipes with a `tls` setting (`*-tls-required`, `-optional`,
    `mssql-2025-tls-strict` for TDS 8, `pg-17-tls-strict` for TLS 1.3 only,
    `pg-17-tls-client-certificate`, and `-expired-certificate`, `-wrong-host`, `-self-signed`) present
    a certificate from this machine's lab CA (`~/.echo-testlab/ca/lab-ca.pem`, made once) naming the
@@ -85,14 +89,14 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    `SERVERLAB_TLS_*`. MySQL/MariaDB: `mysql-*-tls-required`, `-tls-optional`, `-tls-strict` (TLS 1.3)
    and the bad-certificate variants on 8.4. Verify against `caPath`; with `capture: true`, `containsPlaintext` shows the
    traffic really is encrypted.
-7. **Network faults:** `.server("recipe", faults: true)` (or `serverlab up <recipe> --faults`) puts
+8. **Network faults:** `.server("recipe", faults: true)` (or `serverlab up <recipe> --faults`) puts
    a Toxiproxy part `proxy` in front of any server. Connect to `server.endpoint(of: "proxy")`, then
    `server.addFault(.latency(milliseconds: 400))`, `.bandwidth`, `.timeout` (0 = silent hang),
    `.resetPeer`, `.slowClose`, `.limitData`, `.slicer` (downstream by default, `direction: .upstream`),
    `clearFaults()`, and `cutConnections()` / `restoreConnections()` for a network cut. By hand:
    `serverlab fault <server> latency 400 | cut | restore | clear`. For a server crash or restart use
    `stop(part:)` / `start(part:)` instead.
-8. **Kerberos / Active Directory:** `*-kerberos` recipes (`mssql-2019/2022/2025-kerberos`,
+9. **Kerberos / Active Directory:** `*-kerberos` recipes (`mssql-2019/2022/2025-kerberos`,
    `pg-16/17/18-kerberos`, `-kerberos-tls-required`) join the lab domain `LAB.TEST`: one shared Samba
    DC (`serverlab-domain`, KDC on the lab host's port 19088) that starts with the first Kerberos
    server and goes with the last. Each server gets its own service account and host name
@@ -103,7 +107,7 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    `server.kerberos!.withTicket(password: server.password) { … }` (`credentials: .password` when the
    driver logs in with the password itself). It sets `KRB5_CONFIG` (`~/.echo-testlab/krb5.conf`) and
    a ticket cache of its own, and makes Kerberos logins take turns: GSS state is per process.
-9. **Availability groups:** `mssql-2019/2022/2025-availability-group` (primary + readable
+10. **Availability groups:** `mssql-2019/2022/2025-availability-group` (primary + readable
    `secondary`) and `mssql-2022-availability-group-3` (`secondary`, `secondary2`): Always On group
    `LabAG`, CLUSTER_TYPE NONE, certificate-authenticated endpoints on 5022, LabData seeded
    automatically. Read from `endpoint(of: "secondary")`; `server.promote(part: "secondary")` fails

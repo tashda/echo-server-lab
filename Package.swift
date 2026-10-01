@@ -63,14 +63,20 @@ let package = Package(
         ),
         // The standard lab: every engine plus the recipes shipped in Recipes/.
         .target(
+            name: "ServerLabWorkloads",
+            dependencies: ["ServerLabKit", .product(name: "SQLServerKit", package: "sqlserver-nio"),
+                           .product(name: "PostgresKit", package: "postgres-wire"),
+                           .product(name: "MySQLKit", package: "mysql-wire"), .product(name: "MySQLWire", package: "mysql-wire")]
+        ),
+        .target(
             name: "ServerLabCatalog",
-            dependencies: ["ServerLabKit", "ServerLabSQLServer", "ServerLabPostgres", "ServerLabMySQL", "ServerLabSQLite"],
+            dependencies: ["ServerLabKit", "ServerLabSQLServer", "ServerLabPostgres", "ServerLabMySQL", "ServerLabSQLite", "ServerLabWorkloads"],
             resources: [.copy("Recipes")]
         ),
         // Swift Testing trait: @Suite(.server("recipe-name")).
         .target(
             name: "ServerLabTesting",
-            dependencies: ["ServerLabCatalog"]
+            dependencies: ["ServerLabCatalog", "ServerLabWorkloads"]
         ),
         .target(name: "ServerLabClient"),
         // Field trees for decoded protocol messages, shared by the TDS and PostgreSQL decoders.
@@ -99,6 +105,7 @@ let package = Package(
         .testTarget(
             name: "ServerLabIntegrationTests",
             dependencies: [
+                "ServerLabWorkloads",
                 "ServerLabTesting",
                 .product(name: "MySQLKit", package: "mysql-wire"),
                 .product(name: "MySQLWire", package: "mysql-wire"),

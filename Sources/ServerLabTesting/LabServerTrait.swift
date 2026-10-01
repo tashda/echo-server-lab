@@ -1,6 +1,8 @@
 import Foundation
 import ServerLabCatalog
 import ServerLabKit
+/// `LabServer.startWorkload(_:)` comes with the trait.
+@_exported import ServerLabWorkloads
 import Testing
 
 /// Starts a fresh server from a recipe for a suite (or a single test) and removes it afterwards.
