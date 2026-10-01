@@ -10,6 +10,7 @@ extension ServerLab {
         lease: Duration = .seconds(2 * 3600),
         log: @escaping LabLog = { _ in }
     ) async throws -> LabServer {
+        try await checkHostReachable()
         _ = try? await reapExpired()
         let engine = try engine(for: recipe.engine)
         let password = try LabPassword.resolve()
@@ -26,9 +27,9 @@ extension ServerLab {
         if kerberos { _ = try engine.kerberosService(for: recipe, serverID: serverID, hostPort: mainPort) }
         let image = try await seededImage(for: recipe, log: log)
         for part in topology.parts { _ = try await baseImageID(part.container, log: log) }
-        let heldMB = try await waitForBudget(neededMB: spec.memoryMB + topology.parts.map { $0.container.memoryMB }.reduce(0, +), log: log)
+        let held = try await waitForBudget(neededMB: spec.memoryMB + topology.parts.map { $0.container.memoryMB }.reduce(0, +), log: log)
         // Until its containers run (and count themselves), this start's memory is held in the ledger.
-        defer { Task { await BudgetLedger.shared.release(heldMB) } }
+        defer { held.release() }
 
         // Kerberos servers join the lab domain's network; servers with several parts get their own.
         let network = kerberos ? Self.domainNetwork : topology.parts.isEmpty ? nil : try await createNetwork(forServer: name)
@@ -224,14 +225,17 @@ extension ServerLab {
         return 0
     }
 
-    /// Waits until `neededMB` fits in the host's budget, counting starts of this process that are
-    /// still on their way, and holds it in the ledger; returns what it holds. One start checks at a
-    /// time, so suites starting together do not all see the same free memory.
-    func waitForBudget(neededMB: Int, log: LabLog) async throws -> Int {
+    /// Waits until `neededMB` fits in the host's budget, counting starts on this Mac that are still
+    /// on their way (in any process), and holds it in the ledger until released. One start on this
+    /// Mac checks at a time, so suites starting together do not all see the same free memory.
+    func waitForBudget(neededMB: Int, log: LabLog) async throws -> BudgetLedger.Hold {
+        let ledger = BudgetLedger(host: host)
         await BudgetLedger.checks.enter()
         defer { Task { await BudgetLedger.checks.leave() } }
+        let lock = try await ledger.lockChecks()
+        defer { ledger.unlockChecks(lock) }
         @Sendable func fits() async throws -> Bool {
-            try await reservedMemoryMB() + (await BudgetLedger.shared.heldMB) + neededMB <= host.memoryBudgetMB
+            try await reservedMemoryMB() + ledger.heldMB() + neededMB <= host.memoryBudgetMB
         }
         if try await !fits() {
             log("Waiting for \(neededMB) MB within \(host.name)'s \(host.memoryBudgetMB) MB budget")
@@ -239,8 +243,7 @@ extension ServerLab {
                 guard try await fits() else { throw ServerLabError.budgetTimeout(neededMB: neededMB, budgetMB: host.memoryBudgetMB) }
             }
         }
-        await BudgetLedger.shared.hold(neededMB)
-        return neededMB
+        return try ledger.hold(neededMB)
     }
 
     struct StartedContainer {
@@ -389,16 +392,4 @@ enum CapturePruning {
             return !done
         }
     }
-}
-
-/// Memory this process has promised to servers that are starting but not yet running.
-actor BudgetLedger {
-    static let shared = BudgetLedger()
-    /// One budget check at a time per process.
-    static let checks = DockerGate(limit: 1)
-
-    private(set) var heldMB = 0
-
-    func hold(_ megabytes: Int) { heldMB += megabytes }
-    func release(_ megabytes: Int) { heldMB = max(0, heldMB - megabytes) }
 }

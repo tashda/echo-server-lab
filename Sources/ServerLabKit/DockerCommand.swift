@@ -113,7 +113,7 @@ public struct DockerCommand: Sendable {
             || message.contains("connection reset by peer") && message.contains("dial-stdio")
     }
 
-    private func runOnce(_ arguments: [String], input: URL?, timeout: Duration) async throws -> Result {
+    func runOnce(_ arguments: [String], input: URL?, timeout: Duration) async throws -> Result {
         await DockerGate.shared.enter()
         defer { Task { await DockerGate.shared.leave() } }
         let process = Process()

@@ -16,6 +16,7 @@ public enum ServerLabError: Error, CustomStringConvertible, Sendable {
     case budgetTimeout(neededMB: Int, budgetMB: Int)
     case unknownPart(String, server: String, parts: [String])
     case unsupported(String)
+    case hostUnreachable(host: String, address: String, detail: String)
 
     public var description: String {
         switch self {
@@ -49,6 +50,9 @@ public enum ServerLabError: Error, CustomStringConvertible, Sendable {
             "\(server) has no part '\(part)'. Parts: \(parts.joined(separator: ", "))."
         case .unsupported(let what):
             "\(what) is not supported."
+        case .hostUnreachable(let host, let address, let detail):
+            "The lab host \(host) (\(address)) cannot be reached: \(detail). Check that `ssh \(host) docker version` works "
+                + "(on CI: the Tailscale step and TESTLAB_SSH_KEY), or set SERVERLAB_HOST=local to use Docker on this Mac."
         }
     }
 }
