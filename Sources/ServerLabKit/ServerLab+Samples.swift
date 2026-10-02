@@ -14,12 +14,25 @@ extension ServerLab {
             log("Downloading sample \(file) (\(sample.bytes / 1_048_576) MB)")
             try await docker.run([
                 "run", "--rm", "--volume", "\(host.samplesDirectory):/s", "alpine",
-                "sh", "-c", "wget -q -O /s/\(file).part '\(sample.source.absoluteString)' && mv /s/\(file).part /s/\(file) && chmod 644 /s/\(file)",
+                "sh", "-c", Self.downloadCommand(for: sample),
             ])
             guard try await sampleChecksum(file) == sample.sha256 else {
                 throw ServerLabError.packRequirement(pack: "samples", reason: "\(file) does not match its checksum")
             }
         }
+    }
+
+    /// The shell command (run in the alpine container, samples directory at `/s`) that fetches a sample,
+    /// extracting its member when the source is an archive.
+    static func downloadCommand(for sample: LabSample) -> String {
+        let file = sample.file, url = sample.source.absoluteString
+        let fetch: String
+        if let member = sample.archiveMember {
+            fetch = "wget -q -O /s/\(file).tgz '\(url)' && tar -xzOf /s/\(file).tgz '\(member)' > /s/\(file).part && rm /s/\(file).tgz"
+        } else {
+            fetch = "wget -q -O /s/\(file).part '\(url)'"
+        }
+        return "\(fetch) && mv /s/\(file).part /s/\(file) && chmod 644 /s/\(file)"
     }
 
     /// The text of a sample file on the lab host.

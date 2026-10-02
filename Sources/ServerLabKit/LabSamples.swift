@@ -1,16 +1,22 @@
 import Foundation
 
 /// A third-party sample database file the lab can load. Files live on the lab host in
-/// `LabHost.samplesDirectory` and are mirrored in the `samples-v1` release of tashda/echo-server-lab.
+/// `LabHost.samplesDirectory`. They are downloaded from their publishers; only Sakila (BSD-3-Clause)
+/// is mirrored in the `samples-v1` release. Never mirror a sample whose licence forbids redistribution
+/// (the `world` data is copyrighted by Statistics Finland and Oracle).
 public struct LabSample: Sendable, Hashable {
     public var file: String
     public var source: URL
+    /// When `source` is a `.tar.gz`, the path of the file inside it (`file` is then that member, extracted).
+    public var archiveMember: String?
+    /// The checksum of `file` itself, after extraction.
     public var sha256: String
     public var bytes: Int
 
-    public init(file: String, source: String, sha256: String, bytes: Int) {
+    public init(file: String, source: String, archiveMember: String? = nil, sha256: String, bytes: Int) {
         self.file = file
         self.source = URL(string: source) ?? URL(fileURLWithPath: "/")
+        self.archiveMember = archiveMember
         self.sha256 = sha256
         self.bytes = bytes
     }
@@ -48,7 +54,7 @@ public enum LabSamples {
         LabSample(file: "Chinook_PostgreSql.sql",
                   source: "https://github.com/lerocha/chinook-database/releases/download/v1.4.5/Chinook_PostgreSql.sql",
                   sha256: "e3fde5c1a5b51a2a91429a702c9ca6e69ba56e6c7f5e112724d70c3d03db695e", bytes: 600_200),
-        // MySQL's own samples come as archives; the lab keeps the extracted files in its release.
+        // Sakila is BSD-3-Clause (the notice is in the files), so the lab keeps its extracted files in its release.
         LabSample(file: "sakila-schema.sql",
                   source: "https://github.com/tashda/echo-server-lab/releases/download/samples-v1/sakila-schema.sql",
                   sha256: "b32170e1e2ad5828749b61a5ec896155bcd143104b076e5ee8a3a3b013f44915", bytes: 24_269),
@@ -56,7 +62,7 @@ public enum LabSamples {
                   source: "https://github.com/tashda/echo-server-lab/releases/download/samples-v1/sakila-data.sql",
                   sha256: "8c228c678cec6ea9e5145ea868f48be87982252e806a547dcddb67758cadf174", bytes: 3_351_749),
         LabSample(file: "world.sql",
-                  source: "https://github.com/tashda/echo-server-lab/releases/download/samples-v1/world.sql",
+                  source: "https://downloads.mysql.com/docs/world-db.tar.gz", archiveMember: "world-db/world.sql",
                   sha256: "dc96faace01d61c3d571c45f0fa55a5c9dd26baa2a700f05a6fd74f382482b7b", bytes: 398_629),
         LabSample(file: "Chinook_MySql.sql",
                   source: "https://github.com/lerocha/chinook-database/releases/download/v1.4.5/Chinook_MySql.sql",
