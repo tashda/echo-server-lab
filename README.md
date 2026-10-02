@@ -33,8 +33,29 @@ and removes it when the suite ends. Nothing runs when nothing is being tested.
 
 | Host | Use |
 |---|---|
-| `testlab` (192.168.1.153, Proxmox VM 103) | Default. Debian 13, Docker Engine, 14 GB. Reached as `ssh://testlab`. |
-| Local OrbStack | Offline work on the Mac. |
+| Local Docker (OrbStack, Colima, Docker Desktop) | The default. Nothing to set up beyond Docker; servers publish ports on `127.0.0.1`. |
+| A remote Docker host over SSH | For a dedicated test machine. Describe it in `~/.echo-testlab/hosts.json` (below) or set `SERVERLAB_HOST=<ssh-name>`. |
+
+`~/.echo-testlab/hosts.json` stays on your machine, never in the repository:
+
+```json
+{ "default": "lab",
+  "hosts": { "lab": { "dockerHost": "ssh://lab", "address": "192.0.2.10", "memoryBudgetMB": 16384,
+                      "isDedicated": true, "samplesDirectory": "/opt/serverlab/samples" } } }
+```
+
+`SERVERLAB_HOST` picks a host by name for one command (`local` is always available). CI can define a
+host with `SERVERLAB_DOCKER_HOST`, `SERVERLAB_ADDRESS` and optionally `SERVERLAB_MEMORY_MB`,
+`SERVERLAB_DEDICATED=1`, `SERVERLAB_SAMPLES_DIR`.
+
+## Quick start (Docker only)
+
+```bash
+swift run serverlab recipes
+export SERVERLAB_PASSWORD='choose-a-password'      # the admin password the servers are built with
+eval "$(swift run serverlab up pg-17-column-types --env)"
+swift run serverlab down --all
+```
 
 ## Consumers
 
@@ -74,8 +95,8 @@ struct JobTests {
 ```
 
 The password comes from `SERVERLAB_PASSWORD`, else `TESTLAB_PASSWORD` in
-`~/.echo-testlab/credentials.env`. `SERVERLAB_HOST=local` uses Docker on the Mac
-instead of `testlab`. The integration tests run with `SERVERLAB_INTEGRATION=1`.
+`~/.echo-testlab/credentials.env`. `SERVERLAB_HOST=local` uses Docker on this machine. The
+integration tests run with `SERVERLAB_INTEGRATION=1`.
 
 ## Layout
 

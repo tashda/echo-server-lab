@@ -5,7 +5,7 @@ import Testing
 /// The drivers' test URL variables the lab fills in for every server.
 @Suite struct TestURLTests {
     func server(_ engine: EngineKind, tls: EndpointTLS? = nil, parts: [String] = ["server"], password: String = "p@ss:w/rd") -> LabServer {
-        LabServer(recipe: "r", engine: engine, version: "1", host: "192.168.1.153", port: 20001, username: "sa",
+        LabServer(recipe: "r", engine: engine, version: "1", host: "192.0.2.10", port: 20001, username: "sa",
                   password: password, containerID: "id", containerName: "serverlab-r-1", expires: .distantFuture,
                   parts: parts.enumerated().map { index, role in
                       LabServerPart(role: role, containerID: "c\(index)", containerName: "n\(index)", port: 20001 + index,
@@ -17,7 +17,7 @@ import Testing
     @Test func plainServersGetTheBaseVariable() throws {
         let variables = server(.postgres).testURLVariables
         let url = try #require(variables["POSTGRES_TEST_URL"])
-        #expect(url == "postgres://sa:p%40ss%3Aw%2Frd@192.168.1.153:20001/postgres?sslmode=disable")
+        #expect(url == "postgres://sa:p%40ss%3Aw%2Frd@192.0.2.10:20001/postgres?sslmode=disable")
         #expect(URLComponents(string: url)?.password == "p@ss:w/rd")
         #expect(server(.mariadb).testURLVariables["MYSQL_TEST_URL"]?.hasPrefix("mysql://sa:") == true)
         #expect(server(.sqlServer).testURLVariables["SQLSERVER_TEST_URL"]?.contains("encrypt=mandatory&trustServerCertificate=true") == true)
@@ -39,6 +39,6 @@ import Testing
         #expect(group["SQLSERVER_TEST_AG_URLS"]?.split(separator: ",").count == 3)
         let proxied = server(.mysql, parts: ["server", "proxy"]).testURLVariables
         #expect(proxied["MYSQL_TEST_PROXY_URL"]?.contains(":20002/") == true)
-        #expect(proxied["MYSQL_TEST_PROXY_CONTROL"] == "http://192.168.1.153:30000")
+        #expect(proxied["MYSQL_TEST_PROXY_CONTROL"] == "http://192.0.2.10:30000")
     }
 }

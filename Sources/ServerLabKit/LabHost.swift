@@ -23,17 +23,7 @@ public struct LabHost: Sendable, Hashable {
         self.samplesDirectory = samplesDirectory
     }
 
-    /// The Proxmox VM `testlab` (192.168.1.153), reached over SSH (`Host testlab` in ~/.ssh/config).
-    public static let testlab = LabHost(
-        name: "testlab",
-        dockerHost: "ssh://testlab",
-        address: "192.168.1.153",
-        memoryBudgetMB: 18_432,
-        isDedicated: true,
-        samplesDirectory: "/opt/serverlab/samples"
-    )
-
-    /// Docker on this Mac (OrbStack, Colima or Docker Desktop).
+    /// Docker on this machine (OrbStack, Colima or Docker Desktop). The default when nothing else is configured.
     public static let local = LabHost(
         name: "local",
         dockerHost: nil,
@@ -43,12 +33,67 @@ public struct LabHost: Sendable, Hashable {
         samplesDirectory: FileManager.default.homeDirectoryForCurrentUser.appending(path: ".echo-testlab/samples").path
     )
 
-    /// `SERVERLAB_HOST` selects `testlab` (default) or `local`.
-    public static func fromEnvironment(_ environment: [String: String] = ProcessInfo.processInfo.environment) -> LabHost {
-        switch environment["SERVERLAB_HOST"]?.lowercased() {
-        case "local": .local
-        default: .testlab
+    /// The host to use, chosen in this order:
+    ///
+    /// 1. `SERVERLAB_DOCKER_HOST` (for example `ssh://lab`) with `SERVERLAB_ADDRESS`, and optionally
+    ///    `SERVERLAB_MEMORY_MB`, `SERVERLAB_DEDICATED=1` and `SERVERLAB_SAMPLES_DIR`: a host defined
+    ///    entirely by the environment (CI).
+    /// 2. `SERVERLAB_HOST=<name>`: `local`, a host in `~/.echo-testlab/hosts.json`, or else any name
+    ///    `docker --host ssh://<name>` can reach (the name is also the address clients connect to).
+    /// 3. The `default` host in `~/.echo-testlab/hosts.json`.
+    /// 4. `local`.
+    public static func fromEnvironment(
+        _ environment: [String: String] = ProcessInfo.processInfo.environment,
+        configuration: LabHostConfiguration? = LabHostConfiguration.load()
+    ) -> LabHost {
+        if let dockerHost = environment["SERVERLAB_DOCKER_HOST"], !dockerHost.isEmpty,
+           let address = environment["SERVERLAB_ADDRESS"], !address.isEmpty {
+            return LabHost(
+                name: environment["SERVERLAB_HOST"] ?? "remote",
+                dockerHost: dockerHost,
+                address: address,
+                memoryBudgetMB: Int(environment["SERVERLAB_MEMORY_MB"] ?? "") ?? 16_384,
+                isDedicated: environment["SERVERLAB_DEDICATED"] == "1",
+                samplesDirectory: environment["SERVERLAB_SAMPLES_DIR"] ?? "/opt/serverlab/samples"
+            )
         }
+        let requested = environment["SERVERLAB_HOST"].flatMap { $0.isEmpty ? nil : $0 } ?? configuration?.defaultHost ?? "local"
+        if requested.lowercased() == "local" { return .local }
+        if let configured = configuration?.hosts[requested] { return configured.host(named: requested) }
+        return LabHost(name: requested, dockerHost: "ssh://\(requested)", address: requested, memoryBudgetMB: 16_384,
+                       isDedicated: false, samplesDirectory: "/opt/serverlab/samples")
+    }
+}
+
+/// `~/.echo-testlab/hosts.json`: the machines this user's lab can run on, kept out of the repository.
+///
+///     { "default": "lab", "hosts": { "lab": { "dockerHost": "ssh://lab", "address": "192.0.2.10",
+///       "memoryBudgetMB": 16384, "isDedicated": true, "samplesDirectory": "/opt/serverlab/samples" } } }
+public struct LabHostConfiguration: Sendable, Codable, Equatable {
+    public struct Entry: Sendable, Codable, Equatable {
+        public var dockerHost: String?
+        public var address: String
+        public var memoryBudgetMB: Int?
+        public var isDedicated: Bool?
+        public var samplesDirectory: String?
+
+        public func host(named name: String) -> LabHost {
+            LabHost(name: name, dockerHost: dockerHost, address: address, memoryBudgetMB: memoryBudgetMB ?? 16_384,
+                    isDedicated: isDedicated ?? false, samplesDirectory: samplesDirectory ?? "/opt/serverlab/samples")
+        }
+    }
+
+    public var `default`: String?
+    public var hosts: [String: Entry]
+    public var defaultHost: String? { `default` }
+
+    public static var fileURL: URL {
+        FileManager.default.homeDirectoryForCurrentUser.appending(path: ".echo-testlab/hosts.json")
+    }
+
+    public static func load(from url: URL = fileURL) -> LabHostConfiguration? {
+        guard let data = try? Data(contentsOf: url) else { return nil }
+        return try? JSONDecoder().decode(LabHostConfiguration.self, from: data)
     }
 }
 

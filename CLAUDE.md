@@ -35,7 +35,7 @@ budget is taken (`Reserved 9031 of 18432 MB on testlab`). If what you need does 
 - Wait, or use fewer servers at once (one suite at a time instead of many in parallel).
 - Never remove containers that are not yours to make room. Lab containers are named
   `serverlab-*`; anything else belongs to another agent or to the owner.
-- If the host stays full, tell the owner; do not switch to `SERVERLAB_HOST=local` on your own.
+- If the host stays full, tell the owner; do not switch to `SERVERLAB_HOST=local` on your own (on the owner's machine the configured default is the dedicated host).
 
 When a server does not fit, `serverlab up` and the `.server(...)` trait wait up to 15 minutes for
 room, then fail with "Waited too long for … MB". Anything else that runs containers on `testlab`
@@ -197,8 +197,9 @@ Then:
 
 ## Layout
 
-See the Layout table in `README.md`. Hosts: `testlab` (default, 192.168.1.153, `ssh testlab`,
-Docker context `testlab`) or `SERVERLAB_HOST=local`.
+See the Layout table in `README.md`. Hosts come from `~/.echo-testlab/hosts.json` (the owner's default
+is `testlab`, a dedicated Docker host over SSH) or `SERVERLAB_HOST=local`. Never write a host address,
+user name or key path into this repository.
 
 ## End of Test Run (Disk Cleanup)
 

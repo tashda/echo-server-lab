@@ -20,14 +20,14 @@ import X509
     func serverCertificateHasTheKindAsked(_ kind: LabCertificateKind) throws {
         defer { try? FileManager.default.removeItem(at: directory) }
         let ca = try LabCertificateAuthority.load(directory: directory)
-        let issued = try ca.issueServer(kind, dnsNames: ["testlab", "primary"], ipAddresses: ["192.168.1.153"])
+        let issued = try ca.issueServer(kind, dnsNames: ["lab", "primary"], ipAddresses: ["192.0.2.10"])
         let certificate = try Certificate(pemEncoded: issued.certificatePEM)
         #expect(issued.keyPEM.hasPrefix("-----BEGIN PRIVATE KEY-----"))
 
         let names = try #require(try certificate.extensions.subjectAlternativeNames)
         let expectsHost = kind != .wrongHost
-        #expect(names.contains(.dnsName("testlab")) == expectsHost)
-        #expect(names.contains(.ipAddress(ASN1OctetString(contentBytes: [192, 168, 1, 153]))) == expectsHost)
+        #expect(names.contains(.dnsName("lab")) == expectsHost)
+        #expect(names.contains(.ipAddress(ASN1OctetString(contentBytes: [192, 0, 2, 10]))) == expectsHost)
         #expect((certificate.notValidAfter < Date()) == (kind == .expired))
         #expect((certificate.issuer == ca.certificate.subject) == (kind != .selfSigned))
     }

@@ -52,7 +52,7 @@ public enum ServerLabError: Error, CustomStringConvertible, Sendable {
             "\(what) is not supported."
         case .hostUnreachable(let host, let address, let detail):
             "The lab host \(host) (\(address)) cannot be reached: \(detail). Check that `ssh \(host) docker version` works "
-                + "(on CI: the Tailscale step and TESTLAB_SSH_KEY), or set SERVERLAB_HOST=local to use Docker on this Mac."
+                + "(on CI: the step that gives the runner SSH access), or set SERVERLAB_HOST=local to use Docker on this machine."
         }
     }
 }

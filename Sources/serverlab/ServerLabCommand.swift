@@ -9,7 +9,7 @@ struct ServerLabCommand: AsyncParsableCommand {
     static let configuration = CommandConfiguration(
         commandName: "serverlab",
         abstract: "Start disposable database servers from recipes.",
-        discussion: "The host is testlab unless SERVERLAB_HOST=local.",
+        discussion: "The host is the default in ~/.echo-testlab/hosts.json, else Docker on this machine (SERVERLAB_HOST=local).",
         subcommands: [Recipes.self, Build.self, Up.self, Run.self, Down.self, List.self, StopPart.self, StartPart.self, Promote.self, Fault.self, Workload.self,
                       Images.self, Prune.self, Reap.self, Wire.self, Explain.self, Sqlcmd.self, MySQLCommand.self, SQLite.self, Pcap.self]
     )
