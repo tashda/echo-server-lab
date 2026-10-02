@@ -7,11 +7,13 @@ public struct ServerLab: Sendable {
     let engines: [EngineKind: any LabEngine]
     let docker: DockerCommand
 
-    public init(host: LabHost, engines: [any LabEngine], recipes: RecipeCatalog) throws {
+    /// `docker` is the command-line tool to use; by default it is found on the machine
+    /// (SERVERLAB_DOCKER, then the usual install paths). Tests pass a stand-in.
+    public init(host: LabHost, engines: [any LabEngine], recipes: RecipeCatalog, docker: DockerCommand? = nil) throws {
         self.host = host
         self.recipes = recipes
         self.engines = Dictionary(uniqueKeysWithValues: engines.map { ($0.kind, $0) })
-        self.docker = try DockerCommand(host: host)
+        self.docker = try docker ?? DockerCommand(host: host)
     }
 
     public func engine(for kind: EngineKind) throws -> any LabEngine {

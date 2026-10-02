@@ -41,8 +41,17 @@ struct BudgetLedgerTests {
         #expect(flock(other, LOCK_EX | LOCK_NB) == 0)
     }
 
+    /// A stand-in for the docker tool that answers like one whose host cannot be reached, so the test
+    /// needs no docker on the machine (CI runners have none).
+    private func unreachableDocker() throws -> DockerCommand {
+        let script = FileManager.default.temporaryDirectory.appending(path: "docker-unreachable-\(UUID().uuidString)")
+        try "#!/bin/sh\necho 'error during connect: cannot reach the host' >&2\nexit 1\n".write(to: script, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
+        return try DockerCommand(host: host, environment: ["SERVERLAB_DOCKER": script.path])
+    }
+
     @Test func anUnreachableHostFailsFastWithWhatToCheck() async throws {
-        let lab = try ServerLab(host: host, engines: [], recipes: RecipeCatalog(recipes: []))
+        let lab = try ServerLab(host: host, engines: [], recipes: RecipeCatalog(recipes: []), docker: unreachableDocker())
         let started = ContinuousClock.now
         await #expect {
             try await lab.checkHostReachable(timeout: .seconds(15))
