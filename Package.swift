@@ -17,9 +17,9 @@ let package = Package(
         .executable(name: "serverlab", targets: ["serverlab"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/tashda/sqlserver-nio", branch: "dev"),
-        .package(url: "https://github.com/tashda/postgres-wire", branch: "dev"),
-        .package(url: "https://github.com/tashda/mysql-wire", branch: "dev"),
+        .package(url: "https://github.com/tashda/echo-sqlserver", branch: "dev"),
+        .package(url: "https://github.com/tashda/echo-postgres", branch: "dev"),
+        .package(url: "https://github.com/tashda/echo-mysql", branch: "dev"),
         // SQLite files are made through sqlite-nio (no first-party SQLite driver), as Echo uses it.
         .package(url: "https://github.com/vapor/sqlite-nio", from: "1.12.0"),
         .package(url: "https://github.com/apple/swift-log.git", from: "1.5.4"),
@@ -44,17 +44,17 @@ let package = Package(
         // SQL Server: container settings, readiness and content packs, through SQLServerKit only.
         .target(
             name: "ServerLabSQLServer",
-            dependencies: ["ServerLabKit", .product(name: "SQLServerKit", package: "sqlserver-nio")]
+            dependencies: ["ServerLabKit", .product(name: "SQLServerKit", package: "echo-sqlserver")]
         ),
         // PostgreSQL: container settings, readiness and content packs, through PostgresKit only.
         .target(
             name: "ServerLabPostgres",
-            dependencies: ["ServerLabKit", .product(name: "PostgresKit", package: "postgres-wire")]
+            dependencies: ["ServerLabKit", .product(name: "PostgresKit", package: "echo-postgres")]
         ),
         // MySQL and MariaDB: container settings, readiness and content packs, through MySQLKit only.
         .target(
             name: "ServerLabMySQL",
-            dependencies: ["ServerLabKit", .product(name: "MySQLKit", package: "mysql-wire")]
+            dependencies: ["ServerLabKit", .product(name: "MySQLKit", package: "echo-mysql")]
         ),
         // SQLite fixture files, built locally through sqlite-nio.
         .target(
@@ -64,9 +64,9 @@ let package = Package(
         // The standard lab: every engine plus the recipes shipped in Recipes/.
         .target(
             name: "ServerLabWorkloads",
-            dependencies: ["ServerLabKit", .product(name: "SQLServerKit", package: "sqlserver-nio"),
-                           .product(name: "PostgresKit", package: "postgres-wire"),
-                           .product(name: "MySQLKit", package: "mysql-wire")]
+            dependencies: ["ServerLabKit", .product(name: "SQLServerKit", package: "echo-sqlserver"),
+                           .product(name: "PostgresKit", package: "echo-postgres"),
+                           .product(name: "MySQLKit", package: "echo-mysql")]
         ),
         .target(
             name: "ServerLabCatalog",
@@ -100,16 +100,16 @@ let package = Package(
         ),
         .testTarget(
             name: "ServerLabClientTests",
-            dependencies: ["ServerLabClient", .product(name: "PostgresKit", package: "postgres-wire")]
+            dependencies: ["ServerLabClient", .product(name: "PostgresKit", package: "echo-postgres")]
         ),
         .testTarget(
             name: "ServerLabIntegrationTests",
             dependencies: [
                 "ServerLabWorkloads",
                 "ServerLabTesting",
-                .product(name: "MySQLKit", package: "mysql-wire"),
-                .product(name: "SQLServerKit", package: "sqlserver-nio"),
-                .product(name: "PostgresKit", package: "postgres-wire"),
+                .product(name: "MySQLKit", package: "echo-mysql"),
+                .product(name: "SQLServerKit", package: "echo-sqlserver"),
+                .product(name: "PostgresKit", package: "echo-postgres"),
             ]
         ),
     ]

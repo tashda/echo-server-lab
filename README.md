@@ -16,8 +16,8 @@ and removes it when the suite ends. Nothing runs when nothing is being tested.
 
 ## Rules
 
-- **Packs create content only through our drivers' typed APIs** (`sqlserver-nio`,
-  `postgres-wire`). There are no `.sql` fallbacks. When a driver cannot create
+- **Packs create content only through our drivers' typed APIs** (`echo-sqlserver`,
+  `echo-postgres`). There are no `.sql` fallbacks. When a driver cannot create
   something, or creates it wrongly, the fix goes into the driver, and the pack
   waits for it.
 - **Every suite gets a fresh server.** A recipe is built once into a seeded image
@@ -97,7 +97,7 @@ instead of `testlab`. The integration tests run with `SERVERLAB_INTEGRATION=1`.
 
 Engines: SQL Server 2017–2025, PostgreSQL 13–18, MySQL 8.0/8.4/9 and MariaDB 10.6/10.11/11.4/11.8
 (packs `database`, `column-types`, `programmability`, `indexes-constraints`, `security`, and `sample`:
-Sakila, world, Chinook; all through mysql-wire). SQLite fixture files (all types, programmability,
+Sakila, world, Chinook; all through echo-mysql). SQLite fixture files (all types, programmability,
 Chinook) built locally through sqlite-nio. Packs: `database`,
 `column-types`, `programmability`, `indexes-constraints` and `security` (both engines),
 `partitioning` (both), `agent-jobs`, `temporal`, `linked-servers`, `change-tracking` (CT + CDC),

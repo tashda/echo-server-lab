@@ -1,5 +1,5 @@
 {
-  "originHash" : "a326af1a802e7ee0f728a02f4bce7b57f9e3141916bd621bfb5bf4adf966a0eb",
+  "originHash" : "1a52a9acde86a7c581db19709df645e2e5ed6d072c5e03b5d8c0a7e56d79fd2a",
   "pins" : [
     {
       "identity" : "echo-libraries",
@@ -11,21 +11,30 @@
       }
     },
     {
-      "identity" : "mysql-wire",
+      "identity" : "echo-mysql",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/tashda/mysql-wire",
+      "location" : "https://github.com/tashda/echo-mysql",
       "state" : {
         "branch" : "dev",
-        "revision" : "69cb51069a24f0eba967deeb390495444705c95f"
+        "revision" : "1d8d1d36aa2fe514e2bc35fb4d939838fe83d962"
       }
     },
     {
-      "identity" : "postgres-wire",
+      "identity" : "echo-postgres",
       "kind" : "remoteSourceControl",
-      "location" : "https://github.com/tashda/postgres-wire",
+      "location" : "https://github.com/tashda/echo-postgres",
       "state" : {
         "branch" : "dev",
-        "revision" : "a4d47b964e04d49565c00e7805263aace3159e40"
+        "revision" : "da99bcd10f9637ec9c4835f75bb79f3e274161e5"
+      }
+    },
+    {
+      "identity" : "echo-sqlserver",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/tashda/echo-sqlserver",
+      "state" : {
+        "branch" : "dev",
+        "revision" : "0f549705bf6119fd64a1117821be7a385a334658"
       }
     },
     {
@@ -35,15 +44,6 @@
       "state" : {
         "revision" : "553a6be0e228085b4d5e7c7ecb6a590186c31136",
         "version" : "1.13.0"
-      }
-    },
-    {
-      "identity" : "sqlserver-nio",
-      "kind" : "remoteSourceControl",
-      "location" : "https://github.com/tashda/sqlserver-nio",
-      "state" : {
-        "branch" : "dev",
-        "revision" : "176979fb2b58e260193b594d74c7c13ecf68b60b"
       }
     },
     {

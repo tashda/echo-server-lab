@@ -8,8 +8,8 @@ this file; change both together.
 - **Nothing runs always.** Start a server for the work, remove it afterwards. `swift run serverlab ps`
   must show no containers of yours when you finish. Servers and builders are removed with their
   volumes; on `testlab` the reaper also prunes unused volumes. Never prune on a shared Docker
-  (your Mac's OrbStack also runs other agents' fixtures, e.g. sqlserver-nio's `nio-lab-*`).
-- **Content only through our drivers' typed APIs** (sqlserver-nio, postgres-wire). No `.sql` files,
+  (your Mac's OrbStack also runs other agents' fixtures, e.g. echo-sqlserver's `nio-lab-*`).
+- **Content only through our drivers' typed APIs** (echo-sqlserver, echo-postgres). No `.sql` files,
   no `sqlcmd`/`psql`. If a driver cannot create something, or creates it wrong, fix the driver first.
 - **Never print the lab password.** It comes from `SERVERLAB_PASSWORD` or
   `~/.echo-testlab/credentials.env`.
@@ -18,7 +18,7 @@ this file; change both together.
 ## Capacity: look before you start
 
 `testlab` has 20 GB of RAM and 4 vCPUs. The lab lets its servers use at most **18 GB together**,
-and that budget also counts what every other container on the host uses (sqlserver-nio's
+and that budget also counts what every other container on the host uses (echo-sqlserver's
 `nio-lab-*` fixtures share `testlab`).
 
 | Server | Memory each | At most at once on an otherwise empty host |
@@ -74,7 +74,7 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
    (opens in Wireshark). Capture and decoding run on the lab host; nothing to install. SQL Server
    traffic is encrypted when the client asks for TLS; connect with encryption off to read it.
    PostgreSQL and MySQL TLS sessions decode anyway: with `capture: true` the trait sets
-   `SSLKEYLOGFILE`, postgres-wire and mysql-wire write their TLS secrets there, and the lab hands
+   `SSLKEYLOGFILE`, echo-postgres and echo-mysql write their TLS secrets there, and the lab hands
    that file to tshark (open a pcap in Wireshark with the same file under TLS → key log).
 5. **Live activity:** `try await LabServer.current!.startWorkload(.blockingChain, waiters: 2)` holds a row
    lock in an open transaction with sessions waiting on it (`.idleInTransaction`: just the open
@@ -126,7 +126,7 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
 10. **What went over the wire, field by field (TDS, PostgreSQL, MySQL):** the `TDSSpec` module (MS-TDS reference and a
     decoder) explains every captured SQL Server message: `LabWire.current.explainedMessages()` in
     tests, `serverlab explain <server>` by hand; `.specProblems` / the last line list every byte the
-    decoder could not match to MS-TDS (empty means the traffic matches the spec). sqlserver-nio
+    decoder could not match to MS-TDS (empty means the traffic matches the spec). echo-sqlserver
     always encrypts, so its traffic reads only as TLS until it has TLS key logging; `serverlab
     sqlcmd <server> "<sql>"` (`ServerLab.runMicrosoftClient`) sends through Microsoft's sqlcmd with
     only the login encrypted, as a readable reference. The `tds-mcp` MCP server
@@ -135,11 +135,11 @@ must give them a memory limit (`--memory`), or the budget cannot protect the hos
     and say where the fix came from (MS-TDS section and date, or a capture).
     PostgreSQL captures decode the same way (`PostgresProtocol` module: startup, SSL/GSS requests,
     authentication with passwords and SCRAM proofs never shown, simple and extended queries,
-    DataRow values in text or binary by type OID, COPY, notifications); postgres-wire can connect
+    DataRow values in text or binary by type OID, COPY, notifications); echo-postgres can connect
     with `sslMode: .disable`, so its own traffic is readable.
     MySQL and MariaDB captures decode too (`MySQLProtocol`: handshake, login and auth switching, every
     COM_ command, OK/ERR/EOF, result sets in text and binary, prepared statements, MariaDB's metadata
-    caching). mysql-wire encrypts and cannot log in to MySQL without TLS, so `serverlab mysql <server>
+    caching). echo-mysql encrypts and cannot log in to MySQL without TLS, so `serverlab mysql <server>
     "<sql>"` (`ServerLab.runMySQLClient`) sends through the image's own client without TLS.
 11. **SQLite files:** SQLite has no server; `LabSQLite.freshCopy(.allTypes | .programmability |
     .chinook)` (or `serverlab sqlite <fixture>`, `ServerLabCLI.sqliteFixture` from Echo) builds the
@@ -167,7 +167,7 @@ Pick the smallest change that works:
    - `verify` reads back through the driver and throws `ServerLabError.packCheckFailed` with counts.
    - Gate by version where a feature is newer (see `SQLServerTypeSample.since`).
    - Register it in the engine's `packs` list and add recipes for every supported version.
-4. **The driver is missing an API or has a bug:** in sqlserver-nio, lab agents own the typed feature
+4. **The driver is missing an API or has a bug:** in echo-sqlserver, lab agents own the typed feature
    APIs (`admin`, `security`, `metadata`, `agent`, `routines`, `types`, `constraints`, masking, …).
    The core belongs to the driver agent: `Sources/SQLServerTDS`, connection open and routing, pool
    and session reset, cancellation and deadlines, errors, streaming, value formatting
